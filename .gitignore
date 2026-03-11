@@ -1,0 +1,12 @@
+build*/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+gpu_benchmark
+.idea/
+.vscode/
+CMakeCache.txt
+CMakeFiles/

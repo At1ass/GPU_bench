@@ -1,0 +1,199 @@
+#pragma once
+#include "bench.h"
+#include "mesh.h"
+#include "preset.h"
+#include <vector>
+
+// Texture generation helpers (shared across tests)
+std::vector<unsigned char> genCheckerboard(int size, int check_size);
+std::vector<unsigned char> genColorNoise(int size, unsigned int seed);
+int clampTexSize(int requested, int max_size);
+
+// --- Fillrate Test ---
+class FillrateTest : public BenchTest {
+public:
+    FillrateTest(const FillrateParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    int layers_;
+    int vw_, vh_;
+    MeshHandle quad_;
+};
+
+// --- Geometry Test ---
+class GeometryTest : public BenchTest {
+public:
+    GeometryTest(const GeometryParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    int grid_size_;
+    int tri_count_;
+    int vw_, vh_;
+    MeshHandle mesh_;
+};
+
+// --- Texturing Test ---
+class TexturingTest : public BenchTest {
+public:
+    TexturingTest(const TexturingParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    int tex_size_;
+    int actual_tex_size_;
+    int layers_;
+    int vw_, vh_;
+    MeshHandle quad_;
+    TextureHandle texture_;
+};
+
+// --- Scene Test ---
+class SceneTest : public BenchTest {
+public:
+    SceneTest(const SceneParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    SceneParams params_;
+    int vw_, vh_;
+    MeshHandle terrain_;
+    MeshHandle sphere_;
+    MeshHandle cube_;
+    TextureHandle terrain_tex_;
+    TextureHandle obj_tex_;
+    float angle_;
+};
+
+// --- Draw Call Overhead Test ---
+class DrawCallTest : public BenchTest {
+public:
+    DrawCallTest(const DrawCallParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    DrawCallParams params_;
+    int vw_, vh_;
+    std::vector<MeshHandle> meshes_;
+};
+
+// --- Overdraw Test ---
+class OverdrawTest : public BenchTest {
+public:
+    OverdrawTest(const OverdrawParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    OverdrawParams params_;
+    int vw_, vh_;
+    MeshHandle quad_;
+};
+
+// --- Texture Upload Test ---
+class TexUploadTest : public BenchTest {
+public:
+    TexUploadTest(const TexUploadParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    TexUploadParams params_;
+    int actual_tex_size_;
+    int vw_, vh_;
+    MeshHandle quad_;
+    TextureHandle texture_;
+    std::vector<unsigned char> upload_data_;
+};
+
+// --- State Change Test ---
+class StateChangeTest : public BenchTest {
+public:
+    StateChangeTest(const StateChangeParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    StateChangeParams params_;
+    int vw_, vh_;
+    MeshHandle quad_;
+    std::vector<ShaderHandle> shaders_;
+    std::vector<TextureHandle> textures_;
+};
+
+// --- Vertex Throughput Test ---
+class VertexTest : public BenchTest {
+public:
+    VertexTest(const VertexParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    VertexParams params_;
+    int actual_vertex_count_;
+    int vw_, vh_;
+    MeshHandle mesh_;
+};
+
+// --- Shader ALU Test ---
+class ShaderALUTest : public BenchTest {
+public:
+    ShaderALUTest(const ShaderALUParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    ShaderALUParams params_;
+    int vw_, vh_;
+    MeshHandle quad_;
+    ShaderHandle shader_;
+    int u_iterations_loc_;
+    int u_time_loc_;
+    float time_;
+};
