@@ -409,7 +409,7 @@ std::vector<GPUDevice> enumerateGPUs() {
 
         if (hr == S_OK) {
             GPUDevice gpu;
-            gpu.index = (int)i;
+            gpu.index = static_cast<int>(i);
             gpu.vendor = pciVendorName(desc.VendorId);
 
             // DXGI_ADAPTER_DESC.Description is WCHAR[128]

@@ -28,8 +28,8 @@ void TexUploadTest::render(Renderer* r) {
     // Re-upload texture data N times per frame
     for (int i = 0; i < params_.uploads_per_frame; i++) {
         // Modify a few bytes to prevent driver optimization
-        int offset = (i * 1024) % (int)upload_data_.size();
-        upload_data_[offset] = (unsigned char)(upload_data_[offset] + 1);
+        int offset = (i * 1024) % static_cast<int>(upload_data_.size());
+        upload_data_[offset] = static_cast<unsigned char>(upload_data_[offset] + 1);
         r->uploadTextureData(texture_, actual_tex_size_, actual_tex_size_, 3, upload_data_.data());
     }
 
@@ -56,6 +56,6 @@ double TexUploadTest::computeScore(const std::vector<double>& times, int, int) {
     double avg_ms = total_ms / times.size();
     if (avg_ms <= 0.0) return 0;
     // bytes per frame = tex_size^2 * 3 channels * uploads_per_frame
-    double bytes_per_frame = (double)actual_tex_size_ * actual_tex_size_ * 3.0 * params_.uploads_per_frame;
+    double bytes_per_frame = static_cast<double>(actual_tex_size_) * actual_tex_size_ * 3.0 * params_.uploads_per_frame;
     return bytes_per_frame / (avg_ms / 1000.0) / (1024.0 * 1024.0); // MB/s
 }

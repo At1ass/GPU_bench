@@ -91,7 +91,7 @@ static void parseLine(const char* line, const std::string& section, BenchPreset&
         if (key == "draws_per_frame") p.drawcall.draws_per_frame = atoi(val.c_str());
     } else if (section == "overdraw") {
         if (key == "layers") p.overdraw.layers = atoi(val.c_str());
-        if (key == "alpha")  p.overdraw.alpha = (float)atof(val.c_str());
+        if (key == "alpha")  p.overdraw.alpha = static_cast<float>(atof(val.c_str()));
     } else if (section == "texupload") {
         if (key == "tex_size")          p.texupload.tex_size = atoi(val.c_str());
         if (key == "uploads_per_frame") p.texupload.uploads_per_frame = atoi(val.c_str());

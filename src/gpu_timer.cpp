@@ -1,4 +1,5 @@
 #include "gpu_timer.h"
+#include "logger.h"
 #include <SDL.h>
 #include <cstdio>
 #include <cstring>
@@ -34,7 +35,7 @@ void GPUTimer::init() {
     initialized_ = true;
 
     // Check GL version or ARB_timer_query extension
-    const char* ver = (const char*)glGetString(GL_VERSION);
+    const char* ver = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     bool has_timer = false;
     if (ver) {
         int major = 0, minor = 0;
@@ -45,37 +46,37 @@ void GPUTimer::init() {
     }
 
     if (!has_timer) {
-        const char* exts = (const char*)glGetString(GL_EXTENSIONS);
+        const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
         if (exts && strstr(exts, "GL_ARB_timer_query"))
             has_timer = true;
     }
 
     if (!has_timer) {
-        fprintf(stderr, "GPUTimer: GL_ARB_timer_query not available\n");
+        Log::info("GPUTimer: GL_ARB_timer_query not available");
         return;
     }
 
     // Load function pointers
-    gen_queries_ = (PFN_glGenQueries)SDL_GL_GetProcAddress("glGenQueries");
-    delete_queries_ = (PFN_glDeleteQueries)SDL_GL_GetProcAddress("glDeleteQueries");
-    begin_query_ = (PFN_glBeginQuery)SDL_GL_GetProcAddress("glBeginQuery");
-    end_query_ = (PFN_glEndQuery)SDL_GL_GetProcAddress("glEndQuery");
-    get_query_ui64v_ = (PFN_glGetQueryObjectui64v)SDL_GL_GetProcAddress("glGetQueryObjectui64v");
-    get_query_iv_ = (PFN_glGetQueryObjectiv)SDL_GL_GetProcAddress("glGetQueryObjectiv");
+    gen_queries_ = reinterpret_cast<PFN_glGenQueries>(SDL_GL_GetProcAddress("glGenQueries"));
+    delete_queries_ = reinterpret_cast<PFN_glDeleteQueries>(SDL_GL_GetProcAddress("glDeleteQueries"));
+    begin_query_ = reinterpret_cast<PFN_glBeginQuery>(SDL_GL_GetProcAddress("glBeginQuery"));
+    end_query_ = reinterpret_cast<PFN_glEndQuery>(SDL_GL_GetProcAddress("glEndQuery"));
+    get_query_ui64v_ = reinterpret_cast<PFN_glGetQueryObjectui64v>(SDL_GL_GetProcAddress("glGetQueryObjectui64v"));
+    get_query_iv_ = reinterpret_cast<PFN_glGetQueryObjectiv>(SDL_GL_GetProcAddress("glGetQueryObjectiv"));
 
     if (!gen_queries_ || !delete_queries_ || !begin_query_ || !end_query_ || !get_query_ui64v_) {
-        fprintf(stderr, "GPUTimer: failed to load query functions\n");
+        Log::warn("GPUTimer: failed to load query functions");
         return;
     }
 
     gen_queries_(1, &query_);
     if (!query_) {
-        fprintf(stderr, "GPUTimer: glGenQueries failed\n");
+        Log::warn("GPUTimer: glGenQueries failed");
         return;
     }
 
     available_ = true;
-    fprintf(stderr, "GPUTimer: GL_TIME_ELAPSED available\n");
+    Log::info("GPUTimer: GL_TIME_ELAPSED available");
 }
 
 void GPUTimer::begin() {
@@ -89,15 +90,17 @@ void GPUTimer::end() {
 double GPUTimer::elapsed_ms() {
     if (!available_) return 0;
 
-    // Wait for result
+    // Wait for result with timeout (~100ms / 10000 iterations)
     if (get_query_iv_) {
         GLint ready = 0;
-        while (!ready) {
+        int timeout = 10000;
+        while (!ready && timeout-- > 0) {
             get_query_iv_(query_, GL_QUERY_RESULT_AVAILABLE, &ready);
         }
+        if (!ready) return 0.0;
     }
 
     GLuint64 ns = 0;
     get_query_ui64v_(query_, GL_QUERY_RESULT, &ns);
-    return (double)ns / 1000000.0;
+    return static_cast<double>(ns) / 1000000.0;
 }

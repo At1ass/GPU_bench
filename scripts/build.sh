@@ -27,7 +27,7 @@ build_linux() {
     echo "=== Building for Linux (${BUILD_TYPE}) ==="
     mkdir -p "$build_dir"
     cd "$build_dir"
-    cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+    cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     make -j"$JOBS"
     echo ""
     echo "Done: $build_dir/gpu_benchmark"

@@ -14,12 +14,13 @@ struct RenderCaps {
     bool has_generate_mipmap_func;
     bool has_timer_queries;
     bool has_fbo;
+    bool has_compute;
 
     RenderCaps() : max_texture_size(256), max_vertex_attribs(8),
                    supports_32bit_indices(true), estimated_vram_mb(0),
                    gl_major(2), gl_minor(0), has_vao(false), has_instancing(false),
                    has_generate_mipmap_func(false), has_timer_queries(false),
-                   has_fbo(false) {}
+                   has_fbo(false), has_compute(false) {}
 };
 
 typedef unsigned int ShaderHandle;

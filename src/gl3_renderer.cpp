@@ -1,4 +1,5 @@
 #include "gl3_renderer.h"
+#include "logger.h"
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -11,7 +12,7 @@ bool GL3Renderer::init(int w, int h) {
 
     // Verify GL3 functions are available
     if (!caps_.has_vao) {
-        fprintf(stderr, "GL3Renderer: VAO not available, falling back to GL2 behavior\n");
+        Log::warn("GL3Renderer: VAO not available, falling back to GL2 behavior");
     }
     return true;
 }
@@ -47,9 +48,9 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -59,7 +60,7 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
 }
 
 void GL3Renderer::destroyMesh(MeshHandle h) {
-    if (h != 0 && h < meshes_.size() && meshes_[h].valid && meshes_[h].vao) {
+    if (isValidMesh(h) && meshes_[h].vao) {
         glDeleteVertexArrays(1, &meshes_[h].vao);
         meshes_[h].vao = 0;
     }
@@ -103,14 +104,14 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = (TextureHandle)textures_.size();
+        th = static_cast<TextureHandle>(textures_.size());
         textures_.push_back(gt);
     }
     return th;
 }
 
 void GL3Renderer::drawMesh(MeshHandle h) {
-    if (h == 0 || h >= meshes_.size() || !meshes_[h].valid) return;
+    if (!isValidMesh(h)) return;
     const GLMesh& gm = meshes_[h];
 
     if (gm.vao) {

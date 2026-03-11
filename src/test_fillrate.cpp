@@ -24,7 +24,7 @@ std::vector<unsigned char> genColorNoise(int size, unsigned int seed) {
     unsigned int s = seed;
     for (int i = 0; i < size * size * 3; i++) {
         s = s * 1664525u + 1013904223u;
-        pixels[i] = (unsigned char)(s >> 24);
+        pixels[i] = static_cast<unsigned char>(s >> 24);
     }
     return pixels;
 }
@@ -61,7 +61,7 @@ void FillrateTest::render(Renderer* r) {
     r->useShader(Renderer::SHADER_2D_COLOR);
 
     for (int i = 0; i < layers_; i++) {
-        float t = (float)i / layers_;
+        float t = static_cast<float>(i) / layers_;
         r->setColor(
             0.5f + 0.5f * sinf(t * 6.28f),
             0.5f + 0.5f * sinf(t * 6.28f + 2.09f),
@@ -85,6 +85,6 @@ double FillrateTest::computeScore(const std::vector<double>& times, int vw, int 
     for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
     double avg_ms = total_ms / times.size();
     if (avg_ms <= 0.0) return 0;
-    double pixels_per_frame = (double)vw * vh * layers_;
+    double pixels_per_frame = static_cast<double>(vw) * vh * layers_;
     return pixels_per_frame / (avg_ms / 1000.0) / 1e6;
 }

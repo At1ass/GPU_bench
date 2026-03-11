@@ -93,7 +93,7 @@ double ShaderALUTest::computeScore(const std::vector<double>& times, int vw, int
     // Note: transcendentals (sin/cos/sqrt/pow) are NOT single FLOPs —
     // actual cost varies by GPU architecture. Score is for relative comparison only.
     double flops_per_pixel = 8.0 * params_.iterations;
-    double pixels_per_frame = (double)vw * vh;
+    double pixels_per_frame = static_cast<double>(vw) * vh;
     double flops_per_frame = flops_per_pixel * pixels_per_frame;
     return flops_per_frame / (avg_ms / 1000.0) / 1e9; // Giga-ops/s
 }

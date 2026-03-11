@@ -1,50 +1,58 @@
 #include "renderer_factory.h"
 #include "gl2_renderer.h"
 #include "gl3_renderer.h"
-#include "gl_funcs.h"
+#include "gl4_renderer.h"
+#include "gles_renderer.h"
+#include "gl_loader.h"
+#include "logger.h"
 #include <cstdio>
-#include <cstring>
 
-int detectGLMajorVersion() {
-    const char* ver = (const char*)glGetString(GL_VERSION);
-    if (!ver) return 2;
-    int major = 0, minor = 0;
-    if (sscanf(ver, "%d.%d", &major, &minor) >= 1) {
-        return major;
+// Try GL4 -> GL3 -> GL2 cascade, starting from requested level.
+static Renderer* createWithFallback(RendererBackend requested) {
+    bool want_gl4 = (requested == RendererBackend::GL4);
+    bool want_gl3 = (requested == RendererBackend::GL3 || want_gl4);
+
+    if (want_gl4 && GLLoader::hasGL4() && GLLoader::hasGL3()) {
+        return new GL4Renderer();
     }
-    return 2;
-}
+    if (want_gl4) {
+        Log::warn("GL4 requested but not available (GL %d.%d)",
+                GLLoader::glMajor(), GLLoader::glMinor());
+    }
 
-Renderer* createBestRenderer() {
-    return createRenderer(0);
-}
-
-Renderer* createRenderer(int force_gl) {
-    int gl_major = detectGLMajorVersion();
-
-    if (force_gl == 3) {
-        if (gl_major < 3) {
-            fprintf(stderr, "Warning: GL3 requested but only GL %d available\n", gl_major);
-        }
-        if (!loadGL3Functions()) {
-            fprintf(stderr, "Warning: Could not load GL3 functions, using GL2\n");
-            return new GL2Renderer();
-        }
+    if (want_gl3 && GLLoader::hasGL3()) {
+        if (want_gl4)
+            Log::warn("Falling back to GL3 renderer");
         return new GL3Renderer();
     }
+    if (want_gl3) {
+        Log::warn("GL3 requested but not available (GL %d.%d)",
+                GLLoader::glMajor(), GLLoader::glMinor());
+        Log::warn("Falling back to GL2 renderer");
+    }
 
-    if (force_gl == 2) {
+    return new GL2Renderer();
+}
+
+Renderer* createRenderer(RendererBackend backend) {
+    if (backend == RendererBackend::GLES ||
+        (backend == RendererBackend::Auto && GLLoader::isGLES())) {
+        Log::info("Using GLES renderer");
+        return new GLESRenderer();
+    }
+
+    if (backend == RendererBackend::GL2) {
+        Log::info("Using GL2 renderer");
         return new GL2Renderer();
     }
 
-    // Auto-detect
-    if (gl_major >= 3) {
-        if (loadGL3Functions()) {
-            fprintf(stderr, "Auto-detected GL %d, using GL3 renderer\n", gl_major);
-            return new GL3Renderer();
-        }
+    if (backend == RendererBackend::GL3 || backend == RendererBackend::GL4) {
+        return createWithFallback(backend);
     }
 
-    fprintf(stderr, "Using GL2 renderer\n");
-    return new GL2Renderer();
+    // Auto-detect
+    Renderer* r = createWithFallback(RendererBackend::GL4);
+    Log::info("Auto-detected GL %d.%d, using %s renderer",
+            GLLoader::glMajor(), GLLoader::glMinor(), r->getRendererName());
+    return r;
 }

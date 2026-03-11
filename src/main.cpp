@@ -8,7 +8,7 @@ static void printHelp() {
     fprintf(stderr,
         "gpu_benchmark [options]\n"
         "  --preset <light|medium|heavy|ultra>   Preset (default: medium)\n"
-        "  --renderer <gl2|gl3|auto>             Renderer (default: auto)\n"
+        "  --renderer <gl2|gl3|gl4|gles|auto>     Renderer (default: auto)\n"
         "  --config <path>                       Load config INI\n"
         "  --headless                            No GUI, run tests, print results\n"
         "  --test <name,...>                      Run specific tests (comma-separated, or \"all\")\n"
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     cfg.width = 800;
     cfg.height = 600;
     cfg.preset_index = PRESET_MEDIUM;
-    cfg.force_gl = 0; // auto
+    cfg.backend = RendererBackend::Auto;
     cfg.headless = false;
     cfg.output_format = OUTPUT_TEXT;
     cfg.timing_mode = TIMING_SYNC;
@@ -62,9 +62,11 @@ int main(int argc, char* argv[]) {
             else { fprintf(stderr, "Unknown preset: %s\n", argv[i]); return 1; }
         } else if (strcmp(argv[i], "--renderer") == 0 && i + 1 < argc) {
             i++;
-            if (strcmp(argv[i], "gl2") == 0)       cfg.force_gl = 2;
-            else if (strcmp(argv[i], "gl3") == 0)  cfg.force_gl = 3;
-            else if (strcmp(argv[i], "auto") == 0) cfg.force_gl = 0;
+            if (strcmp(argv[i], "gl2") == 0)        cfg.backend = RendererBackend::GL2;
+            else if (strcmp(argv[i], "gl3") == 0)   cfg.backend = RendererBackend::GL3;
+            else if (strcmp(argv[i], "gl4") == 0)   cfg.backend = RendererBackend::GL4;
+            else if (strcmp(argv[i], "gles") == 0)  cfg.backend = RendererBackend::GLES;
+            else if (strcmp(argv[i], "auto") == 0)  cfg.backend = RendererBackend::Auto;
             else { fprintf(stderr, "Unknown renderer: %s\n", argv[i]); return 1; }
         } else if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
             cfg.config_path = argv[++i];

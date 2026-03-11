@@ -24,7 +24,7 @@ void OverdrawTest::render(Renderer* r) {
 
     for (int i = 0; i < params_.layers; i++) {
         // Uniform color with configurable alpha
-        float t = (float)i / (float)params_.layers;
+        float t = static_cast<float>(i) / static_cast<float>(params_.layers);
         r->setColor(
             0.5f + 0.3f * sinf(t * 6.28f),
             0.5f + 0.3f * sinf(t * 6.28f + 2.09f),
@@ -48,6 +48,6 @@ double OverdrawTest::computeScore(const std::vector<double>& times, int vw, int 
     for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
     double avg_ms = total_ms / times.size();
     if (avg_ms <= 0.0) return 0;
-    double pixels_per_frame = (double)vw * vh * params_.layers;
+    double pixels_per_frame = static_cast<double>(vw) * vh * params_.layers;
     return pixels_per_frame / (avg_ms / 1000.0) / 1e6;
 }

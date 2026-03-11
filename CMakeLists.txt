@@ -58,6 +58,11 @@ set(SOURCES
     src/gl_funcs.cpp
     src/gl2_renderer.cpp
     src/gl3_renderer.cpp
+    src/gl4_renderer.cpp
+    src/gles_renderer.cpp
+    src/render_context.cpp
+    src/gl_render_context.cpp
+    src/gl_loader.cpp
     src/renderer_factory.cpp
     src/mesh_gen.cpp
     src/bench.cpp

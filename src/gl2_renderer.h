@@ -136,4 +136,18 @@ protected:
     GLuint linkProgram(GLuint vs, GLuint fs);
     bool   buildShader(ShaderProg& prog, const char* vs_src, const char* fs_src);
     void   detectCaps();
+
+    // Handle validation helpers
+    bool isValidMesh(MeshHandle h) const {
+        return h != 0 && h < meshes_.size() && meshes_[h].valid;
+    }
+    bool isValidTexture(TextureHandle h) const {
+        return h != 0 && h < textures_.size() && textures_[h].valid;
+    }
+    bool isValidShader(ShaderHandle h) const {
+        return h != 0 && h < custom_shaders_.size() && custom_shaders_[h] != 0;
+    }
+    bool isValidRenderTarget(RenderTargetHandle h) const {
+        return h != INVALID_RENDER_TARGET && h < render_targets_.size() && render_targets_[h].valid;
+    }
 };

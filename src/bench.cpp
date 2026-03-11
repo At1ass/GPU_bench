@@ -7,8 +7,8 @@
 static double percentile(std::vector<double>& sorted, double p) {
     if (sorted.empty()) return 0;
     double idx = p * (sorted.size() - 1);
-    int lo = (int)floor(idx);
-    int hi = (int)ceil(idx);
+    int lo = static_cast<int>(floor(idx));
+    int hi = static_cast<int>(ceil(idx));
     if (lo == hi) return sorted[lo];
     double frac = idx - lo;
     return sorted[lo] * (1.0 - frac) + sorted[hi] * frac;
@@ -22,7 +22,7 @@ BenchResult computeStats(const std::string& name,
     r.name   = name;
     r.unit   = unit;
     r.score  = score;
-    r.frames = (int)times_ms.size();
+    r.frames = static_cast<int>(times_ms.size());
 
     if (times_ms.empty()) {
         r.valid = false;

@@ -40,7 +40,7 @@ void SceneTest::render(Renderer* r) {
     r->setBlending(false);
     r->useShader(Renderer::SHADER_3D);
 
-    float aspect = (float)vw_ / vh_;
+    float aspect = static_cast<float>(vw_) / vh_;
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 800.0f));
     r->setView(Mat4::lookAt(
         Vec3(50.0f, 30.0f, 50.0f),
@@ -62,7 +62,7 @@ void SceneTest::render(Renderer* r) {
         float radius = 10.0f + ring * 7.0f;
         int count = 14 + ring * 4;
         for (int i = 0; i < count; i++) {
-            float a = (float)i / count * 6.28318f + angle_ * (1.0f + ring * 0.2f);
+            float a = static_cast<float>(i) / count * 6.28318f + angle_ * (1.0f + ring * 0.2f);
             float x = cosf(a) * radius;
             float z = sinf(a) * radius;
             float y = 4.0f + sinf(a * 3.0f + angle_ * 2.0f) * 2.0f;
@@ -75,7 +75,7 @@ void SceneTest::render(Renderer* r) {
     r->setColor(0.8f, 0.5f, 0.3f, 1.0f);
     r->setUseTexture(false);
     for (int i = 0; i < 6; i++) {
-        float a = (float)i / 6.0f * 6.28318f - angle_ * 0.5f;
+        float a = static_cast<float>(i) / 6.0f * 6.28318f - angle_ * 0.5f;
         float x = cosf(a) * 20.0f;
         float z = sinf(a) * 20.0f;
         r->setModel(Mat4::translate(x, 8.0f, z)
@@ -91,7 +91,7 @@ void SceneTest::render(Renderer* r) {
     r->bindTexture(obj_tex_);
     r->setColor(1.0f, 1.0f, 1.0f, 0.1f);
     for (int i = 0; i < 10; i++) {
-        float a = angle_ * 0.3f + (float)i * 0.628f;
+        float a = angle_ * 0.3f + static_cast<float>(i) * 0.628f;
         r->setModel(Mat4::translate(cosf(a) * 18.0f, 10.0f, sinf(a) * 18.0f)
                      * Mat4::scale(10.0f, 10.0f, 10.0f));
         r->drawMesh(sphere_);

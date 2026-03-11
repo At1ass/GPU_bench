@@ -15,7 +15,7 @@ const char* GeometryTest::description() const {
 void GeometryTest::setup(Renderer* r, int vw, int vh) {
     vw_ = vw; vh_ = vh;
     MeshData data = MeshGen::cubeGrid(grid_size_);
-    tri_count_ = (int)data.indices.size() / 3;
+    tri_count_ = static_cast<int>(data.indices.size()) / 3;
     mesh_ = r->createMesh(data);
     if (mesh_ == INVALID_MESH) {
         fprintf(stderr, "GeometryTest: failed to create mesh (grid=%d)\n", grid_size_);
@@ -28,7 +28,7 @@ void GeometryTest::render(Renderer* r) {
     r->setBlending(false);
     r->useShader(Renderer::SHADER_3D);
 
-    float aspect = (float)vw_ / vh_;
+    float aspect = static_cast<float>(vw_) / vh_;
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 500.0f));
 
     float dist = grid_size_ * 2.0f;
@@ -56,5 +56,5 @@ double GeometryTest::computeScore(const std::vector<double>& times, int, int) {
     for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
     double avg_ms = total_ms / times.size();
     if (avg_ms <= 0.0) return 0;
-    return (double)tri_count_ / (avg_ms / 1000.0) / 1e6;
+    return static_cast<double>(tri_count_) / (avg_ms / 1000.0) / 1e6;
 }

@@ -1,4 +1,5 @@
 #include "gl2_renderer.h"
+#include "logger.h"
 #include <cstdio>
 #include <cstring>
 
@@ -97,7 +98,7 @@ GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
     if (!ok) {
         char log[512];
         glGetShaderInfoLog(s, sizeof(log), 0, log);
-        fprintf(stderr, "Shader compile error: %s\n", log);
+        Log::err("Shader compile error: %s", log);
         glDeleteShader(s);
         return 0;
     }
@@ -120,7 +121,7 @@ GLuint GL2Renderer::linkProgram(GLuint vs, GLuint fs) {
     if (!ok) {
         char log[512];
         glGetProgramInfoLog(p, sizeof(log), 0, log);
-        fprintf(stderr, "Program link error: %s\n", log);
+        Log::err("Program link error: %s", log);
         glDeleteProgram(p);
         return 0;
     }
@@ -165,12 +166,21 @@ void GL2Renderer::detectCaps() {
     caps_.supports_32bit_indices = true;
 
     // Parse GL version
-    const char* ver = (const char*)glGetString(GL_VERSION);
+    // Desktop GL: "4.6.0 NVIDIA 590.48.01"
+    // GLES: "OpenGL ES 3.2 NVIDIA 590.48.01"
+    const char* ver = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     caps_.gl_major = 2;
     caps_.gl_minor = 0;
     if (ver) {
+        const char* num = ver;
+        // Skip "OpenGL ES " prefix if present
+        const char* es = strstr(ver, "ES ");
+        if (es) num = es + 3;
+        // Skip "ES-CM " prefix (GLES 1.x)
+        const char* escm = strstr(ver, "ES-CM ");
+        if (escm) num = escm + 6;
         int major = 0, minor = 0;
-        if (sscanf(ver, "%d.%d", &major, &minor) >= 2) {
+        if (sscanf(num, "%d.%d", &major, &minor) >= 2) {
             caps_.gl_major = major;
             caps_.gl_minor = minor;
         }
@@ -210,7 +220,7 @@ void GL2Renderer::detectCaps() {
         if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 3))
             caps_.has_timer_queries = true;
     }
-    const char* exts = (const char*)glGetString(GL_EXTENSIONS);
+    const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     if (exts) {
         if (!caps_.has_vao && strstr(exts, "GL_ARB_vertex_array_object"))
             caps_.has_vao = true;
@@ -233,7 +243,7 @@ void GL2Renderer::detectCaps() {
     #define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
     #define GL_TEXTURE_FREE_MEMORY_ATI 0x87FC
 
-    const char* exts_vram = (const char*)glGetString(GL_EXTENSIONS);
+    const char* exts_vram = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     if (exts_vram) {
         // Method 1: NVIDIA proprietary driver
         if (strstr(exts_vram, "GL_NVX_gpu_memory_info")) {
@@ -255,11 +265,11 @@ void GL2Renderer::detectCaps() {
         #define GLX_RENDERER_VIDEO_MEMORY_MESA 0x8187
         typedef int (*PFNGLXQUERYRENDERERMESA)(int, int, unsigned int*);
         PFNGLXQUERYRENDERERMESA queryRenderer =
-            (PFNGLXQUERYRENDERERMESA)SDL_GL_GetProcAddress("glXQueryCurrentRendererIntegerMESA");
+            reinterpret_cast<PFNGLXQUERYRENDERERMESA>(SDL_GL_GetProcAddress("glXQueryCurrentRendererIntegerMESA"));
         if (queryRenderer) {
             unsigned int vram_mb = 0;
             if (queryRenderer(GLX_RENDERER_VIDEO_MEMORY_MESA, 0, &vram_mb) && vram_mb > 0) {
-                caps_.estimated_vram_mb = (int)vram_mb;
+                caps_.estimated_vram_mb = static_cast<int>(vram_mb);
             }
         }
     }
@@ -282,7 +292,7 @@ void GL2Renderer::detectCaps() {
                 if (f) {
                     unsigned long long bytes = 0;
                     if (fscanf(f, "%llu", &bytes) == 1 && bytes > 0) {
-                        caps_.estimated_vram_mb = (int)(bytes / (1024 * 1024));
+                        caps_.estimated_vram_mb = static_cast<int>(bytes / (1024 * 1024));
                     }
                     fclose(f);
                     if (caps_.estimated_vram_mb > 0) break;
@@ -294,8 +304,8 @@ void GL2Renderer::detectCaps() {
 #endif // !_WIN32
 #endif // !__APPLE__
 
-    fprintf(stderr, "GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
-            "vao=%s, instancing=%s, fbo=%s, timer_q=%s\n",
+    Log::warn("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
+            "vao=%s, instancing=%s, fbo=%s, timer_q=%s",
             caps_.gl_major, caps_.gl_minor,
             caps_.max_texture_size, caps_.max_vertex_attribs,
             caps_.estimated_vram_mb,
@@ -308,9 +318,9 @@ void GL2Renderer::detectCaps() {
 bool GL2Renderer::init(int w, int h) {
     if (initialized_) return true;
 
-    const char* vendor = (const char*)glGetString(GL_VENDOR);
-    const char* renderer = (const char*)glGetString(GL_RENDERER);
-    const char* version = (const char*)glGetString(GL_VERSION);
+    const char* vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+    const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+    const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     gpu_vendor_   = vendor   ? vendor   : "Unknown";
     gpu_renderer_ = renderer ? renderer : "Unknown";
     gl_version_   = version  ? version  : "Unknown";
@@ -409,7 +419,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
     GLMesh gm;
     gm.valid = true;
     gm.vao = 0;
-    gm.index_count = (int)data.indices.size();
+    gm.index_count = static_cast<int>(data.indices.size());
 
     glGenBuffers(1, &gm.vbo);
     glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
@@ -433,7 +443,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int),
                      data.indices.data(), GL_STATIC_DRAW);
     } else if (needs_32bit) {
-        fprintf(stderr, "ERROR: mesh requires 32-bit indices but hardware doesn't support them\n");
+        Log::err("ERROR: mesh requires 32-bit indices but hardware doesn't support them");
         glDeleteBuffers(1, &gm.vbo);
         glDeleteBuffers(1, &gm.ibo);
         return INVALID_MESH;
@@ -441,7 +451,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         gm.index_type = GL_UNSIGNED_SHORT;
         std::vector<unsigned short> indices16(data.indices.size());
         for (size_t i = 0; i < data.indices.size(); i++)
-            indices16[i] = (unsigned short)data.indices[i];
+            indices16[i] = static_cast<unsigned short>(data.indices[i]);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices16.size() * sizeof(unsigned short),
                      indices16.data(), GL_STATIC_DRAW);
     }
@@ -455,14 +465,14 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         free_mesh_slots_.pop_back();
         meshes_[h] = gm;
     } else {
-        h = (MeshHandle)meshes_.size();
+        h = static_cast<MeshHandle>(meshes_.size());
         meshes_.push_back(gm);
     }
     return h;
 }
 
 void GL2Renderer::destroyMesh(MeshHandle h) {
-    if (h == 0 || h >= meshes_.size() || !meshes_[h].valid) return;
+    if (!isValidMesh(h)) return;
     glDeleteBuffers(1, &meshes_[h].vbo);
     glDeleteBuffers(1, &meshes_[h].ibo);
     meshes_[h].valid = false;
@@ -471,7 +481,7 @@ void GL2Renderer::destroyMesh(MeshHandle h) {
 
 TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsigned char* pixels) {
     if (w > caps_.max_texture_size || h > caps_.max_texture_size) {
-        fprintf(stderr, "Warning: texture %dx%d exceeds max %d, clamping\n",
+        Log::warn("Warning: texture %dx%d exceeds max %d, clamping",
                 w, h, caps_.max_texture_size);
         int nw = w, nh = h;
         while (nw > caps_.max_texture_size) nw /= 2;
@@ -514,14 +524,14 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = (TextureHandle)textures_.size();
+        th = static_cast<TextureHandle>(textures_.size());
         textures_.push_back(gt);
     }
     return th;
 }
 
 void GL2Renderer::destroyTexture(TextureHandle h) {
-    if (h == 0 || h >= textures_.size() || !textures_[h].valid) return;
+    if (!isValidTexture(h)) return;
     glDeleteTextures(1, &textures_[h].id);
     textures_[h].valid = false;
     free_tex_slots_.push_back(h);
@@ -555,27 +565,27 @@ ShaderHandle GL2Renderer::createCustomShader(const char* vs_src, const char* fs_
         free_custom_slots_.pop_back();
         custom_shaders_[h] = prog;
     } else {
-        h = (ShaderHandle)custom_shaders_.size();
+        h = static_cast<ShaderHandle>(custom_shaders_.size());
         custom_shaders_.push_back(prog);
     }
     return h;
 }
 
 void GL2Renderer::useCustomShader(ShaderHandle h) {
-    if (h == 0 || h >= custom_shaders_.size() || !custom_shaders_[h]) return;
+    if (!isValidShader(h)) return;
     current_shader_ = 0; // no built-in shader active
     glUseProgram(custom_shaders_[h]);
 }
 
 void GL2Renderer::destroyCustomShader(ShaderHandle h) {
-    if (h == 0 || h >= custom_shaders_.size() || !custom_shaders_[h]) return;
+    if (!isValidShader(h)) return;
     glDeleteProgram(custom_shaders_[h]);
     custom_shaders_[h] = 0;
     free_custom_slots_.push_back(h);
 }
 
 int GL2Renderer::getCustomUniformLoc(ShaderHandle h, const char* name) {
-    if (h == 0 || h >= custom_shaders_.size() || !custom_shaders_[h]) return -1;
+    if (!isValidShader(h)) return -1;
     return glGetUniformLocation(custom_shaders_[h], name);
 }
 
@@ -617,7 +627,7 @@ void GL2Renderer::setLightDir(float x, float y, float z) {
 }
 
 void GL2Renderer::bindTexture(TextureHandle h) {
-    if (h == 0 || h >= textures_.size() || !textures_[h].valid) {
+    if (!isValidTexture(h)) {
         glBindTexture(GL_TEXTURE_2D, 0);
         return;
     }
@@ -633,7 +643,7 @@ void GL2Renderer::setUseTexture(bool use) {
 }
 
 void GL2Renderer::drawMesh(MeshHandle h) {
-    if (h == 0 || h >= meshes_.size() || !meshes_[h].valid) return;
+    if (!isValidMesh(h)) return;
     const GLMesh& gm = meshes_[h];
 
     glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
@@ -651,15 +661,15 @@ void GL2Renderer::drawMesh(MeshHandle h) {
 
     if (loc_pos >= 0) {
         glEnableVertexAttribArray(loc_pos);
-        glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+        glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(0));
     }
     if (loc_normal >= 0) {
         glEnableVertexAttribArray(loc_normal);
-        glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
     }
     if (loc_uv >= 0) {
         glEnableVertexAttribArray(loc_uv);
-        glVertexAttribPointer(loc_uv, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+        glVertexAttribPointer(loc_uv, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
     }
 
     glDrawElements(GL_TRIANGLES, gm.index_count, gm.index_type, 0);
@@ -673,7 +683,7 @@ void GL2Renderer::drawMesh(MeshHandle h) {
 }
 
 void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels, const unsigned char* pixels) {
-    if (h == 0 || h >= textures_.size() || !textures_[h].valid) return;
+    if (!isValidTexture(h)) return;
     glBindTexture(GL_TEXTURE_2D, textures_[h].id);
     GLenum fmt = (channels == 4) ? GL_RGBA : (channels == 3) ? GL_RGB : GL_LUMINANCE;
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h_, fmt, GL_UNSIGNED_BYTE, pixels);
@@ -788,16 +798,15 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = (RenderTargetHandle)render_targets_.size();
+        handle = static_cast<RenderTargetHandle>(render_targets_.size());
         render_targets_.push_back(rt);
     }
     return handle;
 }
 
 void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
-    if (rt == INVALID_RENDER_TARGET || rt >= render_targets_.size()) return;
+    if (!isValidRenderTarget(rt)) return;
     GLFBO& fbo = render_targets_[rt];
-    if (!fbo.valid) return;
     if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
     if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);
     if (fbo.depth_rb)  glDeleteRenderbuffers(1, &fbo.depth_rb);
@@ -817,9 +826,8 @@ void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
 
 void GL2Renderer::blitToScreen(RenderTargetHandle rt,
                                 int dst_x, int dst_y, int dst_w, int dst_h) {
-    if (rt == INVALID_RENDER_TARGET || rt >= render_targets_.size()) return;
+    if (!isValidRenderTarget(rt)) return;
     const GLFBO& fbo = render_targets_[rt];
-    if (!fbo.valid) return;
 
     if (has_blit_framebuffer_) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo.fbo);

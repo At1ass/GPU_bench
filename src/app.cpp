@@ -1,12 +1,9 @@
 #include "app.h"
 #include "mesh_gen.h"
-#include "gl_funcs.h"
 #include "renderer_factory.h"
 #include "config.h"
 #include "results.h"
 #include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_opengl3.h>
 #include "compat.h"
 #include "logger.h"
 #include <cstdio>
@@ -36,8 +33,7 @@ const ResolutionOption App::RESOLUTIONS[] = {
 const int App::NUM_RESOLUTIONS = sizeof(App::RESOLUTIONS) / sizeof(App::RESOLUTIONS[0]);
 
 App::App()
-    : window_(0), gl_context_(0), renderer_(0),
-      running_(false), benchmarking_(false),
+    : running_(false), benchmarking_(false),
       initialized_(false), window_w_(800), window_h_(600),
       render_w_(800), render_h_(600), selected_resolution_(RES_NATIVE),
       last_frame_time_(0.0),
@@ -79,96 +75,21 @@ bool App::init(const AppConfig& cfg) {
         if (loadConfig(cfg.config_path.c_str(), current_preset_)) {
             selected_preset_index_ = -1; // Custom
         } else {
-            fprintf(stderr, "Warning: could not load config '%s'\n", cfg.config_path.c_str());
+            Log::warn("Could not load config '%s'", cfg.config_path.c_str());
         }
     } else {
         applyPreset(cfg.preset_index);
     }
 
-#ifndef _WIN32
-    if (cfg.headless && !getenv("SDL_VIDEODRIVER")) {
-        SDL_setenv("SDL_VIDEODRIVER", "offscreen", 1);
-    }
-#endif
-
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+    ctx_.reset(createRenderContext(cfg));
+    if (!ctx_ || !ctx_->init(cfg)) {
+        Log::err("Failed to initialize render context");
         return false;
     }
 
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
-    Uint32 win_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-    if (cfg.headless) {
-        win_flags |= SDL_WINDOW_HIDDEN;
-    }
-
-    window_ = SDL_CreateWindow(
-        "GPU_benchmark v0.4.0",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        window_w_, window_h_,
-        win_flags
-    );
-    if (!window_) {
-        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-        return false;
-    }
-
-    gl_context_ = 0;
-    if (cfg.force_gl != 2) {
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-        gl_context_ = SDL_GL_CreateContext(window_);
-        if (gl_context_) {
-            Log::info("Created GL 3.2 compatibility context");
-        }
-    }
-    if (!gl_context_) {
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
-        gl_context_ = SDL_GL_CreateContext(window_);
-        if (gl_context_) {
-            Log::info("Created GL 2.1 context");
-        }
-    }
-    if (!gl_context_) {
-        fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
-        return false;
-    }
-
-    SDL_GL_SetSwapInterval(1);
-
-    if (!loadGLFunctions()) {
-        fprintf(stderr, "Failed to load OpenGL 2.0 functions\n");
-        return false;
-    }
-    // Load GL3 functions (needed for FBO renderbuffer on Windows)
-    loadGL3Functions();
-
-    if (!cfg.headless) {
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        io.IniFilename = NULL;
-        ImGui::StyleColorsDark();
-        ImGui_ImplSDL2_InitForOpenGL(window_, gl_context_);
-        const char* glsl_version = "#version 120";
-        const char* gl_ver_str = (const char*)glGetString(GL_VERSION);
-        if (gl_ver_str) {
-            int gl_major = 0;
-            sscanf(gl_ver_str, "%d", &gl_major);
-            if (gl_major >= 3)
-                glsl_version = "#version 150";
-        }
-        ImGui_ImplOpenGL3_Init(glsl_version);
-    }
-
-    renderer_ = createRenderer(cfg.force_gl);
+    renderer_.reset(createRenderer(cfg.backend));
     if (!renderer_ || !renderer_->init(window_w_, window_h_)) {
-        fprintf(stderr, "Renderer init failed\n");
+        Log::err("Renderer init failed");
         return false;
     }
 
@@ -177,7 +98,7 @@ bool App::init(const AppConfig& cfg) {
     // Fallback to sync timing if GPU timer queries unavailable
     if (config_.timing_mode == TIMING_GPU && !renderer_->hasTimerQueries()) {
         config_.timing_mode = TIMING_SYNC;
-        fprintf(stderr, "GPU timer queries not available, falling back to sync timing\n");
+        Log::warn("GPU timer queries not available, falling back to sync timing");
     }
 
     // Quick probe for GPU tier detection and preset recommendation
@@ -244,19 +165,16 @@ void App::shutdown() {
 
     if (!config_.headless) {
         cleanupPreviewScene();
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
-        ImGui::DestroyContext();
     }
 
     if (renderer_) {
         renderer_->shutdown();
-        delete renderer_;
-        renderer_ = 0;
+        renderer_.reset();
     }
-    if (gl_context_) { SDL_GL_DeleteContext(gl_context_); gl_context_ = 0; }
-    if (window_) { SDL_DestroyWindow(window_); window_ = 0; }
-    SDL_Quit();
+    if (ctx_) {
+        ctx_->shutdown();
+        ctx_.reset();
+    }
 }
 
 void App::applyPreset(int index) {
@@ -304,10 +222,7 @@ void App::cleanupPreviewScene() {
 
 void App::processEvents() {
     SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (!config_.headless) {
-            ImGui_ImplSDL2_ProcessEvent(&e);
-        }
+    while (ctx_->pollEvent(&e)) {
         if (e.type == SDL_QUIT) running_ = false;
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
             window_w_ = e.window.data1;
@@ -323,7 +238,7 @@ void App::processEvents() {
 void App::renderPreviewScene(float dt) {
     if (!preview_ready_) return;
 
-    int panel_h = (int)(window_h_ * 0.55f);
+    int panel_h = static_cast<int>(window_h_ * 0.55f);
     int view_h = window_h_ - panel_h;
     if (view_h <= 0) return;
 
@@ -335,7 +250,7 @@ void App::renderPreviewScene(float dt) {
     renderer_->setBlending(false);
     renderer_->useShader(Renderer::SHADER_3D);
 
-    float aspect = (float)window_w_ / (float)view_h;
+    float aspect = static_cast<float>(window_w_) / static_cast<float>(view_h);
     renderer_->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 200.0f));
 
     float cx = cosf(preview_angle_) * 22.0f;
@@ -355,7 +270,7 @@ void App::renderPreviewScene(float dt) {
         {1.0f, 0.8f, 0.2f}, {0.8f, 0.3f, 1.0f},
     };
     for (int i = 0; i < 5; i++) {
-        float a = (float)i / 5.0f * 6.28318f + preview_angle_ * 0.5f;
+        float a = static_cast<float>(i) / 5.0f * 6.28318f + preview_angle_ * 0.5f;
         renderer_->setColor(colors[i][0], colors[i][1], colors[i][2], 1.0f);
         renderer_->setModel(Mat4::translate(cosf(a) * 8.0f, 4.0f + sinf(a * 2.0f) * 1.5f, sinf(a) * 8.0f)
                            * Mat4::scale(1.2f, 1.2f, 1.2f));
@@ -380,7 +295,7 @@ void App::runQuickProbe() {
     const int PROBE_FRAMES = 40;
     const int PROBE_W = 256, PROBE_H = 256;
 
-    SDL_GL_SetSwapInterval(0);
+    ctx_->setVSync(false);
     renderer_->resetState();
 
     double fill_score = 0;
@@ -390,13 +305,13 @@ void App::runQuickProbe() {
     {
         FillrateParams fp; fp.layers = 50;
         FillrateTest test(fp);
-        test.setup(renderer_, PROBE_W, PROBE_H);
+        test.setup(renderer_.get(), PROBE_W, PROBE_H);
         renderer_->setViewport(0, 0, PROBE_W, PROBE_H);
 
         // Warmup 5 frames
         for (int i = 0; i < 5; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            test.render(renderer_);
+            test.render(renderer_.get());
             renderer_->finish();
         }
 
@@ -408,12 +323,12 @@ void App::runQuickProbe() {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
             renderer_->finish();
             ft.reset();
-            test.render(renderer_);
+            test.render(renderer_.get());
             renderer_->finish();
             times.push_back(ft.elapsed_ms());
         }
         fill_score = test.computeScore(times, PROBE_W, PROBE_H);
-        test.cleanup(renderer_);
+        test.cleanup(renderer_.get());
     }
 
     // Probe geometry: grid 10, 40 frames
@@ -421,12 +336,12 @@ void App::runQuickProbe() {
         GeometryParams gp; gp.grid_size = 10;
         GeometryTest test(gp);
         renderer_->resetState();
-        test.setup(renderer_, PROBE_W, PROBE_H);
+        test.setup(renderer_.get(), PROBE_W, PROBE_H);
         renderer_->setViewport(0, 0, PROBE_W, PROBE_H);
 
         for (int i = 0; i < 5; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            test.render(renderer_);
+            test.render(renderer_.get());
             renderer_->finish();
         }
 
@@ -437,21 +352,21 @@ void App::runQuickProbe() {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
             renderer_->finish();
             ft.reset();
-            test.render(renderer_);
+            test.render(renderer_.get());
             renderer_->finish();
             times.push_back(ft.elapsed_ms());
         }
         geom_score = test.computeScore(times, PROBE_W, PROBE_H);
-        test.cleanup(renderer_);
+        test.cleanup(renderer_.get());
     }
 
     renderer_->resetState();
-    SDL_GL_SetSwapInterval(1);
+    ctx_->setVSync(true);
 
     gpu_tier_ = classifyGPUTier(renderer_->getCaps(), fill_score, geom_score);
     suggested_preset_ = tierToPresetIndex(gpu_tier_);
 
-    fprintf(stderr, "Quick probe: fill=%.1f Mpix/s, geom=%.1f Ktris/s -> tier=%s, preset=%d\n",
+    Log::info("Quick probe: fill=%.1f Mpix/s, geom=%.1f Ktris/s -> tier=%s, preset=%d",
             fill_score, geom_score, gpuTierName(gpu_tier_), suggested_preset_);
 }
 
@@ -461,13 +376,11 @@ void App::computeAnalysis() {
 }
 
 void App::renderUI() {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
+    ctx_->imguiNewFrame();
 
     float panel_h = window_h_ * 0.55f;
     ImGui::SetNextWindowPos(ImVec2(0, window_h_ - panel_h));
-    ImGui::SetNextWindowSize(ImVec2((float)window_w_, panel_h));
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_w_), panel_h));
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
         | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
@@ -476,10 +389,10 @@ void App::renderUI() {
 
     // ---- Hardware info + resolution ----
     ImGui::Text("CPU: %s", hw_info_.cpu_name.c_str());
-    ImGui::SameLine((float)window_w_ * 0.5f);
+    ImGui::SameLine(static_cast<float>(window_w_) * 0.5f);
     ImGui::Text("GPU: %s", renderer_->getGPURenderer());
     ImGui::Text("OS: %s %s", hw_info_.os_name.c_str(), hw_info_.os_version.c_str());
-    ImGui::SameLine((float)window_w_ * 0.5f);
+    ImGui::SameLine(static_cast<float>(window_w_) * 0.5f);
     ImGui::Text("GL: %s  Renderer: %s", renderer_->getGLVersion(), renderer_->getRendererName());
     const RenderCaps& caps = renderer_->getCaps();
     if (caps.estimated_vram_mb > 0) {
@@ -506,7 +419,7 @@ void App::renderUI() {
         ImVec4(0.3f, 0.8f, 0.3f, 1.0f),  // mid
         ImVec4(0.3f, 0.6f, 1.0f, 1.0f),  // high
     };
-    int ti = (int)gpu_tier_;
+    int ti = static_cast<int>(gpu_tier_);
     if (ti < 0 || ti > 3) ti = 2;
     ImGui::TextColored(tier_colors[ti], "Tier: %s", gpuTierName(gpu_tier_));
     // Resolution display
@@ -781,7 +694,7 @@ void App::renderUI() {
 
     ImGui::End();
     ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    ctx_->imguiRender();
 }
 
 void App::runTest(BenchTest* test) {
@@ -789,7 +702,7 @@ void App::runTest(BenchTest* test) {
     bench_status_ = std::string("Running: ") + test->name();
     bench_progress_ = 0;
 
-    SDL_GL_SetSwapInterval(0);
+    ctx_->setVSync(false);
 
     // Determine if we need render target (render resolution != window)
     bool use_fbo = (render_w_ != window_w_ || render_h_ != window_h_) && renderer_->supportsRenderTargets();
@@ -802,7 +715,7 @@ void App::runTest(BenchTest* test) {
         bench_rt_ = renderer_->createRenderTarget(render_w_, render_h_);
         if (bench_rt_ == INVALID_RENDER_TARGET) {
             use_fbo = false;
-            fprintf(stderr, "Render target creation failed, falling back to viewport-only\n");
+            Log::warn("Render target creation failed, falling back to viewport-only");
         }
     }
 
@@ -810,7 +723,7 @@ void App::runTest(BenchTest* test) {
     if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
 
     renderer_->resetState();
-    test->setup(renderer_, render_w_, render_h_);
+    test->setup(renderer_.get(), render_w_, render_h_);
 
     bool use_gpu_timer = (config_.timing_mode == TIMING_GPU) && renderer_->hasTimerQueries();
 
@@ -822,7 +735,7 @@ void App::runTest(BenchTest* test) {
         if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
         renderer_->setViewport(0, 0, render_w_, render_h_);
         renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
-        test->render(renderer_);
+        test->render(renderer_.get());
         renderer_->finish();
 
         // Sanity check after first warmup frame: verify non-black output
@@ -836,18 +749,18 @@ void App::runTest(BenchTest* test) {
             for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
             if (nonzero == 0) {
                 sanity_ok = false;
-                fprintf(stderr, "WARNING: Sanity check FAILED for '%s' — render output is black\n",
+                Log::warn("Sanity check FAILED for '%s' — render output is black",
                         test->name());
             }
         }
 
-        bench_progress_ = (int)(100.0 * i / current_preset_.warmup_frames * 0.1);
+        bench_progress_ = static_cast<int>(100.0 * i / current_preset_.warmup_frames * 0.1);
         if (!config_.headless) {
             if (use_fbo) {
                 renderer_->bindRenderTarget(0);
                 renderer_->setViewport(0, 0, window_w_, window_h_);
                 renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
-                int panel_h = (int)(window_h_ * 0.55f);
+                int panel_h = static_cast<int>(window_h_ * 0.55f);
                 int view_h = window_h_ - panel_h;
                 if (view_h > 0)
                     renderer_->blitToScreen(bench_rt_, 0, panel_h, window_w_, view_h);
@@ -858,7 +771,7 @@ void App::runTest(BenchTest* test) {
             renderer_->unbindState();
             renderUI();
         }
-        SDL_GL_SwapWindow(window_);
+        ctx_->swapBuffers();
     }
 
     // Measurement
@@ -881,7 +794,7 @@ void App::runTest(BenchTest* test) {
 
         if (use_gpu_timer) renderer_->timerBegin();
         frame_t.reset();
-        test->render(renderer_);
+        test->render(renderer_.get());
         if (use_gpu_timer) renderer_->timerEnd();
         renderer_->finish();
         double ms = frame_t.elapsed_ms();
@@ -889,8 +802,8 @@ void App::runTest(BenchTest* test) {
         if (use_gpu_timer) gpu_times.push_back(renderer_->timerElapsedMs());
 
         double elapsed = total_timer.elapsed_sec();
-        bench_progress_ = 10 + (int)(90.0 * std::min(
-            (double)frame / current_preset_.measure_frames,
+        bench_progress_ = 10 + static_cast<int>(90.0 * std::min(
+            static_cast<double>(frame) / current_preset_.measure_frames,
             elapsed / current_preset_.min_duration_sec
         ));
 
@@ -899,7 +812,7 @@ void App::runTest(BenchTest* test) {
                 renderer_->bindRenderTarget(0);
                 renderer_->setViewport(0, 0, window_w_, window_h_);
                 renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
-                int panel_h = (int)(window_h_ * 0.55f);
+                int panel_h = static_cast<int>(window_h_ * 0.55f);
                 int view_h = window_h_ - panel_h;
                 if (view_h > 0)
                     renderer_->blitToScreen(bench_rt_, 0, panel_h, window_w_, view_h);
@@ -911,7 +824,7 @@ void App::runTest(BenchTest* test) {
             renderUI();
         }
 
-        SDL_GL_SwapWindow(window_);
+        ctx_->swapBuffers();
         frame++;
 
         if (frame >= current_preset_.measure_frames && elapsed >= current_preset_.min_duration_sec)
@@ -934,10 +847,10 @@ void App::runTest(BenchTest* test) {
 
     results_.push_back(result);
 
-    test->cleanup(renderer_);
+    test->cleanup(renderer_.get());
     benchmarking_ = false;
     bench_status_ = "Done";
-    SDL_GL_SetSwapInterval(1);
+    ctx_->setVSync(true);
 }
 
 void App::runSelectedTests() {
@@ -980,7 +893,7 @@ void App::exportResults() {
     if (!config_.output_file.empty()) {
         out = fopen(config_.output_file.c_str(), "w");
         if (!out) {
-            fprintf(stderr, "Could not open output file: %s\n", config_.output_file.c_str());
+            Log::err("Could not open output file: %s", config_.output_file.c_str());
             return;
         }
         close_file = true;
@@ -1018,7 +931,7 @@ void App::exportResults() {
 
 void App::runHeadless() {
     if (!validation_error_.empty()) {
-        fprintf(stderr, "Preset validation failed: %s\n", validation_error_.c_str());
+        Log::err("Preset validation failed: %s", validation_error_.c_str());
         return;
     }
 
@@ -1072,7 +985,7 @@ void App::runHeadless() {
             "    gl_FragColor = vec4(fma_acc.rgb * 0.5 + 0.25, 0.8);\n"
             "}\n";
 
-        SDL_GL_SetSwapInterval(0);
+        ctx_->setVSync(false);
         renderer_->resetState();
 
         // Create stress resources
@@ -1110,7 +1023,7 @@ void App::runHeadless() {
         int passes = 1;
         float stress_time = 0.0f;
 
-        fprintf(stderr, "Stress test: calibrating...\n");
+        Log::info("Stress test: calibrating...");
 
         renderer_->setViewport(0, 0, render_w_, render_h_);
         renderer_->setDepthTest(false);
@@ -1130,19 +1043,19 @@ void App::runHeadless() {
             renderer_->finish();
             double ms = cal_t.elapsed_ms();
 
-            fprintf(stderr, "  %d passes = %.1f ms\n", passes, ms);
+            Log::info("  %d passes = %.1f ms", passes, ms);
 
             if (ms >= TARGET_FRAME_MS * 0.8) break;
 
             int new_passes = (ms > 0.1)
-                ? (int)(passes * TARGET_FRAME_MS / ms + 0.5) : passes * 4;
+                ? static_cast<int>(passes * TARGET_FRAME_MS / ms + 0.5) : passes * 4;
             if (new_passes <= passes) new_passes = passes + 1;
             if (new_passes > 10000) new_passes = 10000;
             passes = new_passes;
         }
-        SDL_GL_SwapWindow(window_);
+        ctx_->swapBuffers();
 
-        fprintf(stderr, "Stress test: combined shader (%s, %d iters, %d passes/frame), %d seconds\n",
+        Log::info("Stress test: combined shader (%s, %d iters, %d passes/frame), %d seconds",
                 current_preset_.name, iterations, passes, config_.stress_duration_sec);
 
         // --- Main stress loop ---
@@ -1176,7 +1089,7 @@ void App::runHeadless() {
             interval_frames++;
             total_frames++;
 
-            SDL_GL_SwapWindow(window_);
+            ctx_->swapBuffers();
 
             // Periodic report
             if (interval_timer.elapsed_sec() >= REPORT_INTERVAL) {
@@ -1186,19 +1099,21 @@ void App::runHeadless() {
 
                 if (interval_num == 1) {
                     baseline_fps = fps;
-                    fprintf(stderr, "[%3.0fs] Baseline: %.1f FPS (avg %.1f ms)\n",
+                    Log::info("[%3.0fs] Baseline: %.1f FPS (avg %.1f ms)",
                             stress_timer.elapsed_sec(), fps, avg_ms);
                 } else {
                     double degradation = (baseline_fps > 0)
                         ? (baseline_fps - fps) / baseline_fps * 100.0 : 0;
-                    fprintf(stderr, "[%3.0fs] %.1f FPS (avg %.1f ms)",
-                            stress_timer.elapsed_sec(), fps, avg_ms);
                     if (degradation > 5.0) {
-                        fprintf(stderr, " — THROTTLING: %.1f%% degradation", degradation);
+                        Log::warn("[%3.0fs] %.1f FPS (avg %.1f ms) — THROTTLING: %.1f%% degradation",
+                                stress_timer.elapsed_sec(), fps, avg_ms, degradation);
                     } else if (degradation > 2.0) {
-                        fprintf(stderr, " — minor degradation: %.1f%%", degradation);
+                        Log::info("[%3.0fs] %.1f FPS (avg %.1f ms) — minor degradation: %.1f%%",
+                                stress_timer.elapsed_sec(), fps, avg_ms, degradation);
+                    } else {
+                        Log::info("[%3.0fs] %.1f FPS (avg %.1f ms)",
+                                stress_timer.elapsed_sec(), fps, avg_ms);
                     }
-                    fprintf(stderr, "\n");
                 }
 
                 interval_time_sum = 0;
@@ -1213,10 +1128,10 @@ void App::runHeadless() {
         renderer_->destroyTexture(stress_tex);
         if (stress_shader != INVALID_SHADER)
             renderer_->destroyCustomShader(stress_shader);
-        SDL_GL_SetSwapInterval(1);
+        ctx_->setVSync(true);
 
         double total_sec = stress_timer.elapsed_sec();
-        fprintf(stderr, "Stress test completed: %d frames in %.0fs (avg %.1f FPS)\n",
+        Log::info("Stress test completed: %d frames in %.0fs (avg %.1f FPS)",
                 total_frames, total_sec,
                 (total_sec > 0) ? total_frames / total_sec : 0);
     } else {
@@ -1243,14 +1158,14 @@ void App::run() {
         if (!benchmarking_) {
             renderer_->setViewport(0, 0, window_w_, window_h_);
             renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
-            renderPreviewScene((float)dt);
+            renderPreviewScene(static_cast<float>(dt));
             renderer_->unbindState();
         }
 
         renderer_->setViewport(0, 0, window_w_, window_h_);
         renderUI();
 
-        SDL_GL_SwapWindow(window_);
+        ctx_->swapBuffers();
 
         if (pending_action_ != ACTION_NONE) {
             PendingAction action = pending_action_;

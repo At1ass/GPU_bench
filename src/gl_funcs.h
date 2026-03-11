@@ -139,6 +139,22 @@
   #define GL_BLEND_DST_ALPHA              0x80CA
   #endif
 
+  // GL4 compute shader constants
+  #ifndef GL_COMPUTE_SHADER
+  #define GL_COMPUTE_SHADER               0x91B9
+  #endif
+  #ifndef GL_SHADER_STORAGE_BUFFER
+  #define GL_SHADER_STORAGE_BUFFER        0x90D2
+  #endif
+  #ifndef GL_ALL_BARRIER_BITS
+  #define GL_ALL_BARRIER_BITS             0xFFFFFFFF
+  #endif
+
+  // Texture format
+  #ifndef GL_RED
+  #define GL_RED                          0x1903
+  #endif
+
   // =========================================================================
   // Function pointer typedefs (unique signatures — must be defined manually)
   // =========================================================================
@@ -280,8 +296,19 @@
 // Returns true on success.
 bool loadGL2Functions();
 
-// Load optional GL 3.0+ functions. Returns true if all available.
+// Load optional GL 3.0+ function pointers.
 bool loadGL3Functions();
+
+// Load optional GL 4.3+ function pointers.
+bool loadGL4Functions();
+
+// Low-level availability checks (used by GLLoader).
+// On CB_NEED_GL_LOAD: check actual function pointers.
+// On Linux: check GL version / extensions.
+bool hasGL3FunctionPointers();
+bool hasGL4FunctionPointers();
+bool checkGL3ByVersion();
+bool checkGL4ByVersion();
 
 // Convenience: calls loadGL2Functions().
 bool loadGLFunctions();

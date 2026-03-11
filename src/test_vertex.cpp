@@ -21,12 +21,12 @@ void VertexTest::setup(Renderer* r, int vw, int vh) {
     // Aim for target vertex_count: solve segs*rings ~ vertex_count
     // Use segs = rings * 2 ratio
     int target = params_.vertex_count;
-    int rings = (int)sqrtf((float)target / 2.0f);
+    int rings = static_cast<int>(sqrtf(static_cast<float>(target) / 2.0f));
     if (rings < 4) rings = 4;
     int segs = rings * 2;
 
     MeshData data = MeshGen::sphere(segs, rings);
-    actual_vertex_count_ = (int)data.vertices.size();
+    actual_vertex_count_ = static_cast<int>(data.vertices.size());
     mesh_ = r->createMesh(data);
     if (mesh_ == INVALID_MESH) {
         fprintf(stderr, "VertexTest: failed to create mesh (%d verts)\n", actual_vertex_count_);
@@ -39,7 +39,7 @@ void VertexTest::render(Renderer* r) {
     r->setBlending(false);
     r->useShader(Renderer::SHADER_3D);
 
-    float aspect = (float)vw_ / vh_;
+    float aspect = static_cast<float>(vw_) / vh_;
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 100.0f));
     r->setView(Mat4::lookAt(Vec3(0, 0, 3), Vec3(0, 0, 0), Vec3(0, 1, 0)));
     r->setModel(Mat4());
@@ -67,5 +67,5 @@ double VertexTest::computeScore(const std::vector<double>& times, int, int) {
     for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
     double avg_ms = total_ms / times.size();
     if (avg_ms <= 0.0) return 0;
-    return (double)actual_vertex_count_ / (avg_ms / 1000.0) / 1e6; // Mverts/s
+    return static_cast<double>(actual_vertex_count_) / (avg_ms / 1000.0) / 1e6; // Mverts/s
 }

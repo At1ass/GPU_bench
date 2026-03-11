@@ -1,11 +1,13 @@
 #pragma once
 #include "renderer.h"
+#include "render_context.h"
 #include "bench.h"
 #include "tests.h"
 #include "preset.h"
 #include "hwinfo.h"
 #include "timer.h"
 #include <SDL.h>
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -20,13 +22,15 @@ enum TimingMode {
     TIMING_GPU         // GPU timer queries
 };
 
+#include "renderer_backend.h"
+
 struct AppConfig {
     int width;
     int height;
     int render_width;   // 0 = use window size (native)
     int render_height;  // 0 = use window size (native)
     int preset_index;
-    int force_gl;      // 0=auto, 2=GL2, 3=GL3
+    RendererBackend backend;
     bool headless;
     OutputFormat output_format;
     TimingMode timing_mode;
@@ -66,10 +70,9 @@ private:
     void exportResults();
     bool isTestSelected(const char* name) const;
 
-    AppConfig     config_;
-    SDL_Window*   window_;
-    SDL_GLContext  gl_context_;
-    Renderer*     renderer_;
+    AppConfig       config_;
+    std::unique_ptr<RenderContext>  ctx_;
+    std::unique_ptr<Renderer>       renderer_;
     HWInfo        hw_info_;
 
     bool running_;

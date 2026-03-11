@@ -1,11 +1,6 @@
 #pragma once
 #include "renderer.h"
+#include "renderer_backend.h"
 
-// Detect GL major version from current context
-int detectGLMajorVersion();
-
-// Create best available renderer (auto-detect)
-Renderer* createBestRenderer();
-
-// Create specific renderer: 0=auto, 2=GL2, 3=GL3
-Renderer* createRenderer(int force_gl);
+// Create renderer for the given backend (RENDERER_AUTO auto-detects)
+Renderer* createRenderer(RendererBackend backend);

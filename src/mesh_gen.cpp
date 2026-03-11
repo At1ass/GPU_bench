@@ -59,10 +59,10 @@ MeshData MeshGen::cube() {
 MeshData MeshGen::sphere(int segments, int rings) {
     MeshData m;
     for (int r = 0; r <= rings; r++) {
-        float v = (float)r / rings;
+        float v = static_cast<float>(r) / rings;
         float phi = v * PI;
         for (int s = 0; s <= segments; s++) {
-            float u = (float)s / segments;
+            float u = static_cast<float>(s) / segments;
             float theta = u * 2.0f * PI;
 
             Vec3 pos(
@@ -108,7 +108,7 @@ MeshData MeshGen::terrain(float size, int resolution) {
 
             Vertex vt;
             vt.pos = Vec3(wx, h, wz);
-            vt.uv = Vec2((float)x / (resolution - 1), (float)z / (resolution - 1));
+            vt.uv = Vec2(static_cast<float>(x) / (resolution - 1), static_cast<float>(z) / (resolution - 1));
             // Normal computed below
             vt.normal = Vec3(0, 1, 0);
             m.vertices.push_back(vt);

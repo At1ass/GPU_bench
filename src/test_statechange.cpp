@@ -7,9 +7,9 @@
 // Generate a simple fragment shader variant with unique color tint
 static std::string makeFragShader(int variant) {
     char buf[512];
-    float r = 0.5f + 0.3f * sinf((float)variant * 1.1f);
-    float g = 0.5f + 0.3f * sinf((float)variant * 2.3f);
-    float b = 0.5f + 0.3f * sinf((float)variant * 3.7f);
+    float r = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 1.1f);
+    float g = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 2.3f);
+    float b = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 3.7f);
     snprintf(buf, sizeof(buf),
         "#version 120\n"
         "uniform vec4 u_color;\n"
@@ -59,8 +59,8 @@ void StateChangeTest::setup(Renderer* r, int vw, int vh) {
 void StateChangeTest::render(Renderer* r) {
     r->setDepthTest(false);
 
-    int shader_count = (int)shaders_.size();
-    int tex_count = (int)textures_.size();
+    int shader_count = static_cast<int>(shaders_.size());
+    int tex_count = static_cast<int>(textures_.size());
 
     for (int i = 0; i < params_.switches; i++) {
         // Switch shader
@@ -68,7 +68,7 @@ void StateChangeTest::render(Renderer* r) {
         r->useCustomShader(shaders_[si]);
 
         int u_color = r->getCustomUniformLoc(shaders_[si], "u_color");
-        float t = (float)i / params_.switches;
+        float t = static_cast<float>(i) / params_.switches;
         float c = 0.5f + 0.5f * sinf(t * 6.28f);
         r->setUniform4f(u_color, c, c, c, 1.0f);
 
@@ -104,5 +104,5 @@ double StateChangeTest::computeScore(const std::vector<double>& times, int, int)
     for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
     double avg_ms = total_ms / times.size();
     if (avg_ms <= 0.0) return 0;
-    return (double)params_.switches / (avg_ms / 1000.0) / 1e3; // Kcalls/s
+    return static_cast<double>(params_.switches) / (avg_ms / 1000.0) / 1e3; // Kcalls/s
 }

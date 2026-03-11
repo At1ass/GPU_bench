@@ -91,7 +91,7 @@ double ShaderFMATest::computeScore(const std::vector<double>& times, int vw, int
     // Per iteration: 3x vec4 mul (12) + 3x vec4 add (12) = 24 FLOPs
     // (acc0*acc1, +acc0, acc1*acc0, +acc1, acc0*0.5, +0.25)
     double flops_per_pixel = 24.0 * params_.iterations;
-    double pixels_per_frame = (double)vw * vh;
+    double pixels_per_frame = static_cast<double>(vw) * vh;
     double flops_per_frame = flops_per_pixel * pixels_per_frame;
     return flops_per_frame / (avg_ms / 1000.0) / 1e9; // GFLOP/s
 }
