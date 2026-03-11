@@ -1,8 +1,10 @@
 #include "bench.h"
+#include "test_registry.h"
 #include "preset.h"
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <cstring>
 
 // Stability thresholds
 static constexpr double CV_INVALID_THRESHOLD = 0.5;
@@ -103,50 +105,34 @@ static double geomean(const double* vals, int count) {
 CompositeScore computeCompositeScores(const std::vector<BenchResult>& results) {
     CompositeScore cs;
 
-    // Fill category: Fillrate, Overdraw, Texturing
-    {
-        double vals[3] = {0, 0, 0};
-        const BenchResult* r;
-        if ((r = findResult(results, "Fillrate")) && r->score > 0) vals[0] = r->score;
-        if ((r = findResult(results, "Overdraw")) && r->score > 0) vals[1] = r->score;
-        if ((r = findResult(results, "Texturing")) && r->score > 0) vals[2] = r->score;
-        cs.fill = geomean(vals, 3);
+    // Data-driven: collect scores per category from registry
+    double cat_vals[static_cast<int>(TestCategory::Count)][NUM_TESTS];
+    int cat_count[static_cast<int>(TestCategory::Count)] = {};
+
+    for (int i = 0; i < NUM_TESTS; i++) {
+        int ci = static_cast<int>(g_tests[i].category);
+        cat_vals[ci][cat_count[ci]] = 0;
+
+        const BenchResult* r = findResult(results, g_tests[i].display_name);
+        if (r && r->score > 0)
+            cat_vals[ci][cat_count[ci]] = r->score;
+
+        cat_count[ci]++;
     }
 
-    // Geometry category: Geometry, Vertex
-    {
-        double vals[2] = {0, 0};
-        const BenchResult* r;
-        if ((r = findResult(results, "Geometry")) && r->score > 0) vals[0] = r->score;
-        if ((r = findResult(results, "Vertex")) && r->score > 0) vals[1] = r->score;
-        cs.geometry = geomean(vals, 2);
-    }
+    int ci_fill = static_cast<int>(TestCategory::Fill);
+    int ci_geom = static_cast<int>(TestCategory::Geometry);
+    int ci_comp = static_cast<int>(TestCategory::Compute);
+    int ci_over = static_cast<int>(TestCategory::Overhead);
 
-    // Compute category: ShaderALU, ShaderFMA
-    {
-        double vals[2] = {0, 0};
-        const BenchResult* r;
-        if ((r = findResult(results, "ShaderALU")) && r->score > 0) vals[0] = r->score;
-        if ((r = findResult(results, "ShaderFMA")) && r->score > 0) vals[1] = r->score;
-        cs.compute = geomean(vals, 2);
-    }
+    cs.fill     = geomean(cat_vals[ci_fill], cat_count[ci_fill]);
+    cs.geometry = geomean(cat_vals[ci_geom], cat_count[ci_geom]);
+    cs.compute  = geomean(cat_vals[ci_comp], cat_count[ci_comp]);
+    cs.overhead = geomean(cat_vals[ci_over], cat_count[ci_over]);
 
-    // Overhead category: DrawCall, DrawCallRaw, StateChange, TexUpload
-    {
-        double vals[4] = {0, 0, 0, 0};
-        const BenchResult* r;
-        if ((r = findResult(results, "DrawCall")) && r->score > 0) vals[0] = r->score;
-        if ((r = findResult(results, "DrawCallRaw")) && r->score > 0) vals[1] = r->score;
-        if ((r = findResult(results, "StateChange")) && r->score > 0) vals[2] = r->score;
-        if ((r = findResult(results, "TexUpload")) && r->score > 0) vals[3] = r->score;
-        cs.overhead = geomean(vals, 4);
-    }
-
-    // Overall: geometric mean of category scores
-    {
-        double cats[4] = { cs.fill, cs.geometry, cs.compute, cs.overhead };
-        cs.overall = geomean(cats, 4);
-    }
+    // Overall: geometric mean of category scores (excluding Mixed)
+    double cats[4] = { cs.fill, cs.geometry, cs.compute, cs.overhead };
+    cs.overall = geomean(cats, 4);
 
     return cs;
 }

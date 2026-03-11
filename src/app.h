@@ -4,6 +4,7 @@
 #include "bench.h"
 #include "tests.h"
 #include "preset.h"
+#include "test_registry.h"
 #include "hwinfo.h"
 #include "timer.h"
 #include <SDL.h>
@@ -40,7 +41,7 @@ struct AppConfig {
     int stress_duration_sec;  // 0 = disabled
 };
 
-static constexpr int NUM_TESTS = 12;
+// NUM_TESTS is defined in test_registry.h
 
 struct ResolutionOption {
     int w, h;
@@ -94,7 +95,6 @@ private:
 
     // Test selection checkboxes
     bool test_enabled_[NUM_TESTS];
-    static const char* test_names_[NUM_TESTS];
 
     // Benchmark state
     std::vector<BenchResult> results_;

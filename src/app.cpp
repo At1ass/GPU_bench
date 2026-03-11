@@ -39,12 +39,6 @@ static constexpr double STRESS_THROTTLE_WARN     = 5.0;
 static constexpr double STRESS_THROTTLE_SEVERE   = 2.0;
 
 
-const char* App::test_names_[NUM_TESTS] = {
-    "Fillrate", "Geometry", "Texturing", "Scene", "DrawCall",
-    "Overdraw", "TexUpload", "StateChange", "Vertex", "ShaderALU",
-    "ShaderFMA", "DrawCallRaw"
-};
-
 const ResolutionOption App::RESOLUTIONS[] = {
     {  640,  480, "640x480"   },
     {  800,  600, "800x600"   },
@@ -161,7 +155,8 @@ bool App::init(const AppConfig& cfg) {
             while (!name.empty() && name[0] == ' ') name.erase(0, 1);
             while (!name.empty() && name.back() == ' ') name.pop_back();
             for (int i = 0; i < NUM_TESTS; i++) {
-                if (strcasecmp(name.c_str(), test_names_[i]) == 0) {
+                if (strcasecmp(name.c_str(), g_tests[i].display_name) == 0 ||
+                    strcasecmp(name.c_str(), g_tests[i].cli_name) == 0) {
                     test_enabled_[i] = true;
                 }
             }
@@ -309,7 +304,7 @@ void App::renderPreviewScene(float dt) {
 
 bool App::isTestSelected(const char* name) const {
     for (int i = 0; i < NUM_TESTS; i++) {
-        if (strcmp(name, test_names_[i]) == 0)
+        if (strcmp(name, g_tests[i].display_name) == 0)
             return test_enabled_[i];
     }
     return false;
@@ -606,7 +601,9 @@ void App::renderUI() {
         ImGui::Text("Tests:");
         for (int i = 0; i < NUM_TESTS; i++) {
             if (i > 0 && i % 6 != 0) ImGui::SameLine();
-            ImGui::Checkbox(test_names_[i], &test_enabled_[i]);
+            ImGui::Checkbox(g_tests[i].display_name, &test_enabled_[i]);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", g_tests[i].description);
         }
 
         // ---- Benchmark controls ----
@@ -880,20 +877,13 @@ void App::runTest(BenchTest* test) {
 
 void App::runSelectedTests() {
     results_.clear();
-    const BenchPreset& p = current_preset_;
 
-    if (test_enabled_[0] && running_) { FillrateTest t(p.fillrate); runTest(&t); }
-    if (test_enabled_[1] && running_) { GeometryTest t(p.geometry); runTest(&t); }
-    if (test_enabled_[2] && running_) { TexturingTest t(p.texturing); runTest(&t); }
-    if (test_enabled_[3] && running_) { SceneTest t(p.scene); runTest(&t); }
-    if (test_enabled_[4] && running_) { DrawCallTest t(p.drawcall); runTest(&t); }
-    if (test_enabled_[5] && running_) { OverdrawTest t(p.overdraw); runTest(&t); }
-    if (test_enabled_[6] && running_) { TexUploadTest t(p.texupload); runTest(&t); }
-    if (test_enabled_[7] && running_) { StateChangeTest t(p.statechange); runTest(&t); }
-    if (test_enabled_[8] && running_) { VertexTest t(p.vertex); runTest(&t); }
-    if (test_enabled_[9] && running_) { ShaderALUTest t(p.shader_alu); runTest(&t); }
-    if (test_enabled_[10] && running_) { ShaderFMATest t(p.shader_fma); runTest(&t); }
-    if (test_enabled_[11] && running_) { DrawCallRawTest t(p.drawcall); runTest(&t); }
+    for (int i = 0; i < NUM_TESTS && running_; i++) {
+        if (!test_enabled_[i]) continue;
+        BenchTest* test = g_tests[i].factory(current_preset_);
+        runTest(test);
+        delete test;
+    }
 
     // Clean up render target after all tests
     if (bench_rt_ != INVALID_RENDER_TARGET) {

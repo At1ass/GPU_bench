@@ -84,6 +84,7 @@ set(SOURCES
     src/config.cpp
     src/results.cpp
     src/gpu_select.cpp
+    src/test_registry.cpp
     src/logger.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
