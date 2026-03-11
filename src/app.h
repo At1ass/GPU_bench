@@ -5,7 +5,6 @@
 #include "preset.h"
 #include "hwinfo.h"
 #include "timer.h"
-#include "gpu_timer.h"
 #include <SDL.h>
 #include <vector>
 #include <string>
@@ -72,7 +71,6 @@ private:
     SDL_GLContext  gl_context_;
     Renderer*     renderer_;
     HWInfo        hw_info_;
-    GPUTimer      gpu_timer_;
 
     bool running_;
     bool benchmarking_;
@@ -121,18 +119,8 @@ private:
     void updateRenderResolution();
     void runQuickProbe();
 
-    // FBO for off-screen rendering at non-native resolution
-    unsigned int bench_fbo_;
-    unsigned int bench_color_tex_;
-    unsigned int bench_depth_rb_;
-    int          bench_fbo_w_, bench_fbo_h_;
-    bool         bench_fbo_valid_;
-    bool createBenchFBO(int w, int h);
-    void destroyBenchFBO();
-    bool hasFBOSupport() const;
-    void blitFBOToScreen(int dst_x, int dst_y, int dst_w, int dst_h);
-    MeshHandle blit_quad_;
-    bool       blit_quad_ready_;
+    // Render target for off-screen rendering at non-native resolution
+    RenderTargetHandle bench_rt_;
 
     GPUTier gpu_tier_;
 

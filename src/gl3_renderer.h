@@ -14,5 +14,6 @@ public:
     TextureHandle createTexture(int w, int h, int channels, const unsigned char* pixels) override;
     void          drawMesh(MeshHandle h) override;
 
+    void unbindState() override;
     const char* getRendererName() const override;
 };

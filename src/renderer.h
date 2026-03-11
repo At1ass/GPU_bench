@@ -25,6 +25,9 @@ struct RenderCaps {
 typedef unsigned int ShaderHandle;
 static const ShaderHandle INVALID_SHADER = 0;
 
+typedef unsigned int RenderTargetHandle;
+static const RenderTargetHandle INVALID_RENDER_TARGET = 0;
+
 // Abstract renderer interface.
 class Renderer {
 public:
@@ -82,6 +85,32 @@ public:
 
     // GL state reset (call between tests for deterministic state)
     virtual void resetState() = 0;
+
+    // Unbind shader/VAO/texture state (for ImGui interop)
+    virtual void unbindState() = 0;
+
+    // Scissor test
+    virtual void setScissor(bool enable, int x = 0, int y = 0, int w = 0, int h = 0) = 0;
+
+    // GPU sync (flush all pending commands and wait for completion)
+    virtual void finish() = 0;
+
+    // Pixel readback (reads RGBA from current render target)
+    virtual void readPixels(int x, int y, int w, int h, unsigned char* rgba_out) = 0;
+
+    // Render targets (FBO abstraction)
+    virtual bool              supportsRenderTargets() const = 0;
+    virtual RenderTargetHandle createRenderTarget(int w, int h) = 0;
+    virtual void              destroyRenderTarget(RenderTargetHandle rt) = 0;
+    virtual void              bindRenderTarget(RenderTargetHandle rt) = 0;  // 0 = default framebuffer
+    virtual void              blitToScreen(RenderTargetHandle rt,
+                                           int dst_x, int dst_y, int dst_w, int dst_h) = 0;
+
+    // GPU timer queries
+    virtual bool   hasTimerQueries() const = 0;
+    virtual void   timerBegin() = 0;
+    virtual void   timerEnd() = 0;
+    virtual double timerElapsedMs() = 0;
 
     // Hardware capabilities
     virtual const RenderCaps& getCaps() const = 0;

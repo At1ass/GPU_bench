@@ -77,7 +77,8 @@ static const char* FS_2D_TEX =
 
 // ---- Implementation ----
 
-GL2Renderer::GL2Renderer() : current_shader_(0), initialized_(false) {
+GL2Renderer::GL2Renderer() : current_shader_(0), initialized_(false),
+    blit_quad_(INVALID_MESH), blit_quad_ready_(false), has_blit_framebuffer_(false) {
     memset(&shader_3d_, 0, sizeof(shader_3d_));
     memset(&shader_2d_color_, 0, sizeof(shader_2d_color_));
     memset(&shader_2d_tex_, 0, sizeof(shader_2d_tex_));
@@ -315,6 +316,19 @@ bool GL2Renderer::init(int w, int h) {
     gl_version_   = version  ? version  : "Unknown";
 
     detectCaps();
+
+    // Init GPU timer if available
+    gpu_timer_.init();
+
+    // Check if glBlitFramebuffer is available
+#ifdef CB_NEED_GL_LOAD
+    has_blit_framebuffer_ = (cb_glBlitFramebuffer != 0);
+#else
+    has_blit_framebuffer_ = (caps_.gl_major >= 3);
+#endif
+
+    // Slot 0 for render targets is reserved as "invalid"
+    render_targets_.push_back(GLFBO());
 
     if (!buildShader(shader_3d_, VS_3D, FS_3D)) return false;
     if (!buildShader(shader_2d_color_, VS_2D, FS_2D_COLOR)) return false;
@@ -698,6 +712,162 @@ void GL2Renderer::resetState() {
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     current_shader_ = 0;
+}
+
+// --- Unbind state (for ImGui interop) ---
+void GL2Renderer::unbindState() {
+    glUseProgram(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    current_shader_ = 0;
+}
+
+// --- Scissor ---
+void GL2Renderer::setScissor(bool enable, int x, int y, int w, int h) {
+    if (enable) {
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(x, y, w, h);
+    } else {
+        glDisable(GL_SCISSOR_TEST);
+    }
+}
+
+// --- Sync ---
+void GL2Renderer::finish() {
+    glFinish();
+}
+
+// --- Pixel readback ---
+void GL2Renderer::readPixels(int x, int y, int w, int h, unsigned char* rgba_out) {
+    glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba_out);
+}
+
+// --- Render targets ---
+bool GL2Renderer::supportsRenderTargets() const {
+    return caps_.has_fbo;
+}
+
+RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
+    if (!caps_.has_fbo) return INVALID_RENDER_TARGET;
+
+    GLFBO rt;
+    rt.w = w;
+    rt.h = h;
+
+    glGenTextures(1, &rt.color_tex);
+    glBindTexture(GL_TEXTURE_2D, rt.color_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenRenderbuffers(1, &rt.depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, rt.depth_rb);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    glGenFramebuffers(1, &rt.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt.fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt.color_tex, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rt.depth_rb);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glDeleteFramebuffers(1, &rt.fbo);
+        glDeleteTextures(1, &rt.color_tex);
+        glDeleteRenderbuffers(1, &rt.depth_rb);
+        return INVALID_RENDER_TARGET;
+    }
+
+    rt.valid = true;
+
+    RenderTargetHandle handle;
+    if (!free_rt_slots_.empty()) {
+        handle = free_rt_slots_.back();
+        free_rt_slots_.pop_back();
+        render_targets_[handle] = rt;
+    } else {
+        handle = (RenderTargetHandle)render_targets_.size();
+        render_targets_.push_back(rt);
+    }
+    return handle;
+}
+
+void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
+    if (rt == INVALID_RENDER_TARGET || rt >= render_targets_.size()) return;
+    GLFBO& fbo = render_targets_[rt];
+    if (!fbo.valid) return;
+    if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
+    if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);
+    if (fbo.depth_rb)  glDeleteRenderbuffers(1, &fbo.depth_rb);
+    fbo = GLFBO();
+    free_rt_slots_.push_back(rt);
+}
+
+void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
+    if (rt == 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return;
+    }
+    if (rt < render_targets_.size() && render_targets_[rt].valid) {
+        glBindFramebuffer(GL_FRAMEBUFFER, render_targets_[rt].fbo);
+    }
+}
+
+void GL2Renderer::blitToScreen(RenderTargetHandle rt,
+                                int dst_x, int dst_y, int dst_w, int dst_h) {
+    if (rt == INVALID_RENDER_TARGET || rt >= render_targets_.size()) return;
+    const GLFBO& fbo = render_targets_[rt];
+    if (!fbo.valid) return;
+
+    if (has_blit_framebuffer_) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo.fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(
+            0, 0, fbo.w, fbo.h,
+            dst_x, dst_y, dst_x + dst_w, dst_y + dst_h,
+            GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    } else {
+        // GL2 fallback: textured quad
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        if (!blit_quad_ready_) {
+            MeshData qd;
+            qd.vertices = {
+                {{-1, -1, 0}, {0, 0, 1}, {0, 0}},
+                {{ 1, -1, 0}, {0, 0, 1}, {1, 0}},
+                {{ 1,  1, 0}, {0, 0, 1}, {1, 1}},
+                {{-1,  1, 0}, {0, 0, 1}, {0, 1}},
+            };
+            qd.indices = {0, 1, 2, 0, 2, 3};
+            blit_quad_ = createMesh(qd);
+            blit_quad_ready_ = true;
+        }
+        setViewport(dst_x, dst_y, dst_w, dst_h);
+        setDepthTest(false);
+        setBlending(false);
+        useShader(SHADER_2D_TEXTURED);
+        glBindTexture(GL_TEXTURE_2D, fbo.color_tex);
+        drawMesh(blit_quad_);
+    }
+}
+
+// --- GPU timer ---
+bool GL2Renderer::hasTimerQueries() const {
+    return gpu_timer_.available();
+}
+
+void GL2Renderer::timerBegin() {
+    gpu_timer_.begin();
+}
+
+void GL2Renderer::timerEnd() {
+    gpu_timer_.end();
+}
+
+double GL2Renderer::timerElapsedMs() {
+    return gpu_timer_.elapsed_ms();
 }
 
 const RenderCaps& GL2Renderer::getCaps() const { return caps_; }

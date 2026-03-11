@@ -1,6 +1,7 @@
 #pragma once
 #include "renderer.h"
 #include "gl_funcs.h"
+#include "gpu_timer.h"
 #include <vector>
 #include <string>
 
@@ -49,6 +50,22 @@ public:
     void setDepthTest(bool enable) override;
 
     void resetState() override;
+    void unbindState() override;
+    void setScissor(bool enable, int x = 0, int y = 0, int w = 0, int h = 0) override;
+    void finish() override;
+    void readPixels(int x, int y, int w, int h, unsigned char* rgba_out) override;
+
+    bool              supportsRenderTargets() const override;
+    RenderTargetHandle createRenderTarget(int w, int h) override;
+    void              destroyRenderTarget(RenderTargetHandle rt) override;
+    void              bindRenderTarget(RenderTargetHandle rt) override;
+    void              blitToScreen(RenderTargetHandle rt,
+                                   int dst_x, int dst_y, int dst_w, int dst_h) override;
+
+    bool   hasTimerQueries() const override;
+    void   timerBegin() override;
+    void   timerEnd() override;
+    double timerElapsedMs() override;
 
     const RenderCaps& getCaps() const override;
     const char* getGPUVendor() const override;
@@ -96,6 +113,24 @@ protected:
     RenderCaps caps_;
     std::string gpu_vendor_, gpu_renderer_, gl_version_;
     bool initialized_;
+
+    // Render targets (FBO)
+    struct GLFBO {
+        GLuint fbo;
+        GLuint color_tex;
+        GLuint depth_rb;
+        int w, h;
+        bool valid;
+        GLFBO() : fbo(0), color_tex(0), depth_rb(0), w(0), h(0), valid(false) {}
+    };
+    std::vector<GLFBO> render_targets_;
+    std::vector<RenderTargetHandle> free_rt_slots_;
+    MeshHandle blit_quad_;
+    bool blit_quad_ready_;
+    bool has_blit_framebuffer_;
+
+    // GPU timer
+    GPUTimer gpu_timer_;
 
     GLuint compileShader(GLenum type, const char* src);
     GLuint linkProgram(GLuint vs, GLuint fs);

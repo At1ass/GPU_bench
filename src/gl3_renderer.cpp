@@ -124,4 +124,9 @@ void GL3Renderer::drawMesh(MeshHandle h) {
     }
 }
 
+void GL3Renderer::unbindState() {
+    GL2Renderer::unbindState();
+    glBindVertexArray(0);
+}
+
 const char* GL3Renderer::getRendererName() const { return "GL3"; }

@@ -15,16 +15,6 @@
 
 static const float PREVIEW_ROT_SPEED = 0.3f;
 
-// Unbind our renderer state before ImGui rendering.
-static void resetGLStateForImGui() {
-    glUseProgram(0);
-#ifdef CB_NEED_GL_LOAD
-    if (imgl3wProcs.gl.BindVertexArray)
-        glBindVertexArray(0);
-#else
-    glBindVertexArray(0);
-#endif
-}
 
 const char* App::test_names_[NUM_TESTS] = {
     "Fillrate", "Geometry", "Texturing", "Scene", "DrawCall",
@@ -56,9 +46,7 @@ App::App()
       pending_action_(ACTION_NONE),
       preview_terrain_(INVALID_MESH), preview_sphere_(INVALID_MESH),
       preview_tex_(INVALID_TEXTURE), preview_angle_(0.0f), preview_ready_(false),
-      bench_fbo_(0), bench_color_tex_(0), bench_depth_rb_(0),
-      bench_fbo_w_(0), bench_fbo_h_(0), bench_fbo_valid_(false),
-      blit_quad_(INVALID_MESH), blit_quad_ready_(false),
+      bench_rt_(INVALID_RENDER_TARGET),
       gpu_tier_(GPU_TIER_MID)
 {
     for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
@@ -67,102 +55,6 @@ App::App()
 
 App::~App() { shutdown(); }
 
-bool App::hasFBOSupport() const {
-#ifdef CB_NEED_GL_LOAD
-    return cb_glGenFramebuffers != 0
-        && cb_glBindFramebuffer != 0
-        && cb_glFramebufferTexture2D != 0
-        && cb_glCheckFramebufferStatus != 0
-        && cb_glGenRenderbuffers != 0
-        && cb_glBindRenderbuffer != 0
-        && cb_glRenderbufferStorage != 0
-        && cb_glFramebufferRenderbuffer != 0;
-#else
-    return true; // Linux with GL_GLEXT_PROTOTYPES
-#endif
-}
-
-bool App::createBenchFBO(int w, int h) {
-    destroyBenchFBO();
-    if (!hasFBOSupport()) return false;
-
-    // Color texture
-    glGenTextures(1, &bench_color_tex_);
-    glBindTexture(GL_TEXTURE_2D, bench_color_tex_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    // Depth renderbuffer
-    glGenRenderbuffers(1, &bench_depth_rb_);
-    glBindRenderbuffer(GL_RENDERBUFFER, bench_depth_rb_);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-    // FBO
-    glGenFramebuffers(1, &bench_fbo_);
-    glBindFramebuffer(GL_FRAMEBUFFER, bench_fbo_);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bench_color_tex_, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, bench_depth_rb_);
-
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "FBO creation failed (status=0x%X) for %dx%d\n", status, w, h);
-        destroyBenchFBO();
-        return false;
-    }
-
-    bench_fbo_w_ = w;
-    bench_fbo_h_ = h;
-    bench_fbo_valid_ = true;
-    fprintf(stderr, "Created bench FBO %dx%d\n", w, h);
-    return true;
-}
-
-void App::destroyBenchFBO() {
-    if (bench_fbo_) { glDeleteFramebuffers(1, &bench_fbo_); bench_fbo_ = 0; }
-    if (bench_color_tex_) { glDeleteTextures(1, &bench_color_tex_); bench_color_tex_ = 0; }
-    if (bench_depth_rb_ && hasFBOSupport()) { glDeleteRenderbuffers(1, &bench_depth_rb_); bench_depth_rb_ = 0; }
-    bench_fbo_valid_ = false;
-    bench_fbo_w_ = bench_fbo_h_ = 0;
-}
-
-void App::blitFBOToScreen(int dst_x, int dst_y, int dst_w, int dst_h) {
-    if (!bench_fbo_valid_ || !bench_color_tex_) return;
-
-#ifdef CB_NEED_GL_LOAD
-    bool has_blit = (cb_glBlitFramebuffer != 0);
-#else
-    bool has_blit = true;
-#endif
-
-    if (has_blit) {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, bench_fbo_);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glBlitFramebuffer(
-            0, 0, bench_fbo_w_, bench_fbo_h_,
-            dst_x, dst_y, dst_x + dst_w, dst_y + dst_h,
-            GL_COLOR_BUFFER_BIT, GL_NEAREST);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    } else {
-        // GL 2.x fallback: draw FBO color texture as a textured quad
-        if (!blit_quad_ready_) {
-            blit_quad_ = renderer_->createMesh(MeshGen::quad());
-            blit_quad_ready_ = true;
-        }
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        renderer_->setViewport(dst_x, dst_y, dst_w, dst_h);
-        renderer_->setDepthTest(false);
-        renderer_->setBlending(false);
-        renderer_->useShader(Renderer::SHADER_2D_TEXTURED);
-        glBindTexture(GL_TEXTURE_2D, bench_color_tex_);
-        renderer_->drawMesh(blit_quad_);
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-}
 
 void App::updateRenderResolution() {
     if (selected_resolution_ == RES_NATIVE) {
@@ -280,12 +172,10 @@ bool App::init(const AppConfig& cfg) {
         return false;
     }
 
-    gpu_timer_.init();
-
     hw_info_ = HWInfo::detect();
 
     // Fallback to sync timing if GPU timer queries unavailable
-    if (config_.timing_mode == TIMING_GPU && !gpu_timer_.available()) {
+    if (config_.timing_mode == TIMING_GPU && !renderer_->hasTimerQueries()) {
         config_.timing_mode = TIMING_SYNC;
         fprintf(stderr, "GPU timer queries not available, falling back to sync timing\n");
     }
@@ -347,10 +237,9 @@ void App::shutdown() {
     initialized_ = false;
     Log::shutdown();
 
-    destroyBenchFBO();
-    if (blit_quad_ready_ && renderer_) {
-        renderer_->destroyMesh(blit_quad_);
-        blit_quad_ready_ = false;
+    if (bench_rt_ != INVALID_RENDER_TARGET && renderer_) {
+        renderer_->destroyRenderTarget(bench_rt_);
+        bench_rt_ = INVALID_RENDER_TARGET;
     }
 
     if (!config_.headless) {
@@ -438,8 +327,7 @@ void App::renderPreviewScene(float dt) {
     int view_h = window_h_ - panel_h;
     if (view_h <= 0) return;
 
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(0, panel_h, window_w_, view_h);
+    renderer_->setScissor(true, 0, panel_h, window_w_, view_h);
     renderer_->setViewport(0, panel_h, window_w_, view_h);
     renderer_->clear(0.08f, 0.08f, 0.10f, 1.0f);
 
@@ -474,7 +362,7 @@ void App::renderPreviewScene(float dt) {
         renderer_->drawMesh(preview_sphere_);
     }
 
-    glDisable(GL_SCISSOR_TEST);
+    renderer_->setScissor(false);
     preview_angle_ += PREVIEW_ROT_SPEED * dt;
 }
 
@@ -509,7 +397,7 @@ void App::runQuickProbe() {
         for (int i = 0; i < 5; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
             test.render(renderer_);
-            glFinish();
+            renderer_->finish();
         }
 
         // Measure
@@ -518,10 +406,10 @@ void App::runQuickProbe() {
         Timer ft;
         for (int i = 0; i < PROBE_FRAMES; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            glFinish();
+            renderer_->finish();
             ft.reset();
             test.render(renderer_);
-            glFinish();
+            renderer_->finish();
             times.push_back(ft.elapsed_ms());
         }
         fill_score = test.computeScore(times, PROBE_W, PROBE_H);
@@ -539,7 +427,7 @@ void App::runQuickProbe() {
         for (int i = 0; i < 5; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
             test.render(renderer_);
-            glFinish();
+            renderer_->finish();
         }
 
         std::vector<double> times;
@@ -547,10 +435,10 @@ void App::runQuickProbe() {
         Timer ft;
         for (int i = 0; i < PROBE_FRAMES; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            glFinish();
+            renderer_->finish();
             ft.reset();
             test.render(renderer_);
-            glFinish();
+            renderer_->finish();
             times.push_back(ft.elapsed_ms());
         }
         geom_score = test.computeScore(times, PROBE_W, PROBE_H);
@@ -706,7 +594,7 @@ void App::renderUI() {
                 // Mark if FBO needed
                 bool needs_fbo = (RESOLUTIONS[i].w > window_w_ || RESOLUTIONS[i].h > window_h_);
                 char item_label[64];
-                if (needs_fbo && !hasFBOSupport())
+                if (needs_fbo && !renderer_->supportsRenderTargets())
                     snprintf(item_label, sizeof(item_label), "%s (no FBO)", RESOLUTIONS[i].label);
                 else if (needs_fbo)
                     snprintf(item_label, sizeof(item_label), "%s (FBO)", RESOLUTIONS[i].label);
@@ -714,7 +602,7 @@ void App::renderUI() {
                     snprintf(item_label, sizeof(item_label), "%s", RESOLUTIONS[i].label);
 
                 // Disable if needs FBO and no support
-                bool disabled = needs_fbo && !hasFBOSupport();
+                bool disabled = needs_fbo && !renderer_->supportsRenderTargets();
                 if (disabled) ImGui::BeginDisabled();
 
                 if (ImGui::Selectable(item_label, is_sel)) {
@@ -903,35 +791,39 @@ void App::runTest(BenchTest* test) {
 
     SDL_GL_SetSwapInterval(0);
 
-    // Determine if we need FBO (render resolution != window or > window)
-    bool use_fbo = (render_w_ != window_w_ || render_h_ != window_h_) && hasFBOSupport();
+    // Determine if we need render target (render resolution != window)
+    bool use_fbo = (render_w_ != window_w_ || render_h_ != window_h_) && renderer_->supportsRenderTargets();
     if (use_fbo) {
-        if (!bench_fbo_valid_ || bench_fbo_w_ != render_w_ || bench_fbo_h_ != render_h_) {
-            if (!createBenchFBO(render_w_, render_h_)) {
-                use_fbo = false;
-                fprintf(stderr, "FBO creation failed, falling back to viewport-only\n");
-            }
+        // Recreate render target if needed
+        if (bench_rt_ != INVALID_RENDER_TARGET) {
+            renderer_->destroyRenderTarget(bench_rt_);
+            bench_rt_ = INVALID_RENDER_TARGET;
+        }
+        bench_rt_ = renderer_->createRenderTarget(render_w_, render_h_);
+        if (bench_rt_ == INVALID_RENDER_TARGET) {
+            use_fbo = false;
+            fprintf(stderr, "Render target creation failed, falling back to viewport-only\n");
         }
     }
 
-    // Bind FBO for rendering if needed
-    if (use_fbo) glBindFramebuffer(GL_FRAMEBUFFER, bench_fbo_);
+    // Bind render target for rendering if needed
+    if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
 
     renderer_->resetState();
     test->setup(renderer_, render_w_, render_h_);
 
-    bool use_gpu_timer = (config_.timing_mode == TIMING_GPU) && gpu_timer_.available();
+    bool use_gpu_timer = (config_.timing_mode == TIMING_GPU) && renderer_->hasTimerQueries();
 
     // Warmup
     bool sanity_ok = true;
     bench_status_ = std::string("Warmup: ") + test->name();
     for (int i = 0; i < current_preset_.warmup_frames && running_; i++) {
         processEvents();
-        if (use_fbo) glBindFramebuffer(GL_FRAMEBUFFER, bench_fbo_);
+        if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
         renderer_->setViewport(0, 0, render_w_, render_h_);
         renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
         test->render(renderer_);
-        glFinish();
+        renderer_->finish();
 
         // Sanity check after first warmup frame: verify non-black output
         if (i == 0) {
@@ -939,7 +831,7 @@ void App::runTest(BenchTest* test) {
             int cx = render_w_ / 2 - 2, cy = render_h_ / 2 - 2;
             if (cx < 0) cx = 0;
             if (cy < 0) cy = 0;
-            glReadPixels(cx, cy, 4, 4, GL_RGBA, GL_UNSIGNED_BYTE, px);
+            renderer_->readPixels(cx, cy, 4, 4, px);
             int nonzero = 0;
             for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
             if (nonzero == 0) {
@@ -952,19 +844,18 @@ void App::runTest(BenchTest* test) {
         bench_progress_ = (int)(100.0 * i / current_preset_.warmup_frames * 0.1);
         if (!config_.headless) {
             if (use_fbo) {
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                renderer_->bindRenderTarget(0);
                 renderer_->setViewport(0, 0, window_w_, window_h_);
-                glClearColor(0.12f, 0.12f, 0.15f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
                 int panel_h = (int)(window_h_ * 0.55f);
                 int view_h = window_h_ - panel_h;
                 if (view_h > 0)
-                    blitFBOToScreen(0, panel_h, window_w_, view_h);
+                    renderer_->blitToScreen(bench_rt_, 0, panel_h, window_w_, view_h);
             }
             renderer_->setViewport(0, 0, window_w_, window_h_);
             renderer_->setDepthTest(false);
             renderer_->setBlending(false);
-            resetGLStateForImGui();
+            renderer_->unbindState();
             renderUI();
         }
         SDL_GL_SwapWindow(window_);
@@ -982,20 +873,20 @@ void App::runTest(BenchTest* test) {
     int frame = 0;
     while (running_) {
         processEvents();
-        if (use_fbo) glBindFramebuffer(GL_FRAMEBUFFER, bench_fbo_);
+        if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
         renderer_->setViewport(0, 0, render_w_, render_h_);
         renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
 
-        glFinish();
+        renderer_->finish();
 
-        if (use_gpu_timer) gpu_timer_.begin();
+        if (use_gpu_timer) renderer_->timerBegin();
         frame_t.reset();
         test->render(renderer_);
-        if (use_gpu_timer) gpu_timer_.end();
-        glFinish();
+        if (use_gpu_timer) renderer_->timerEnd();
+        renderer_->finish();
         double ms = frame_t.elapsed_ms();
         times.push_back(ms);
-        if (use_gpu_timer) gpu_times.push_back(gpu_timer_.elapsed_ms());
+        if (use_gpu_timer) gpu_times.push_back(renderer_->timerElapsedMs());
 
         double elapsed = total_timer.elapsed_sec();
         bench_progress_ = 10 + (int)(90.0 * std::min(
@@ -1005,19 +896,18 @@ void App::runTest(BenchTest* test) {
 
         if (!config_.headless) {
             if (use_fbo) {
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                renderer_->bindRenderTarget(0);
                 renderer_->setViewport(0, 0, window_w_, window_h_);
-                glClearColor(0.12f, 0.12f, 0.15f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
                 int panel_h = (int)(window_h_ * 0.55f);
                 int view_h = window_h_ - panel_h;
                 if (view_h > 0)
-                    blitFBOToScreen(0, panel_h, window_w_, view_h);
+                    renderer_->blitToScreen(bench_rt_, 0, panel_h, window_w_, view_h);
             }
             renderer_->setViewport(0, 0, window_w_, window_h_);
             renderer_->setDepthTest(false);
             renderer_->setBlending(false);
-            resetGLStateForImGui();
+            renderer_->unbindState();
             renderUI();
         }
 
@@ -1028,7 +918,7 @@ void App::runTest(BenchTest* test) {
             break;
     }
 
-    if (use_fbo) glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (use_fbo) renderer_->bindRenderTarget(0);
 
     double score = test->computeScore(times, render_w_, render_h_);
     BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);
@@ -1067,8 +957,11 @@ void App::runSelectedTests() {
     if (test_enabled_[10] && running_) { ShaderFMATest t(p.shader_fma); runTest(&t); }
     if (test_enabled_[11] && running_) { DrawCallRawTest t(p.drawcall); runTest(&t); }
 
-    // Clean up FBO after all tests
-    destroyBenchFBO();
+    // Clean up render target after all tests
+    if (bench_rt_ != INVALID_RENDER_TARGET) {
+        renderer_->destroyRenderTarget(bench_rt_);
+        bench_rt_ = INVALID_RENDER_TARGET;
+    }
 
     computeAnalysis();
 }
@@ -1228,13 +1121,13 @@ void App::runHeadless() {
             // Warmup pass
             renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
             for (int i = 0; i < passes; i++) STRESS_RENDER_PASS(stress_time);
-            glFinish();
+            renderer_->finish();
 
             // Measure
             Timer cal_t;
             renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
             for (int i = 0; i < passes; i++) STRESS_RENDER_PASS(stress_time);
-            glFinish();
+            renderer_->finish();
             double ms = cal_t.elapsed_ms();
 
             fprintf(stderr, "  %d passes = %.1f ms\n", passes, ms);
@@ -1270,13 +1163,13 @@ void App::runHeadless() {
             renderer_->setBlending(true);
             renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
 
-            glFinish();
+            renderer_->finish();
             Timer frame_t;
             for (int i = 0; i < passes; i++) {
                 STRESS_RENDER_PASS(stress_time);
                 stress_time += 0.001f;
             }
-            glFinish();
+            renderer_->finish();
             double ms = frame_t.elapsed_ms();
 
             interval_time_sum += ms;
@@ -1348,14 +1241,13 @@ void App::run() {
         processEvents();
 
         if (!benchmarking_) {
-            glViewport(0, 0, window_w_, window_h_);
-            glClearColor(0.12f, 0.12f, 0.15f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            renderer_->setViewport(0, 0, window_w_, window_h_);
+            renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
             renderPreviewScene((float)dt);
-            resetGLStateForImGui();
+            renderer_->unbindState();
         }
 
-        glViewport(0, 0, window_w_, window_h_);
+        renderer_->setViewport(0, 0, window_w_, window_h_);
         renderUI();
 
         SDL_GL_SwapWindow(window_);
