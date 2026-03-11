@@ -19,12 +19,13 @@ static std::string makeFragShader(int variant) {
     return std::string(buf);
 }
 
-static const char* STATECHANGE_VS =
-    "#version 120\n"
-    "attribute vec2 a_pos;\n"
-    "void main() {\n"
-    "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
-    "}\n";
+static const char* STATECHANGE_VS = R"(
+#version 120
+attribute vec2 a_pos;
+void main() {
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
 
 StateChangeTest::StateChangeTest(const StateChangeParams& params)
     : params_(params), vw_(0), vh_(0), quad_(INVALID_MESH) {}
@@ -99,10 +100,7 @@ void StateChangeTest::cleanup(Renderer* r) {
 }
 
 double StateChangeTest::computeScore(const std::vector<double>& times, int, int) {
-    if (times.empty()) return 0;
-    double total_ms = 0;
-    for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
-    double avg_ms = total_ms / times.size();
+    double avg_ms = avgFrameMs(times);
     if (avg_ms <= 0.0) return 0;
     return static_cast<double>(params_.switches) / (avg_ms / 1000.0) / 1e3; // Kcalls/s
 }

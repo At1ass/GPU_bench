@@ -169,13 +169,12 @@ MeshData MeshGen::cubeGrid(int count) {
                     offset + iz * spacing
                 );
                 unsigned int base = (unsigned int)result.vertices.size();
-                for (size_t v = 0; v < unit.vertices.size(); v++) {
-                    Vertex vt = unit.vertices[v];
+                for (auto vt : unit.vertices) {
                     vt.pos = vt.pos + pos;
                     result.vertices.push_back(vt);
                 }
-                for (size_t i = 0; i < unit.indices.size(); i++) {
-                    result.indices.push_back(unit.indices[i] + base);
+                for (unsigned int idx : unit.indices) {
+                    result.indices.push_back(idx + base);
                 }
             }
         }

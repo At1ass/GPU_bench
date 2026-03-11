@@ -116,10 +116,7 @@ void SceneTest::cleanup(Renderer* r) {
 }
 
 double SceneTest::computeScore(const std::vector<double>& times, int, int) {
-    if (times.empty()) return 0;
-    double total_ms = 0;
-    for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
-    double avg_ms = total_ms / times.size();
+    double avg_ms = avgFrameMs(times);
     if (avg_ms <= 0.0) return 0;
     return 1000.0 / avg_ms;
 }

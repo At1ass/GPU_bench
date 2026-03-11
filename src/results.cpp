@@ -37,8 +37,7 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
             "Test", "Score", "Unit", "Avg(ms)", "Min(ms)", "Max(ms)", "P1(ms)", "Median(ms)", "P99(ms)", "Frames", "CV%");
     fprintf(out, "------------ ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ------ ------\n");
 
-    for (size_t i = 0; i < results.size(); i++) {
-        const BenchResult& r = results[i];
+    for (const auto& r : results) {
         fprintf(out, "%-12s %10.1f %-10s %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %6d %5.1f%%",
                 r.name.c_str(), r.score, r.unit.c_str(),
                 r.avg_ms, r.min_ms, r.max_ms, r.p1_ms, r.median_ms, r.p99_ms, r.frames, r.cv * 100.0);
@@ -59,8 +58,7 @@ void exportCSV(FILE* out, const std::vector<BenchResult>& results,
                const ExportConfig& ecfg) {
     (void)ecfg;
     fprintf(out, "preset,cpu,gpu,gl_version,renderer,os,vram_mb,test,score,unit,avg_ms,min_ms,max_ms,median_ms,p1_ms,p99_ms,cv,frames,valid,sanity_ok\n");
-    for (size_t i = 0; i < results.size(); i++) {
-        const BenchResult& r = results[i];
+    for (const auto& r : results) {
         fprintf(out, "%s,\"%s\",\"%s\",\"%s\",%s,\"%s %s\",%d,%s,%.2f,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%s,%s\n",
                 preset_name,
                 hw.cpu_name.c_str(), gpu_name, gl_version, renderer_name,

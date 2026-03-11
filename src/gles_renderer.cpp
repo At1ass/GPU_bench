@@ -7,74 +7,80 @@
 // GLES 2.0: #version 100, precision required in fragment shaders.
 // attribute/varying/texture2D syntax is the same as GLSL 1.20.
 
-static const char* GLES_VS_3D =
-    "#version 100\n"
-    "attribute vec3 a_pos;\n"
-    "attribute vec3 a_normal;\n"
-    "attribute vec2 a_uv;\n"
-    "uniform mat4 u_proj;\n"
-    "uniform mat4 u_view;\n"
-    "uniform mat4 u_model;\n"
-    "varying vec3 v_normal;\n"
-    "varying vec2 v_uv;\n"
-    "void main() {\n"
-    "    v_normal = mat3(u_model) * a_normal;\n"
-    "    v_uv = a_uv;\n"
-    "    gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);\n"
-    "}\n";
+static const char* GLES_VS_3D = R"(
+#version 100
+attribute vec3 a_pos;
+attribute vec3 a_normal;
+attribute vec2 a_uv;
+uniform mat4 u_proj;
+uniform mat4 u_view;
+uniform mat4 u_model;
+varying vec3 v_normal;
+varying vec2 v_uv;
+void main() {
+    v_normal = mat3(u_model) * a_normal;
+    v_uv = a_uv;
+    gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);
+}
+)";
 
-static const char* GLES_FS_3D =
-    "#version 100\n"
-    "precision mediump float;\n"
-    "varying vec3 v_normal;\n"
-    "varying vec2 v_uv;\n"
-    "uniform sampler2D u_tex;\n"
-    "uniform float u_use_tex;\n"
-    "uniform vec4 u_color;\n"
-    "uniform vec3 u_light_dir;\n"
-    "void main() {\n"
-    "    vec3 n = normalize(v_normal);\n"
-    "    float d = max(dot(n, normalize(u_light_dir)), 0.0);\n"
-    "    float light = 0.15 + 0.85 * d;\n"
-    "    vec4 c = u_color;\n"
-    "    if (u_use_tex > 0.5)\n"
-    "        c = texture2D(u_tex, v_uv);\n"
-    "    gl_FragColor = vec4(c.rgb * light, c.a);\n"
-    "}\n";
+static const char* GLES_FS_3D = R"(
+#version 100
+precision mediump float;
+varying vec3 v_normal;
+varying vec2 v_uv;
+uniform sampler2D u_tex;
+uniform float u_use_tex;
+uniform vec4 u_color;
+uniform vec3 u_light_dir;
+void main() {
+    vec3 n = normalize(v_normal);
+    float d = max(dot(n, normalize(u_light_dir)), 0.0);
+    float light = 0.15 + 0.85 * d;
+    vec4 c = u_color;
+    if (u_use_tex > 0.5)
+        c = texture2D(u_tex, v_uv);
+    gl_FragColor = vec4(c.rgb * light, c.a);
+}
+)";
 
-static const char* GLES_VS_2D =
-    "#version 100\n"
-    "attribute vec2 a_pos;\n"
-    "void main() {\n"
-    "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
-    "}\n";
+static const char* GLES_VS_2D = R"(
+#version 100
+attribute vec2 a_pos;
+void main() {
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
 
-static const char* GLES_FS_2D_COLOR =
-    "#version 100\n"
-    "precision mediump float;\n"
-    "uniform vec4 u_color;\n"
-    "void main() {\n"
-    "    gl_FragColor = u_color;\n"
-    "}\n";
+static const char* GLES_FS_2D_COLOR = R"(
+#version 100
+precision mediump float;
+uniform vec4 u_color;
+void main() {
+    gl_FragColor = u_color;
+}
+)";
 
-static const char* GLES_VS_2D_TEX =
-    "#version 100\n"
-    "attribute vec2 a_pos;\n"
-    "attribute vec2 a_uv;\n"
-    "varying vec2 v_uv;\n"
-    "void main() {\n"
-    "    v_uv = a_uv;\n"
-    "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
-    "}\n";
+static const char* GLES_VS_2D_TEX = R"(
+#version 100
+attribute vec2 a_pos;
+attribute vec2 a_uv;
+varying vec2 v_uv;
+void main() {
+    v_uv = a_uv;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
 
-static const char* GLES_FS_2D_TEX =
-    "#version 100\n"
-    "precision mediump float;\n"
-    "varying vec2 v_uv;\n"
-    "uniform sampler2D u_tex;\n"
-    "void main() {\n"
-    "    gl_FragColor = texture2D(u_tex, v_uv);\n"
-    "}\n";
+static const char* GLES_FS_2D_TEX = R"(
+#version 100
+precision mediump float;
+varying vec2 v_uv;
+uniform sampler2D u_tex;
+void main() {
+    gl_FragColor = texture2D(u_tex, v_uv);
+}
+)";
 
 // ---- Implementation ----
 
@@ -151,8 +157,7 @@ bool GLESRenderer::init(int w, int h) {
 
     // Set sensible default uniforms
     ShaderProg* shaders[] = {&shader_3d_, &shader_2d_color_, &shader_2d_tex_};
-    for (int i = 0; i < 3; i++) {
-        ShaderProg* sp = shaders[i];
+    for (auto* sp : shaders) {
         glUseProgram(sp->program);
         if (sp->u_color >= 0)     glUniform4f(sp->u_color, 1.0f, 1.0f, 1.0f, 1.0f);
         if (sp->u_light_dir >= 0) glUniform3f(sp->u_light_dir, 0.4f, 0.7f, 0.5f);

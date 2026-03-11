@@ -199,15 +199,15 @@ std::vector<GPUDevice> enumerateGPUs() {
 
     // Heuristic: if we have AMD + AMD, the lower-index one is usually the iGPU
     int amd_count = 0;
-    for (size_t i = 0; i < gpus.size(); i++) {
-        if (gpus[i].vendor == "AMD") amd_count++;
+    for (const auto& gpu : gpus) {
+        if (gpu.vendor == "AMD") amd_count++;
     }
     if (amd_count >= 2) {
         bool found_first_amd = false;
-        for (size_t i = 0; i < gpus.size(); i++) {
-            if (gpus[i].vendor == "AMD") {
+        for (auto& gpu : gpus) {
+            if (gpu.vendor == "AMD") {
                 if (!found_first_amd) {
-                    gpus[i].is_integrated = true;
+                    gpu.is_integrated = true;
                     found_first_amd = true;
                 }
             }
@@ -222,9 +222,9 @@ bool selectGPU(int index) {
     std::vector<GPUDevice> gpus = enumerateGPUs();
 
     const GPUDevice* target = nullptr;
-    for (size_t i = 0; i < gpus.size(); i++) {
-        if (gpus[i].index == index) {
-            target = &gpus[i];
+    for (const auto& gpu : gpus) {
+        if (gpu.index == index) {
+            target = &gpu;
             break;
         }
     }
@@ -453,9 +453,9 @@ bool selectGPU(int index) {
     std::vector<GPUDevice> gpus = enumerateGPUs();
 
     const GPUDevice* target = nullptr;
-    for (size_t i = 0; i < gpus.size(); i++) {
-        if (gpus[i].index == index) {
-            target = &gpus[i];
+    for (const auto& gpu : gpus) {
+        if (gpu.index == index) {
+            target = &gpu;
             break;
         }
     }
@@ -533,8 +533,7 @@ void printGPUList(const std::vector<GPUDevice>& gpus) {
         return;
     }
     fprintf(stderr, "Available GPUs:\n");
-    for (size_t i = 0; i < gpus.size(); i++) {
-        const GPUDevice& g = gpus[i];
+    for (const auto& g : gpus) {
         fprintf(stderr, "  %d: %s [%s @ %s]%s\n",
                 g.index, g.name.c_str(), g.pci_id.c_str(),
                 g.pci_slot.empty() ? "?" : g.pci_slot.c_str(),

@@ -42,8 +42,8 @@ BenchResult computeStats(const std::string& name,
 
     // Stability metrics
     double variance = 0;
-    for (size_t i = 0; i < sorted.size(); i++) {
-        double diff = sorted[i] - r.avg_ms;
+    for (double val : sorted) {
+        double diff = val - r.avg_ms;
         variance += diff * diff;
     }
     double stddev = sqrt(variance / sorted.size());
@@ -57,8 +57,8 @@ BenchResult computeStats(const std::string& name,
 
 // Helper: find a result by name
 static const BenchResult* findResult(const std::vector<BenchResult>& results, const char* name) {
-    for (size_t i = 0; i < results.size(); i++) {
-        if (results[i].name == name) return &results[i];
+    for (const auto& r : results) {
+        if (r.name == name) return &r;
     }
     return nullptr;
 }

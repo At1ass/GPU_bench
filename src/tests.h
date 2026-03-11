@@ -4,6 +4,14 @@
 #include "preset.h"
 #include <vector>
 
+// Helper: compute average frame time from measurements
+inline double avgFrameMs(const std::vector<double>& times) {
+    if (times.empty()) return 0.0;
+    double total = 0.0;
+    for (size_t i = 0; i < times.size(); i++) total += times[i];
+    return total / static_cast<double>(times.size());
+}
+
 // Texture generation helpers (shared across tests)
 std::vector<unsigned char> genCheckerboard(int size, int check_size);
 std::vector<unsigned char> genColorNoise(int size, unsigned int seed);

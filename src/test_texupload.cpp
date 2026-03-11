@@ -50,10 +50,7 @@ void TexUploadTest::cleanup(Renderer* r) {
 }
 
 double TexUploadTest::computeScore(const std::vector<double>& times, int, int) {
-    if (times.empty()) return 0;
-    double total_ms = 0;
-    for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
-    double avg_ms = total_ms / times.size();
+    double avg_ms = avgFrameMs(times);
     if (avg_ms <= 0.0) return 0;
     // bytes per frame = tex_size^2 * 3 channels * uploads_per_frame
     double bytes_per_frame = static_cast<double>(actual_tex_size_) * actual_tex_size_ * 3.0 * params_.uploads_per_frame;

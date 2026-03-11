@@ -3,34 +3,36 @@
 #include <cstdio>
 #include <cmath>
 
-static const char* SHADER_ALU_VS =
-    "#version 120\n"
-    "attribute vec2 a_pos;\n"
-    "attribute vec2 a_uv;\n"
-    "varying vec2 v_uv;\n"
-    "void main() {\n"
-    "    v_uv = a_uv;\n"
-    "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
-    "}\n";
+static const char* SHADER_ALU_VS = R"(
+#version 120
+attribute vec2 a_pos;
+attribute vec2 a_uv;
+varying vec2 v_uv;
+void main() {
+    v_uv = a_uv;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
 
 // Heavy fragment shader with sin/cos/pow/sqrt loop
 // The loop count is controlled by a uniform u_iterations
 // We unroll in groups of 4 operations per iteration to give the compiler less room to optimize away
-static const char* SHADER_ALU_FS =
-    "#version 120\n"
-    "varying vec2 v_uv;\n"
-    "uniform int u_iterations;\n"
-    "uniform float u_time;\n"
-    "void main() {\n"
-    "    vec4 acc = vec4(v_uv.x, v_uv.y, u_time * 0.01, 1.0);\n"
-    "    for (int i = 0; i < u_iterations; i++) {\n"
-    "        acc.x = sin(acc.x * 1.1 + acc.y);\n"
-    "        acc.y = cos(acc.y * 1.2 + acc.z);\n"
-    "        acc.z = sqrt(abs(acc.z * acc.x + 0.5));\n"
-    "        acc.w = pow(abs(acc.w), 0.99) + acc.x * 0.01;\n"
-    "    }\n"
-    "    gl_FragColor = vec4(acc.xyz * 0.5 + 0.5, 1.0);\n"
-    "}\n";
+static const char* SHADER_ALU_FS = R"(
+#version 120
+varying vec2 v_uv;
+uniform int u_iterations;
+uniform float u_time;
+void main() {
+    vec4 acc = vec4(v_uv.x, v_uv.y, u_time * 0.01, 1.0);
+    for (int i = 0; i < u_iterations; i++) {
+        acc.x = sin(acc.x * 1.1 + acc.y);
+        acc.y = cos(acc.y * 1.2 + acc.z);
+        acc.z = sqrt(abs(acc.z * acc.x + 0.5));
+        acc.w = pow(abs(acc.w), 0.99) + acc.x * 0.01;
+    }
+    gl_FragColor = vec4(acc.xyz * 0.5 + 0.5, 1.0);
+}
+)";
 
 ShaderALUTest::ShaderALUTest(const ShaderALUParams& params)
     : params_(params), vw_(0), vh_(0), quad_(INVALID_MESH),
@@ -83,10 +85,7 @@ void ShaderALUTest::cleanup(Renderer* r) {
 }
 
 double ShaderALUTest::computeScore(const std::vector<double>& times, int vw, int vh) {
-    if (times.empty()) return 0;
-    double total_ms = 0;
-    for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
-    double avg_ms = total_ms / times.size();
+    double avg_ms = avgFrameMs(times);
     if (avg_ms <= 0.0) return 0;
 
     // 4 transcendental ops + 4 add/mul ops per iteration per pixel.

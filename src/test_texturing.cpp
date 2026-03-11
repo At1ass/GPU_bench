@@ -42,10 +42,7 @@ void TexturingTest::cleanup(Renderer* r) {
 }
 
 double TexturingTest::computeScore(const std::vector<double>& times, int vw, int vh) {
-    if (times.empty()) return 0;
-    double total_ms = 0;
-    for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
-    double avg_ms = total_ms / times.size();
+    double avg_ms = avgFrameMs(times);
     if (avg_ms <= 0.0) return 0;
     double texels_per_frame = static_cast<double>(vw) * vh * layers_;
     return texels_per_frame / (avg_ms / 1000.0) / 1e6;
