@@ -265,10 +265,14 @@ bool selectGPU(int index) {
             unsetenv("__EGL_VENDOR_LIBRARY_FILENAMES");
         } else {
             // User wants non-NVIDIA GPU (e.g. AMD iGPU) — force Mesa
+            fprintf(stderr,
+                "WARNING: Selecting a non-NVIDIA GPU while NVIDIA proprietary driver\n"
+                "controls the display. Rendering will work but the window may be black\n"
+                "because DRI_PRIME buffer sharing doesn't work across NVIDIA/Mesa.\n"
+                "Use --headless for benchmark results without display.\n");
             // GLX path (X11):
             setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 1);
             // EGL path (Wayland): force Mesa EGL vendor
-            // Check common paths for Mesa EGL vendor JSON
             static const char* mesa_egl_paths[] = {
                 "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
                 "/usr/share/egl/egl_external_platform.d/50_mesa.json",

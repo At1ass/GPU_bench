@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0...3.31)
-project(GPU_benchmark VERSION 0.2.0 LANGUAGES C CXX)
+project(GPU_benchmark VERSION 0.4.0 LANGUAGES C CXX)
 
 # C++11: CMake 3.0 doesn't have CMAKE_CXX_STANDARD
 if(CMAKE_VERSION VERSION_LESS "3.1")
@@ -9,6 +9,13 @@ if(CMAKE_VERSION VERSION_LESS "3.1")
 else()
     set(CMAKE_CXX_STANDARD 11)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
+# --- Compiler warnings ---
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra -Wno-unused-parameter)
+elseif(MSVC)
+    add_compile_options(/W4 /wd4100 /wd4244 /wd4267)
 endif()
 
 # --- Dependencies ---
@@ -37,7 +44,6 @@ else()
     target_link_libraries(imgui_lib PUBLIC ${SDL2_LIBRARIES})
 endif()
 
-# OpenGL target fallback (CMake < 3.8 has no OpenGL::GL)
 if(TARGET OpenGL::GL)
     target_link_libraries(imgui_lib PUBLIC OpenGL::GL)
 else()
@@ -65,6 +71,9 @@ set(SOURCES
     src/test_statechange.cpp
     src/test_vertex.cpp
     src/test_shader_alu.cpp
+    src/test_shader_fma.cpp
+    src/test_drawcall_raw.cpp
+    src/gpu_timer.cpp
     src/hwinfo.cpp
     src/preset.cpp
     src/config.cpp
@@ -77,6 +86,7 @@ set(SOURCES
 add_executable(gpu_benchmark ${SOURCES})
 target_include_directories(gpu_benchmark PRIVATE src)
 
+# --- SDL2 linking ---
 if(TARGET SDL2::SDL2)
     if(TARGET SDL2::SDL2main)
         target_link_libraries(gpu_benchmark PRIVATE SDL2::SDL2 SDL2::SDL2main imgui_lib)
@@ -88,6 +98,7 @@ else()
     target_link_libraries(gpu_benchmark PRIVATE ${SDL2_LIBRARIES} imgui_lib)
 endif()
 
+# --- OpenGL linking ---
 if(TARGET OpenGL::GL)
     target_link_libraries(gpu_benchmark PRIVATE OpenGL::GL)
 else()
@@ -106,3 +117,6 @@ if(WIN32)
         target_link_libraries(gpu_benchmark PRIVATE -static-libgcc -static-libstdc++)
     endif()
 endif()
+
+# --- Install ---
+install(TARGETS gpu_benchmark RUNTIME DESTINATION bin)

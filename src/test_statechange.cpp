@@ -69,7 +69,8 @@ void StateChangeTest::render(Renderer* r) {
 
         int u_color = r->getCustomUniformLoc(shaders_[si], "u_color");
         float t = (float)i / params_.switches;
-        r->setUniform1f(u_color, 0.5f + 0.5f * sinf(t * 6.28f));
+        float c = 0.5f + 0.5f * sinf(t * 6.28f);
+        r->setUniform4f(u_color, c, c, c, 1.0f);
 
         // Switch texture
         int ti = i % tex_count;

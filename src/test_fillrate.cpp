@@ -46,8 +46,8 @@ FillrateTest::FillrateTest(const FillrateParams& params)
 const char* FillrateTest::name() const { return "Fillrate"; }
 const char* FillrateTest::scoreUnit() const { return "Mpix/s"; }
 const char* FillrateTest::description() const {
-    return "Renders overlapping alpha-blended fullscreen quads.\n"
-           "Measures raw pixel fill rate of the GPU.";
+    return "Renders overlapping opaque fullscreen quads.\n"
+           "Measures raw pixel output rate without blend overhead.";
 }
 
 void FillrateTest::setup(Renderer* r, int vw, int vh) {
@@ -57,7 +57,7 @@ void FillrateTest::setup(Renderer* r, int vw, int vh) {
 
 void FillrateTest::render(Renderer* r) {
     r->setDepthTest(false);
-    r->setBlending(true);
+    r->setBlending(false);
     r->useShader(Renderer::SHADER_2D_COLOR);
 
     for (int i = 0; i < layers_; i++) {
@@ -66,12 +66,11 @@ void FillrateTest::render(Renderer* r) {
             0.5f + 0.5f * sinf(t * 6.28f),
             0.5f + 0.5f * sinf(t * 6.28f + 2.09f),
             0.5f + 0.5f * sinf(t * 6.28f + 4.19f),
-            0.3f
+            1.0f
         );
         r->drawMesh(quad_);
     }
 
-    r->setBlending(false);
     r->setDepthTest(true);
 }
 

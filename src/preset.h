@@ -13,6 +13,7 @@ struct TexUploadParams   { int tex_size; int uploads_per_frame; };
 struct StateChangeParams { int switches; int shader_count; int tex_count; };
 struct VertexParams      { int vertex_count; };
 struct ShaderALUParams   { int iterations; };
+struct ShaderFMAParams   { int iterations; };
 
 struct BenchPreset {
     const char* name;
@@ -30,6 +31,7 @@ struct BenchPreset {
     StateChangeParams statechange;
     VertexParams      vertex;
     ShaderALUParams   shader_alu;
+    ShaderFMAParams   shader_fma;
 };
 
 enum PresetIndex {

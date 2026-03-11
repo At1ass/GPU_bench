@@ -152,8 +152,15 @@ bool GL2Renderer::buildShader(ShaderProg& prog, const char* vs_src, const char* 
 void GL2Renderer::detectCaps() {
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &caps_.max_texture_size);
 
+    // Query max vertex attributes
+    #ifndef GL_MAX_VERTEX_ATTRIBS
+    #define GL_MAX_VERTEX_ATTRIBS 0x8869
+    #endif
+    caps_.max_vertex_attribs = 8;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &caps_.max_vertex_attribs);
+    if (caps_.max_vertex_attribs < 8) caps_.max_vertex_attribs = 8;
+
     // Desktop GL always supports GL_UNSIGNED_INT indices since GL 1.1.
-    // GL_MAX_ELEMENTS_INDICES is a performance hint, not a hard limit.
     caps_.supports_32bit_indices = true;
 
     // Parse GL version
@@ -168,21 +175,41 @@ void GL2Renderer::detectCaps() {
         }
     }
 
-    // Check GL3 capabilities
+    // Detect capabilities via function pointers first, extension strings as fallback.
     caps_.has_vao = false;
     caps_.has_instancing = false;
     caps_.has_generate_mipmap_func = false;
+    caps_.has_timer_queries = false;
+    caps_.has_fbo = false;
 
-    const char* exts = (const char*)glGetString(GL_EXTENSIONS);
-
+    // VAO: check function pointers (imgl3w or link-time)
+#ifdef CB_NEED_GL_LOAD
+    caps_.has_vao = (imgl3wProcs.gl.GenVertexArrays != 0)
+                 && (imgl3wProcs.gl.BindVertexArray != 0)
+                 && (imgl3wProcs.gl.DeleteVertexArrays != 0);
+    caps_.has_instancing = (cb_glDrawElementsInstanced != 0)
+                        && (cb_glVertexAttribDivisor != 0);
+    caps_.has_generate_mipmap_func = (cb_glGenerateMipmap != 0);
+    caps_.has_fbo = (cb_glGenFramebuffers != 0)
+                 && (cb_glBindFramebuffer != 0)
+                 && (cb_glFramebufferTexture2D != 0)
+                 && (cb_glCheckFramebufferStatus != 0);
+    // Timer queries: check via SDL_GL_GetProcAddress (gpu_timer loads these separately)
+    caps_.has_timer_queries = (SDL_GL_GetProcAddress("glGenQueries") != 0)
+                           && (SDL_GL_GetProcAddress("glBeginQuery") != 0);
+#else
+    // Linux with GL_GLEXT_PROTOTYPES: symbols always exist at link time,
+    // but may not be functional. Use GL version + extension strings.
     if (caps_.gl_major >= 3) {
         caps_.has_vao = true;
         caps_.has_generate_mipmap_func = true;
-        if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 1)) {
+        caps_.has_fbo = true;
+        if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 1))
             caps_.has_instancing = true;
-        }
+        if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 3))
+            caps_.has_timer_queries = true;
     }
-    // Check ARB extensions as fallback
+    const char* exts = (const char*)glGetString(GL_EXTENSIONS);
     if (exts) {
         if (!caps_.has_vao && strstr(exts, "GL_ARB_vertex_array_object"))
             caps_.has_vao = true;
@@ -190,7 +217,14 @@ void GL2Renderer::detectCaps() {
             caps_.has_instancing = true;
         if (!caps_.has_generate_mipmap_func && strstr(exts, "GL_ARB_framebuffer_object"))
             caps_.has_generate_mipmap_func = true;
+        if (!caps_.has_fbo && strstr(exts, "GL_ARB_framebuffer_object"))
+            caps_.has_fbo = true;
+        if (!caps_.has_fbo && strstr(exts, "GL_EXT_framebuffer_object"))
+            caps_.has_fbo = true;
+        if (!caps_.has_timer_queries && strstr(exts, "GL_ARB_timer_query"))
+            caps_.has_timer_queries = true;
     }
+#endif
 
     // Try to detect VRAM. Multiple fallback methods for different drivers.
     caps_.estimated_vram_mb = 0;
@@ -198,15 +232,16 @@ void GL2Renderer::detectCaps() {
     #define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
     #define GL_TEXTURE_FREE_MEMORY_ATI 0x87FC
 
-    if (exts) {
+    const char* exts_vram = (const char*)glGetString(GL_EXTENSIONS);
+    if (exts_vram) {
         // Method 1: NVIDIA proprietary driver
-        if (strstr(exts, "GL_NVX_gpu_memory_info")) {
+        if (strstr(exts_vram, "GL_NVX_gpu_memory_info")) {
             GLint kb = 0;
             glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &kb);
             if (kb > 0) caps_.estimated_vram_mb = kb / 1024;
         }
         // Method 2: AMD proprietary / Mesa RadeonSI (sometimes)
-        if (caps_.estimated_vram_mb == 0 && strstr(exts, "GL_ATI_meminfo")) {
+        if (caps_.estimated_vram_mb == 0 && strstr(exts_vram, "GL_ATI_meminfo")) {
             GLint info[4] = {0};
             glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, info);
             if (info[0] > 0) caps_.estimated_vram_mb = info[0] / 1024;
@@ -258,13 +293,15 @@ void GL2Renderer::detectCaps() {
 #endif // !_WIN32
 #endif // !__APPLE__
 
-    fprintf(stderr, "GL Caps: GL %d.%d, max_tex=%d, 32bit_idx=%s, vram=%dMB, vao=%s, instancing=%s\n",
+    fprintf(stderr, "GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
+            "vao=%s, instancing=%s, fbo=%s, timer_q=%s\n",
             caps_.gl_major, caps_.gl_minor,
-            caps_.max_texture_size,
-            caps_.supports_32bit_indices ? "yes" : "no",
+            caps_.max_texture_size, caps_.max_vertex_attribs,
             caps_.estimated_vram_mb,
             caps_.has_vao ? "yes" : "no",
-            caps_.has_instancing ? "yes" : "no");
+            caps_.has_instancing ? "yes" : "no",
+            caps_.has_fbo ? "yes" : "no",
+            caps_.has_timer_queries ? "yes" : "no");
 }
 
 bool GL2Renderer::init(int w, int h) {
@@ -536,6 +573,10 @@ void GL2Renderer::setUniform1f(int loc, float v) {
     if (loc >= 0) glUniform1f(loc, v);
 }
 
+void GL2Renderer::setUniform4f(int loc, float r, float g, float b, float a) {
+    if (loc >= 0) glUniform4f(loc, r, g, b, a);
+}
+
 void GL2Renderer::setProjection(const Mat4& m) {
     if (current_shader_ && current_shader_->u_proj >= 0)
         glUniformMatrix4fv(current_shader_->u_proj, 1, GL_FALSE, m.ptr());
@@ -644,6 +685,19 @@ void GL2Renderer::setDepthTest(bool enable) {
         glEnable(GL_DEPTH_TEST);
     else
         glDisable(GL_DEPTH_TEST);
+}
+
+void GL2Renderer::resetState() {
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthMask(GL_TRUE);
+    glUseProgram(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    current_shader_ = 0;
 }
 
 const RenderCaps& GL2Renderer::getCaps() const { return caps_; }

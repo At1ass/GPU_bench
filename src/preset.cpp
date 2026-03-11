@@ -16,6 +16,7 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
         { 50, 4, 4 },                      // statechange switches/shaders/textures
         { 100000 },                        // vertex count
         { 50 },                            // shader_alu iterations
+        { 50 },                            // shader_fma iterations
     },
     // Medium
     {
@@ -30,6 +31,7 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
         { 200, 8, 8 },
         { 500000 },
         { 200 },
+        { 100 },
     },
     // Heavy
     {
@@ -44,6 +46,7 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
         { 500, 12, 12 },
         { 2000000 },
         { 500 },
+        { 200 },
     },
     // Ultra
     {
@@ -58,6 +61,7 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
         { 1000, 16, 16 },
         { 8000000 },
         { 1500 },
+        { 400 },
     },
 };
 
@@ -136,9 +140,24 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
 }
 
 int suggestPresetIndex(const RenderCaps& caps) {
-    if (caps.estimated_vram_mb <= 0) return PRESET_MEDIUM; // Unknown → Medium
-    if (caps.estimated_vram_mb < 64)  return PRESET_LIGHT;
-    if (caps.estimated_vram_mb < 256) return PRESET_MEDIUM;
-    if (caps.estimated_vram_mb < 1024) return PRESET_HEAVY;
-    return PRESET_ULTRA;
+    // Start from VRAM-based suggestion
+    int preset = PRESET_MEDIUM;
+    if (caps.estimated_vram_mb > 0) {
+        if (caps.estimated_vram_mb < 64)        preset = PRESET_LIGHT;
+        else if (caps.estimated_vram_mb < 256)  preset = PRESET_MEDIUM;
+        else if (caps.estimated_vram_mb < 1024) preset = PRESET_HEAVY;
+        else                                    preset = PRESET_ULTRA;
+    }
+
+    // Limit by max texture size (Heavy/Ultra need large textures)
+    if (caps.max_texture_size <= 2048 && preset > PRESET_MEDIUM)
+        preset = PRESET_MEDIUM;
+    if (caps.max_texture_size <= 1024 && preset > PRESET_LIGHT)
+        preset = PRESET_LIGHT;
+
+    // Limit by GL version (GL 2.x without VAO → cap at Medium)
+    if (caps.gl_major < 3 && !caps.has_vao && preset > PRESET_MEDIUM)
+        preset = PRESET_MEDIUM;
+
+    return preset;
 }

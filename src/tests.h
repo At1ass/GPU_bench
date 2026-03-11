@@ -197,3 +197,41 @@ private:
     int u_time_loc_;
     float time_;
 };
+
+// --- Shader FMA Test (pure ALU, no transcendentals) ---
+class ShaderFMATest : public BenchTest {
+public:
+    ShaderFMATest(const ShaderFMAParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    ShaderFMAParams params_;
+    int vw_, vh_;
+    MeshHandle quad_;
+    ShaderHandle shader_;
+    int u_iterations_loc_;
+    int u_time_loc_;
+    float time_;
+};
+
+// --- Draw Call Raw Test (no per-draw uniform updates) ---
+class DrawCallRawTest : public BenchTest {
+public:
+    DrawCallRawTest(const DrawCallParams& params);
+    const char* name() const override;
+    const char* scoreUnit() const override;
+    const char* description() const override;
+    void setup(Renderer* r, int vw, int vh) override;
+    void render(Renderer* r) override;
+    void cleanup(Renderer* r) override;
+    double computeScore(const std::vector<double>& t, int vw, int vh) override;
+private:
+    DrawCallParams params_;
+    int vw_, vh_;
+    std::vector<MeshHandle> meshes_;
+};

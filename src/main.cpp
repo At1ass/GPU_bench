@@ -16,6 +16,9 @@ static void printHelp() {
         "  --output-file <path>                  Write results to file\n"
         "  --width <n>                           Viewport width (default: 800)\n"
         "  --height <n>                          Viewport height (default: 600)\n"
+        "  --timing <sync|gpu>                   Timing mode (default: sync)\n"
+        "  --render-res <WxH>                    Render resolution (e.g. 1920x1080, default: native)\n"
+        "  --stress <seconds>                    Stress test mode (headless only)\n"
         "  --gpu <index>                         Select GPU by index (see --list-gpus)\n"
         "  --list-gpus                           List available GPUs and exit\n"
         "  --help                                Show this help\n"
@@ -30,9 +33,13 @@ int main(int argc, char* argv[]) {
     cfg.force_gl = 0; // auto
     cfg.headless = false;
     cfg.output_format = OUTPUT_TEXT;
+    cfg.timing_mode = TIMING_SYNC;
     cfg.output_file = "";
     cfg.config_path = "";
     cfg.test_filter = "all";
+    cfg.stress_duration_sec = 0;
+    cfg.render_width = 0;
+    cfg.render_height = 0;
 
     int gpu_index = -1; // -1 = no selection (use default)
 
@@ -77,6 +84,24 @@ int main(int argc, char* argv[]) {
             cfg.width = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--height") == 0 && i + 1 < argc) {
             cfg.height = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--timing") == 0 && i + 1 < argc) {
+            i++;
+            if (strcmp(argv[i], "sync") == 0)      cfg.timing_mode = TIMING_SYNC;
+            else if (strcmp(argv[i], "gpu") == 0)  cfg.timing_mode = TIMING_GPU;
+            else { fprintf(stderr, "Unknown timing mode: %s\n", argv[i]); return 1; }
+        } else if (strcmp(argv[i], "--render-res") == 0 && i + 1 < argc) {
+            i++;
+            int rw = 0, rh = 0;
+            if (sscanf(argv[i], "%dx%d", &rw, &rh) == 2 && rw >= 64 && rh >= 64) {
+                cfg.render_width = rw;
+                cfg.render_height = rh;
+            } else {
+                fprintf(stderr, "Invalid render resolution: %s (expected WxH, e.g. 1920x1080)\n", argv[i]);
+                return 1;
+            }
+        } else if (strcmp(argv[i], "--stress") == 0 && i + 1 < argc) {
+            cfg.stress_duration_sec = atoi(argv[++i]);
+            cfg.headless = true;
         } else {
             fprintf(stderr, "Unknown argument: %s\n", argv[i]);
             printHelp();
@@ -88,13 +113,8 @@ int main(int argc, char* argv[]) {
     if (cfg.height < 64) cfg.height = 64;
 
     // GPU selection must happen before SDL_Init / GL context creation.
-    // On systems with GLVND (NVIDIA+Mesa), env vars like __GLX_VENDOR_LIBRARY_NAME
-    // must be set before libGL is loaded. Since libGL loads at program start,
-    // we re-exec ourselves with the right env vars.
     if (gpu_index >= 0) {
         selectGPUAndReexec(gpu_index, argc, argv);
-        // If we reach here, either re-exec already happened (env vars are set)
-        // or re-exec is not needed. Log the active env.
         const char* dri = getenv("DRI_PRIME");
         const char* glx = getenv("__GLX_VENDOR_LIBRARY_NAME");
         fprintf(stderr, "GPU %d selected", gpu_index);

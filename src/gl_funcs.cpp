@@ -4,29 +4,14 @@
 
 #ifdef CB_NEED_GL_LOAD
 
-// Define function pointers for GL functions NOT in imgl3w.
-// Functions covered by imgl3w (glDrawElements, glCreateShader, glClear, etc.)
-// are loaded by imgl3wInit2() and accessed via imgl3wProcs macros.
-
-// GL 1.x extras
-PFNCB_glFinish                  cb_glFinish = 0;
-PFNCB_glCullFace                cb_glCullFace = 0;
-PFNCB_glFrontFace               cb_glFrontFace = 0;
-PFNCB_glBlendFunc               cb_glBlendFunc = 0;
-PFNCB_glColorMask               cb_glColorMask = 0;
-PFNCB_glDrawArrays              cb_glDrawArrays = 0;
-PFNCB_glTexSubImage2D           cb_glTexSubImage2D = 0;
-
-// GL 2.0 extras
-PFNCB_glUniform1f               cb_glUniform1f = 0;
-PFNCB_glUniform3f               cb_glUniform3f = 0;
-PFNCB_glUniform4f               cb_glUniform4f = 0;
-PFNCB_glBindAttribLocation      cb_glBindAttribLocation = 0;
-
-// GL 3.0+ extras
-PFNCB_glGenerateMipmap          cb_glGenerateMipmap = 0;
-PFNCB_glDrawElementsInstanced   cb_glDrawElementsInstanced = 0;
-PFNCB_glVertexAttribDivisor     cb_glVertexAttribDivisor = 0;
+// =========================================================================
+// Variable definitions — generated from X-macro lists
+// =========================================================================
+#define CB_DEFINE_PTR(name) PFNCB_##name cb_##name = 0;
+CB_GL_REQUIRED_FUNCS(CB_DEFINE_PTR)
+CB_GL_SOFTREQ_FUNCS(CB_DEFINE_PTR)
+CB_GL3_OPTIONAL_FUNCS(CB_DEFINE_PTR)
+#undef CB_DEFINE_PTR
 
 // SDL-based proc address loader for imgl3w
 static GL3WglProc sdl_get_gl_proc(const char* name) {
@@ -43,41 +28,28 @@ bool loadGL2Functions() {
         return false;
     }
 
-    // Load extra functions not covered by imgl3w
-    #define LOAD(ptr, name) \
-        ptr = (decltype(ptr))SDL_GL_GetProcAddress(#name); \
-        if (!ptr) { fprintf(stderr, "FATAL: GL func '%s' not found\n", #name); return false; }
+    // Load required functions — fatal if missing
+    #define CB_LOAD_REQ(name) \
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name); \
+        if (!cb_##name) { fprintf(stderr, "FATAL: GL func '%s' not found\n", #name); return false; }
+    CB_GL_REQUIRED_FUNCS(CB_LOAD_REQ)
+    #undef CB_LOAD_REQ
 
-    // GL 1.x extras (must also go through loaded pointers for Wine compatibility)
-    LOAD(cb_glFinish,           glFinish)
-    LOAD(cb_glCullFace,         glCullFace)
-    LOAD(cb_glFrontFace,        glFrontFace)
-    LOAD(cb_glBlendFunc,        glBlendFunc)
-    LOAD(cb_glColorMask,        glColorMask)
-    LOAD(cb_glDrawArrays,       glDrawArrays)
+    // Load soft-required functions — non-fatal
+    #define CB_LOAD_SOFT(name) \
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+    CB_GL_SOFTREQ_FUNCS(CB_LOAD_SOFT)
+    #undef CB_LOAD_SOFT
 
-    // glTexSubImage2D — not fatal if missing (GL 1.1, rare to be absent)
-    cb_glTexSubImage2D = (PFNCB_glTexSubImage2D)SDL_GL_GetProcAddress("glTexSubImage2D");
-
-    // GL 2.0 extras
-    LOAD(cb_glUniform1f,        glUniform1f)
-    LOAD(cb_glUniform3f,        glUniform3f)
-    LOAD(cb_glUniform4f,        glUniform4f)
-    LOAD(cb_glBindAttribLocation, glBindAttribLocation)
-
-    #undef LOAD
     return true;
 }
 
 bool loadGL3Functions() {
-    #define LOAD_OPT(ptr, name) \
-        ptr = (decltype(ptr))SDL_GL_GetProcAddress(#name);
-
-    LOAD_OPT(cb_glGenerateMipmap,         glGenerateMipmap)
-    LOAD_OPT(cb_glDrawElementsInstanced,  glDrawElementsInstanced)
-    LOAD_OPT(cb_glVertexAttribDivisor,    glVertexAttribDivisor)
-
-    #undef LOAD_OPT
+    // Load all GL3 optional functions
+    #define CB_LOAD_OPT(name) \
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+    CB_GL3_OPTIONAL_FUNCS(CB_LOAD_OPT)
+    #undef CB_LOAD_OPT
 
     // VAO functions are in imgl3w — check if they were loaded
     bool has_vao = (imgl3wProcs.gl.GenVertexArrays != 0)

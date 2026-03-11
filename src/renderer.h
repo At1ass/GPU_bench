@@ -5,16 +5,21 @@
 
 struct RenderCaps {
     int max_texture_size;
+    int max_vertex_attribs;
     bool supports_32bit_indices;
     int estimated_vram_mb;  // 0 = unknown
     int gl_major, gl_minor;
     bool has_vao;
     bool has_instancing;
     bool has_generate_mipmap_func;
+    bool has_timer_queries;
+    bool has_fbo;
 
-    RenderCaps() : max_texture_size(256), supports_32bit_indices(true), estimated_vram_mb(0),
+    RenderCaps() : max_texture_size(256), max_vertex_attribs(8),
+                   supports_32bit_indices(true), estimated_vram_mb(0),
                    gl_major(2), gl_minor(0), has_vao(false), has_instancing(false),
-                   has_generate_mipmap_func(false) {}
+                   has_generate_mipmap_func(false), has_timer_queries(false),
+                   has_fbo(false) {}
 };
 
 typedef unsigned int ShaderHandle;
@@ -48,6 +53,7 @@ public:
     virtual int          getCustomUniformLoc(ShaderHandle h, const char* name) = 0;
     virtual void         setUniform1i(int loc, int v) = 0;
     virtual void         setUniform1f(int loc, float v) = 0;
+    virtual void         setUniform4f(int loc, float r, float g, float b, float a) = 0;
 
     // Transforms (for SHADER_3D)
     virtual void setProjection(const Mat4& m) = 0;
@@ -73,6 +79,9 @@ public:
     // State
     virtual void setBlending(bool enable) = 0;
     virtual void setDepthTest(bool enable) = 0;
+
+    // GL state reset (call between tests for deterministic state)
+    virtual void resetState() = 0;
 
     // Hardware capabilities
     virtual const RenderCaps& getCaps() const = 0;

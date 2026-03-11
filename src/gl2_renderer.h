@@ -28,6 +28,7 @@ public:
     int          getCustomUniformLoc(ShaderHandle h, const char* name) override;
     void         setUniform1i(int loc, int v) override;
     void         setUniform1f(int loc, float v) override;
+    void         setUniform4f(int loc, float r, float g, float b, float a) override;
 
     void setProjection(const Mat4& m) override;
     void setView(const Mat4& m) override;
@@ -46,6 +47,8 @@ public:
 
     void setBlending(bool enable) override;
     void setDepthTest(bool enable) override;
+
+    void resetState() override;
 
     const RenderCaps& getCaps() const override;
     const char* getGPUVendor() const override;
