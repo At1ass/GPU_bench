@@ -8,6 +8,9 @@ public:
     GPUTimer();
     ~GPUTimer();
 
+    GPUTimer(const GPUTimer&) = delete;
+    GPUTimer& operator=(const GPUTimer&) = delete;
+
     // Initialize and check availability. Call after GL context is created.
     void init();
 
@@ -27,12 +30,12 @@ private:
     unsigned int query_;
 
     // Function pointers for query functions
-    typedef void (APIENTRY *PFN_glGenQueries)(GLsizei, GLuint*);
-    typedef void (APIENTRY *PFN_glDeleteQueries)(GLsizei, const GLuint*);
-    typedef void (APIENTRY *PFN_glBeginQuery)(GLenum, GLuint);
-    typedef void (APIENTRY *PFN_glEndQuery)(GLenum);
-    typedef void (APIENTRY *PFN_glGetQueryObjectui64v)(GLuint, GLenum, GLuint64*);
-    typedef void (APIENTRY *PFN_glGetQueryObjectiv)(GLuint, GLenum, GLint*);
+    using PFN_glGenQueries            = void (APIENTRY *)(GLsizei, GLuint*);
+    using PFN_glDeleteQueries         = void (APIENTRY *)(GLsizei, const GLuint*);
+    using PFN_glBeginQuery            = void (APIENTRY *)(GLenum, GLuint);
+    using PFN_glEndQuery              = void (APIENTRY *)(GLenum);
+    using PFN_glGetQueryObjectui64v   = void (APIENTRY *)(GLuint, GLenum, GLuint64*);
+    using PFN_glGetQueryObjectiv      = void (APIENTRY *)(GLuint, GLenum, GLint*);
 
     PFN_glGenQueries gen_queries_;
     PFN_glDeleteQueries delete_queries_;

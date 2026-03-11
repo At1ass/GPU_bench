@@ -19,9 +19,9 @@ struct MeshData {
 // Explicit constructor prevents accidental cross-type assignment.
 template<typename Tag>
 struct Handle {
-    unsigned int id;
+    unsigned int id = 0;
 
-    Handle() : id(0) {}
+    Handle() = default;
     explicit Handle(unsigned int v) : id(v) {}
 
     operator unsigned int() const { return id; }
@@ -33,8 +33,8 @@ struct Handle {
 struct MeshTag {};
 struct TextureTag {};
 
-typedef Handle<MeshTag>    MeshHandle;
-typedef Handle<TextureTag> TextureHandle;
+using MeshHandle    = Handle<MeshTag>;
+using TextureHandle = Handle<TextureTag>;
 
 static const MeshHandle    INVALID_MESH;
 static const TextureHandle INVALID_TEXTURE;

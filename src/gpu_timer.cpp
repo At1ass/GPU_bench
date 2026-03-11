@@ -16,7 +16,7 @@
 
 // GLuint64 type — use unsigned long long if not already defined
 #if !defined(GL_GLEXT_PROTOTYPES) && !defined(__glext_h_) && !defined(GL_GLEXT_VERSION)
-typedef unsigned long long GLuint64;
+using GLuint64 = unsigned long long;
 #endif
 
 GPUTimer::GPUTimer()

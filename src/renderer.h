@@ -4,30 +4,27 @@
 #include <vector>
 
 struct RenderCaps {
-    int max_texture_size;
-    int max_vertex_attribs;
-    bool supports_32bit_indices;
-    int estimated_vram_mb;  // 0 = unknown
-    int gl_major, gl_minor;
-    bool has_vao;
-    bool has_instancing;
-    bool has_generate_mipmap_func;
-    bool has_timer_queries;
-    bool has_fbo;
-    bool has_compute;
+    int max_texture_size = 256;
+    int max_vertex_attribs = 8;
+    bool supports_32bit_indices = true;
+    int estimated_vram_mb = 0;  // 0 = unknown
+    int gl_major = 2;
+    int gl_minor = 0;
+    bool has_vao = false;
+    bool has_instancing = false;
+    bool has_generate_mipmap_func = false;
+    bool has_timer_queries = false;
+    bool has_fbo = false;
+    bool has_compute = false;
 
-    RenderCaps() : max_texture_size(256), max_vertex_attribs(8),
-                   supports_32bit_indices(true), estimated_vram_mb(0),
-                   gl_major(2), gl_minor(0), has_vao(false), has_instancing(false),
-                   has_generate_mipmap_func(false), has_timer_queries(false),
-                   has_fbo(false), has_compute(false) {}
+    RenderCaps() = default;
 };
 
 struct ShaderTag {};
 struct RenderTargetTag {};
 
-typedef Handle<ShaderTag>       ShaderHandle;
-typedef Handle<RenderTargetTag> RenderTargetHandle;
+using ShaderHandle       = Handle<ShaderTag>;
+using RenderTargetHandle = Handle<RenderTargetTag>;
 
 static const ShaderHandle       INVALID_SHADER;
 static const RenderTargetHandle INVALID_RENDER_TARGET;

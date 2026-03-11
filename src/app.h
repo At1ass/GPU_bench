@@ -40,7 +40,7 @@ struct AppConfig {
     int stress_duration_sec;  // 0 = disabled
 };
 
-static const int NUM_TESTS = 12;
+static constexpr int NUM_TESTS = 12;
 
 struct ResolutionOption {
     int w, h;
@@ -48,7 +48,7 @@ struct ResolutionOption {
 };
 
 // -1 = native, 0..N = index into RESOLUTIONS[]
-static const int RES_NATIVE = -1;
+static constexpr int RES_NATIVE = -1;
 
 class App {
 public:

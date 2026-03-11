@@ -6,15 +6,14 @@
 #include <cstdio>
 
 struct ExportConfig {
-    int width;
-    int height;
-    int warmup_frames;
-    int measure_frames;
-    bool vsync;
-    const char* gpu_tier;  // "legacy", "low", "mid", "high"
+    int width = 0;
+    int height = 0;
+    int warmup_frames = 0;
+    int measure_frames = 0;
+    bool vsync = false;
+    const char* gpu_tier = "unknown";  // "legacy", "low", "mid", "high"
 
-    ExportConfig() : width(0), height(0), warmup_frames(0), measure_frames(0),
-                     vsync(false), gpu_tier("unknown") {}
+    ExportConfig() = default;
 };
 
 void exportText(FILE* out, const std::vector<BenchResult>& results,

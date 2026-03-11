@@ -13,6 +13,8 @@
 
 class Log {
 public:
+    Log() = delete;  // Pure static class, no instances
+
     enum class Level { Debug, Info, Warn, Error };
 
     static void init(const char* log_file = nullptr) {

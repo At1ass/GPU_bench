@@ -10,6 +10,9 @@ public:
     GL2Renderer();
     virtual ~GL2Renderer();
 
+    GL2Renderer(const GL2Renderer&) = delete;
+    GL2Renderer& operator=(const GL2Renderer&) = delete;
+
     bool init(int w, int h) override;
     void shutdown() override;
 
@@ -75,17 +78,18 @@ public:
 
 protected:
     struct GLMesh {
-        GLuint vbo, ibo;
-        int index_count;
-        GLenum index_type; // GL_UNSIGNED_INT or GL_UNSIGNED_SHORT
-        bool valid;
-        GLuint vao; // 0 if not using VAO (GL2 path)
-        GLMesh() : vbo(0), ibo(0), index_count(0), index_type(0), valid(false), vao(0) {}
+        GLuint vbo = 0;
+        GLuint ibo = 0;
+        int index_count = 0;
+        GLenum index_type = 0; // GL_UNSIGNED_INT or GL_UNSIGNED_SHORT
+        bool valid = false;
+        GLuint vao = 0; // 0 if not using VAO (GL2 path)
+        GLMesh() = default;
     };
     struct GLTex {
-        GLuint id;
-        bool valid;
-        GLTex() : id(0), valid(false) {}
+        GLuint id = 0;
+        bool valid = false;
+        GLTex() = default;
     };
     struct ShaderProg {
         GLuint program;
@@ -116,12 +120,13 @@ protected:
 
     // Render targets (FBO)
     struct GLFBO {
-        GLuint fbo;
-        GLuint color_tex;
-        GLuint depth_rb;
-        int w, h;
-        bool valid;
-        GLFBO() : fbo(0), color_tex(0), depth_rb(0), w(0), h(0), valid(false) {}
+        GLuint fbo = 0;
+        GLuint color_tex = 0;
+        GLuint depth_rb = 0;
+        int w = 0;
+        int h = 0;
+        bool valid = false;
+        GLFBO() = default;
     };
     std::vector<GLFBO> render_targets_;
     std::vector<RenderTargetHandle> free_rt_slots_;

@@ -6,23 +6,21 @@
 struct BenchResult {
     std::string name;
     std::string unit;       // e.g. "Mpix/s", "Mtris/s"
-    double score;
-    double avg_ms;
-    double min_ms;
-    double max_ms;
-    double median_ms;
-    double p1_ms;           // 1st percentile
-    double p99_ms;          // 99th percentile
-    double cv;              // coefficient of variation (stddev/avg)
-    double p99_median_ratio; // p99/median ratio
-    double gpu_ms;          // GPU timer result (0 if unavailable)
-    int    frames;
-    bool   valid;
-    bool   sanity_ok;  // true if render output is non-black (sanity check passed)
+    double score = 0;
+    double avg_ms = 0;
+    double min_ms = 0;
+    double max_ms = 0;
+    double median_ms = 0;
+    double p1_ms = 0;           // 1st percentile
+    double p99_ms = 0;          // 99th percentile
+    double cv = 0;              // coefficient of variation (stddev/avg)
+    double p99_median_ratio = 0; // p99/median ratio
+    double gpu_ms = 0;          // GPU timer result (0 if unavailable)
+    int    frames = 0;
+    bool   valid = false;
+    bool   sanity_ok = true;  // true if render output is non-black (sanity check passed)
 
-    BenchResult() : score(0), avg_ms(0), min_ms(0), max_ms(0),
-                    median_ms(0), p1_ms(0), p99_ms(0), cv(0), p99_median_ratio(0),
-                    gpu_ms(0), frames(0), valid(false), sanity_ok(true) {}
+    BenchResult() = default;
 };
 
 // Base class for benchmark tests
@@ -55,13 +53,13 @@ BenchResult computeStats(const std::string& name,
 
 // Composite score (geometric mean of normalized scores by category)
 struct CompositeScore {
-    double overall;
-    double fill;       // Fillrate, Overdraw, Texturing
-    double geometry;   // Geometry, Vertex
-    double compute;    // ShaderALU, ShaderFMA
-    double overhead;   // DrawCall, DrawCallRaw, StateChange, TexUpload
+    double overall = 0;
+    double fill = 0;       // Fillrate, Overdraw, Texturing
+    double geometry = 0;   // Geometry, Vertex
+    double compute = 0;    // ShaderALU, ShaderFMA
+    double overhead = 0;   // DrawCall, DrawCallRaw, StateChange, TexUpload
 
-    CompositeScore() : overall(0), fill(0), geometry(0), compute(0), overhead(0) {}
+    CompositeScore() = default;
 };
 
 CompositeScore computeCompositeScores(const std::vector<BenchResult>& results);
@@ -70,9 +68,9 @@ CompositeScore computeCompositeScores(const std::vector<BenchResult>& results);
 struct BottleneckInfo {
     std::string weakest_category;  // "Fill", "Geometry", "Compute", "Overhead"
     std::string detail;            // Human-readable explanation
-    double weakness_ratio;         // How much weaker vs average (0..1 = bad..ok)
+    double weakness_ratio = 1.0;   // How much weaker vs average (0..1 = bad..ok)
 
-    BottleneckInfo() : weakness_ratio(1.0) {}
+    BottleneckInfo() = default;
 };
 
 BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,

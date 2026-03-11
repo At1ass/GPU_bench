@@ -160,38 +160,38 @@
   // =========================================================================
 
   // GL 1.x extras
-  typedef void   (APIENTRY *PFNCB_glFinish)(void);
-  typedef void   (APIENTRY *PFNCB_glCullFace)(GLenum);
-  typedef void   (APIENTRY *PFNCB_glFrontFace)(GLenum);
-  typedef void   (APIENTRY *PFNCB_glBlendFunc)(GLenum, GLenum);
-  typedef void   (APIENTRY *PFNCB_glColorMask)(GLboolean, GLboolean, GLboolean, GLboolean);
-  typedef void   (APIENTRY *PFNCB_glDepthMask)(GLboolean);
-  typedef void   (APIENTRY *PFNCB_glDrawArrays)(GLenum, GLint, GLsizei);
-  typedef void   (APIENTRY *PFNCB_glTexSubImage2D)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void*);
+  using PFNCB_glFinish         = void   (APIENTRY *)(void);
+  using PFNCB_glCullFace       = void   (APIENTRY *)(GLenum);
+  using PFNCB_glFrontFace      = void   (APIENTRY *)(GLenum);
+  using PFNCB_glBlendFunc      = void   (APIENTRY *)(GLenum, GLenum);
+  using PFNCB_glColorMask      = void   (APIENTRY *)(GLboolean, GLboolean, GLboolean, GLboolean);
+  using PFNCB_glDepthMask      = void   (APIENTRY *)(GLboolean);
+  using PFNCB_glDrawArrays     = void   (APIENTRY *)(GLenum, GLint, GLsizei);
+  using PFNCB_glTexSubImage2D  = void   (APIENTRY *)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void*);
 
   // GL 2.0 extras
-  typedef void   (APIENTRY *PFNCB_glUniform1f)(GLint, GLfloat);
-  typedef void   (APIENTRY *PFNCB_glUniform3f)(GLint, GLfloat, GLfloat, GLfloat);
-  typedef void   (APIENTRY *PFNCB_glUniform4f)(GLint, GLfloat, GLfloat, GLfloat, GLfloat);
-  typedef void   (APIENTRY *PFNCB_glBindAttribLocation)(GLuint, GLuint, const GLchar*);
+  using PFNCB_glUniform1f           = void   (APIENTRY *)(GLint, GLfloat);
+  using PFNCB_glUniform3f           = void   (APIENTRY *)(GLint, GLfloat, GLfloat, GLfloat);
+  using PFNCB_glUniform4f           = void   (APIENTRY *)(GLint, GLfloat, GLfloat, GLfloat, GLfloat);
+  using PFNCB_glBindAttribLocation  = void   (APIENTRY *)(GLuint, GLuint, const GLchar*);
 
   // GL 3.0+ extras
-  typedef void   (APIENTRY *PFNCB_glGenerateMipmap)(GLenum);
-  typedef void   (APIENTRY *PFNCB_glDrawElementsInstanced)(GLenum, GLsizei, GLenum, const void*, GLsizei);
-  typedef void   (APIENTRY *PFNCB_glVertexAttribDivisor)(GLuint, GLuint);
+  using PFNCB_glGenerateMipmap          = void   (APIENTRY *)(GLenum);
+  using PFNCB_glDrawElementsInstanced   = void   (APIENTRY *)(GLenum, GLsizei, GLenum, const void*, GLsizei);
+  using PFNCB_glVertexAttribDivisor     = void   (APIENTRY *)(GLuint, GLuint);
 
   // FBO
-  typedef void   (APIENTRY *PFNCB_glGenFramebuffers)(GLsizei, GLuint*);
-  typedef void   (APIENTRY *PFNCB_glDeleteFramebuffers)(GLsizei, const GLuint*);
-  typedef void   (APIENTRY *PFNCB_glBindFramebuffer)(GLenum, GLuint);
-  typedef void   (APIENTRY *PFNCB_glFramebufferTexture2D)(GLenum, GLenum, GLenum, GLuint, GLint);
-  typedef GLenum (APIENTRY *PFNCB_glCheckFramebufferStatus)(GLenum);
-  typedef void   (APIENTRY *PFNCB_glGenRenderbuffers)(GLsizei, GLuint*);
-  typedef void   (APIENTRY *PFNCB_glDeleteRenderbuffers)(GLsizei, const GLuint*);
-  typedef void   (APIENTRY *PFNCB_glBindRenderbuffer)(GLenum, GLuint);
-  typedef void   (APIENTRY *PFNCB_glRenderbufferStorage)(GLenum, GLenum, GLsizei, GLsizei);
-  typedef void   (APIENTRY *PFNCB_glFramebufferRenderbuffer)(GLenum, GLenum, GLenum, GLuint);
-  typedef void   (APIENTRY *PFNCB_glBlitFramebuffer)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum);
+  using PFNCB_glGenFramebuffers         = void   (APIENTRY *)(GLsizei, GLuint*);
+  using PFNCB_glDeleteFramebuffers      = void   (APIENTRY *)(GLsizei, const GLuint*);
+  using PFNCB_glBindFramebuffer         = void   (APIENTRY *)(GLenum, GLuint);
+  using PFNCB_glFramebufferTexture2D    = void   (APIENTRY *)(GLenum, GLenum, GLenum, GLuint, GLint);
+  using PFNCB_glCheckFramebufferStatus  = GLenum (APIENTRY *)(GLenum);
+  using PFNCB_glGenRenderbuffers        = void   (APIENTRY *)(GLsizei, GLuint*);
+  using PFNCB_glDeleteRenderbuffers     = void   (APIENTRY *)(GLsizei, const GLuint*);
+  using PFNCB_glBindRenderbuffer        = void   (APIENTRY *)(GLenum, GLuint);
+  using PFNCB_glRenderbufferStorage     = void   (APIENTRY *)(GLenum, GLenum, GLsizei, GLsizei);
+  using PFNCB_glFramebufferRenderbuffer = void   (APIENTRY *)(GLenum, GLenum, GLenum, GLuint);
+  using PFNCB_glBlitFramebuffer         = void   (APIENTRY *)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum);
 
   // =========================================================================
   // X-macro function lists — single source of truth.

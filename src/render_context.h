@@ -33,6 +33,9 @@ public:
     virtual void swapBuffers() = 0;
     virtual void setVSync(bool enable) = 0;
 
+    RenderContext(const RenderContext&) = delete;
+    RenderContext& operator=(const RenderContext&) = delete;
+
 protected:
     RenderContext();
 

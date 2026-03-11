@@ -9,6 +9,9 @@ public:
     GLRenderContext();
     ~GLRenderContext();
 
+    GLRenderContext(const GLRenderContext&) = delete;
+    GLRenderContext& operator=(const GLRenderContext&) = delete;
+
     bool init(const AppConfig& cfg) override;
     void shutdown() override;
 
