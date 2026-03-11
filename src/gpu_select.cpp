@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
 
 #ifdef _WIN32
 // On Windows, export symbols to hint the driver which GPU to use.
@@ -189,13 +190,9 @@ std::vector<GPUDevice> enumerateGPUs() {
     closedir(dir);
 
     // Sort by card index
-    for (size_t i = 1; i < gpus.size(); i++) {
-        for (size_t j = i; j > 0 && gpus[j].index < gpus[j-1].index; j--) {
-            GPUDevice tmp = gpus[j];
-            gpus[j] = gpus[j-1];
-            gpus[j-1] = tmp;
-        }
-    }
+    std::sort(gpus.begin(), gpus.end(), [](const GPUDevice& a, const GPUDevice& b) {
+        return a.index < b.index;
+    });
 
     // Heuristic: if we have AMD + AMD, the lower-index one is usually the iGPU
     int amd_count = 0;
@@ -219,7 +216,7 @@ std::vector<GPUDevice> enumerateGPUs() {
 
 bool selectGPU(int index) {
     // Enumerate to find vendor info for the target GPU
-    std::vector<GPUDevice> gpus = enumerateGPUs();
+    auto gpus = enumerateGPUs();
 
     const GPUDevice* target = nullptr;
     for (const auto& gpu : gpus) {
@@ -450,7 +447,7 @@ std::vector<GPUDevice> enumerateGPUs() {
 }
 
 bool selectGPU(int index) {
-    std::vector<GPUDevice> gpus = enumerateGPUs();
+    auto gpus = enumerateGPUs();
 
     const GPUDevice* target = nullptr;
     for (const auto& gpu : gpus) {

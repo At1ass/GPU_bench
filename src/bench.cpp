@@ -4,6 +4,29 @@
 #include <numeric>
 #include <cmath>
 
+// Stability thresholds
+static constexpr double CV_INVALID_THRESHOLD = 0.5;
+
+// GPU tier score thresholds
+static constexpr double TIER_LEGACY_MAX_SCORE = 50.0;
+static constexpr double TIER_LOW_MAX_SCORE    = 500.0;
+static constexpr double TIER_MID_MAX_SCORE    = 5000.0;
+
+// GPU tier VRAM thresholds (MB)
+static constexpr int TIER_LEGACY_MAX_VRAM = 128;
+static constexpr int TIER_LOW_MAX_VRAM    = 512;
+static constexpr int TIER_MID_MAX_VRAM    = 2048;
+
+// GPU tier texture size thresholds
+static constexpr int TIER_LEGACY_MAX_TEXSIZE = 2048;
+static constexpr int TIER_LOW_MAX_TEXSIZE    = 4096;
+
+// Bottleneck detection thresholds
+static constexpr double BOTTLENECK_SIGNIFICANT_RATIO = 0.5;
+static constexpr double BOTTLENECK_WEAKNESS_RATIO    = 0.8;
+static constexpr double DRAWCALL_OVERHEAD_RATIO      = 1.5;
+static constexpr double ALU_FMA_DIVERGENCE_RATIO     = 3.0;
+
 static double percentile(std::vector<double>& sorted, double p) {
     if (sorted.empty()) return 0;
     double idx = p * (sorted.size() - 1);
@@ -29,7 +52,7 @@ BenchResult computeStats(const std::string& name,
         return r;
     }
 
-    std::vector<double> sorted = times_ms;
+    auto sorted = times_ms;
     std::sort(sorted.begin(), sorted.end());
 
     double sum = std::accumulate(sorted.begin(), sorted.end(), 0.0);
@@ -51,7 +74,7 @@ BenchResult computeStats(const std::string& name,
     r.p99_median_ratio = (r.median_ms > 0) ? r.p99_ms / r.median_ms : 0;
 
     // Mark as invalid if CV is too high
-    r.valid = (r.cv <= 0.5);
+    r.valid = (r.cv <= CV_INVALID_THRESHOLD);
     return r;
 }
 
@@ -145,9 +168,9 @@ GPUTier classifyGPUTier(const RenderCaps& caps,
     if (probe_fill_mpixs > 0 && probe_geom_ktris > 0) {
         // Combined score: geometric mean of fill and geometry probe
         double combined = sqrt(probe_fill_mpixs * probe_geom_ktris);
-        if (combined < 50)    return GPUTier::Legacy;
-        if (combined < 500)   return GPUTier::Low;
-        if (combined < 5000)  return GPUTier::Mid;
+        if (combined < TIER_LEGACY_MAX_SCORE) return GPUTier::Legacy;
+        if (combined < TIER_LOW_MAX_SCORE)   return GPUTier::Low;
+        if (combined < TIER_MID_MAX_SCORE)   return GPUTier::Mid;
         return GPUTier::High;
     }
 
@@ -158,15 +181,15 @@ GPUTier classifyGPUTier(const RenderCaps& caps,
 
     // Use VRAM as rough proxy
     if (caps.estimated_vram_mb > 0) {
-        if (caps.estimated_vram_mb < 128)  return GPUTier::Legacy;
-        if (caps.estimated_vram_mb < 512)  return GPUTier::Low;
-        if (caps.estimated_vram_mb < 2048) return GPUTier::Mid;
+        if (caps.estimated_vram_mb < TIER_LEGACY_MAX_VRAM) return GPUTier::Legacy;
+        if (caps.estimated_vram_mb < TIER_LOW_MAX_VRAM)  return GPUTier::Low;
+        if (caps.estimated_vram_mb < TIER_MID_MAX_VRAM)  return GPUTier::Mid;
         return GPUTier::High;
     }
 
     // Use max texture size as last resort
-    if (caps.max_texture_size <= 2048) return GPUTier::Legacy;
-    if (caps.max_texture_size <= 4096) return GPUTier::Low;
+    if (caps.max_texture_size <= TIER_LEGACY_MAX_TEXSIZE) return GPUTier::Legacy;
+    if (caps.max_texture_size <= TIER_LOW_MAX_TEXSIZE)   return GPUTier::Low;
     return GPUTier::Mid;
 }
 
@@ -242,10 +265,10 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
         info.weakness_ratio = min_ratio;
 
         char buf[256];
-        if (min_ratio < 0.5) {
+        if (min_ratio < BOTTLENECK_SIGNIFICANT_RATIO) {
             snprintf(buf, sizeof(buf), "%s is significantly weaker (%.0f%% of average)",
                      cats[weakest].name, min_ratio * 100.0);
-        } else if (min_ratio < 0.8) {
+        } else if (min_ratio < BOTTLENECK_WEAKNESS_RATIO) {
             snprintf(buf, sizeof(buf), "%s is the weakest category (%.0f%% of average)",
                      cats[weakest].name, min_ratio * 100.0);
         } else {
@@ -260,7 +283,7 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     const BenchResult* dcr = findResult(results, "DrawCallRaw");
     if (dc && dcr && dc->valid && dcr->valid && dc->score > 0) {
         double ratio = dcr->score / dc->score;
-        if (ratio > 1.5) {
+        if (ratio > DRAWCALL_OVERHEAD_RATIO) {
             char buf2[256];
             snprintf(buf2, sizeof(buf2), ". Uniform updates cost %.0f%% of draw call time",
                      (ratio - 1.0) * 100.0);
@@ -273,7 +296,7 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     const BenchResult* fma = findResult(results, "ShaderFMA");
     if (alu && fma && alu->valid && fma->valid && alu->score > 0) {
         double ratio = fma->score / alu->score;
-        if (ratio > 3.0) {
+        if (ratio > ALU_FMA_DIVERGENCE_RATIO) {
             info.detail += ". SFU (sin/cos/pow) is significantly slower than FMA";
         }
     }

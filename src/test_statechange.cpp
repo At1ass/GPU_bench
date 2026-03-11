@@ -52,7 +52,7 @@ void StateChangeTest::setup(Renderer* r, int vw, int vh) {
     textures_.resize(params_.tex_count);
     for (int i = 0; i < params_.tex_count; i++) {
         int sz = 64; // small textures, the point is switching not texturing
-        std::vector<unsigned char> pix = genColorNoise(sz, 100 + i);
+        auto pix = genColorNoise(sz, 100 + i);
         textures_[i] = r->createTexture(sz, sz, 3, pix.data());
     }
 }

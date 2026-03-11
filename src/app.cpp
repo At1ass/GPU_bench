@@ -12,6 +12,32 @@
 
 static const float PREVIEW_ROT_SPEED = 0.3f;
 
+// Probe test parameters
+static constexpr int PROBE_FRAMES      = 40;
+static constexpr int PROBE_RESOLUTION  = 256;
+static constexpr int PROBE_FILL_LAYERS = 50;
+static constexpr int PROBE_WARMUP      = 5;
+
+// Preview scene parameters
+static constexpr float PREVIEW_FOV       = 60.0f;
+static constexpr float PREVIEW_NEAR_CLIP = 0.1f;
+static constexpr float PREVIEW_FAR_CLIP  = 200.0f;
+static constexpr float PREVIEW_CAM_DIST  = 22.0f;
+static constexpr float PREVIEW_CAM_Y     = 14.0f;
+static constexpr int   PREVIEW_TEX_SIZE  = 256;
+
+// Validation limits
+static constexpr int MIN_WARMUP_FRAMES  = 30;
+static constexpr int MIN_MEASURE_FRAMES = 60;
+
+// Stress test parameters
+static constexpr double STRESS_TARGET_FRAME_MS  = 40.0;
+static constexpr double STRESS_REPORT_INTERVAL  = 10.0;
+static constexpr int    STRESS_MAX_PASSES        = 10000;
+static constexpr double STRESS_CALIBRATION_RATIO = 0.8;
+static constexpr double STRESS_THROTTLE_WARN     = 5.0;
+static constexpr double STRESS_THROTTLE_SEVERE   = 2.0;
+
 
 const char* App::test_names_[NUM_TESTS] = {
     "Fillrate", "Geometry", "Texturing", "Scene", "DrawCall",
@@ -199,7 +225,7 @@ void App::setupPreviewScene() {
     preview_terrain_ = renderer_->createMesh(MeshGen::terrain(30.0f, 64));
     preview_sphere_  = renderer_->createMesh(MeshGen::sphere(24, 16));
 
-    int sz = 256;
+    int sz = PREVIEW_TEX_SIZE;
     std::vector<unsigned char> pixels(sz * sz * 3);
     for (int y = 0; y < sz; y++)
         for (int x = 0; x < sz; x++) {
@@ -251,11 +277,11 @@ void App::renderPreviewScene(float dt) {
     renderer_->useShader(Renderer::ShaderType::Scene3D);
 
     float aspect = static_cast<float>(window_w_) / static_cast<float>(view_h);
-    renderer_->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 200.0f));
+    renderer_->setProjection(Mat4::perspective(PREVIEW_FOV, aspect, PREVIEW_NEAR_CLIP, PREVIEW_FAR_CLIP));
 
-    float cx = cosf(preview_angle_) * 22.0f;
-    float cz = sinf(preview_angle_) * 22.0f;
-    renderer_->setView(Mat4::lookAt(Vec3(cx, 14.0f, cz), Vec3(0, 2, 0), Vec3(0, 1, 0)));
+    float cx = cosf(preview_angle_) * PREVIEW_CAM_DIST;
+    float cz = sinf(preview_angle_) * PREVIEW_CAM_DIST;
+    renderer_->setView(Mat4::lookAt(Vec3(cx, PREVIEW_CAM_Y, cz), Vec3(0, 2, 0), Vec3(0, 1, 0)));
     renderer_->setLightDir(0.5f, 0.8f, 0.3f);
 
     renderer_->setModel(Mat4());
@@ -292,8 +318,7 @@ bool App::isTestSelected(const char* name) const {
 void App::runQuickProbe() {
     // Quick ~1 second probe to estimate GPU performance tier.
     // Runs short fillrate + geometry tests at small viewport.
-    const int PROBE_FRAMES = 40;
-    const int PROBE_W = 256, PROBE_H = 256;
+    const int PROBE_W = PROBE_RESOLUTION, PROBE_H = PROBE_RESOLUTION;
 
     ctx_->setVSync(false);
     renderer_->resetState();
@@ -301,15 +326,15 @@ void App::runQuickProbe() {
     double fill_score = 0;
     double geom_score = 0;
 
-    // Probe fillrate: 50 layers, 40 frames
+    // Probe fillrate
     {
-        FillrateParams fp; fp.layers = 50;
+        FillrateParams fp; fp.layers = PROBE_FILL_LAYERS;
         FillrateTest test(fp);
         test.setup(renderer_.get(), PROBE_W, PROBE_H);
         renderer_->setViewport(0, 0, PROBE_W, PROBE_H);
 
-        // Warmup 5 frames
-        for (int i = 0; i < 5; i++) {
+        // Warmup
+        for (int i = 0; i < PROBE_WARMUP; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
             test.render(renderer_.get());
             renderer_->finish();
@@ -331,7 +356,7 @@ void App::runQuickProbe() {
         test.cleanup(renderer_.get());
     }
 
-    // Probe geometry: grid 10, 40 frames
+    // Probe geometry: grid 10
     {
         GeometryParams gp; gp.grid_size = 10;
         GeometryTest test(gp);
@@ -339,7 +364,7 @@ void App::runQuickProbe() {
         test.setup(renderer_.get(), PROBE_W, PROBE_H);
         renderer_->setViewport(0, 0, PROBE_W, PROBE_H);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < PROBE_WARMUP; i++) {
             renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
             test.render(renderer_.get());
             renderer_->finish();
@@ -572,8 +597,8 @@ void App::renderUI() {
             ImGui::TreePop();
         }
 
-        if (current_preset_.warmup_frames < 30) current_preset_.warmup_frames = 30;
-        if (current_preset_.measure_frames < 60) current_preset_.measure_frames = 60;
+        if (current_preset_.warmup_frames < MIN_WARMUP_FRAMES) current_preset_.warmup_frames = MIN_WARMUP_FRAMES;
+        if (current_preset_.measure_frames < MIN_MEASURE_FRAMES) current_preset_.measure_frames = MIN_MEASURE_FRAMES;
 
         ImGui::Separator();
 
@@ -994,7 +1019,7 @@ void App::runHeadless() {
 
         // Create noise texture for TMU stress
         int tex_size = 1024;
-        std::vector<unsigned char> noise = genColorNoise(tex_size, 42);
+        auto noise = genColorNoise(tex_size, 42);
         TextureHandle stress_tex = renderer_->createTexture(tex_size, tex_size, 3, noise.data());
 
         int u_tex_loc = -1, u_iter_loc = -1, u_time_loc = -1;
@@ -1019,7 +1044,7 @@ void App::runHeadless() {
         } while(0)
 
         // --- Calibration: find pass count to hit ~40ms per frame ---
-        const double TARGET_FRAME_MS = 40.0;
+        const double TARGET_FRAME_MS = STRESS_TARGET_FRAME_MS;
         int passes = 1;
         float stress_time = 0.0f;
 
@@ -1045,12 +1070,12 @@ void App::runHeadless() {
 
             Log::info("  %d passes = %.1f ms", passes, ms);
 
-            if (ms >= TARGET_FRAME_MS * 0.8) break;
+            if (ms >= TARGET_FRAME_MS * STRESS_CALIBRATION_RATIO) break;
 
             int new_passes = (ms > 0.1)
                 ? static_cast<int>(passes * TARGET_FRAME_MS / ms + 0.5) : passes * 4;
             if (new_passes <= passes) new_passes = passes + 1;
-            if (new_passes > 10000) new_passes = 10000;
+            if (new_passes > STRESS_MAX_PASSES) new_passes = STRESS_MAX_PASSES;
             passes = new_passes;
         }
         ctx_->swapBuffers();
@@ -1061,7 +1086,7 @@ void App::runHeadless() {
         // --- Main stress loop ---
         Timer stress_timer;
         Timer interval_timer;
-        const double REPORT_INTERVAL = 10.0;
+        const double REPORT_INTERVAL = STRESS_REPORT_INTERVAL;
         int total_frames = 0;
         double interval_time_sum = 0;
         int interval_frames = 0;
@@ -1104,10 +1129,10 @@ void App::runHeadless() {
                 } else {
                     double degradation = (baseline_fps > 0)
                         ? (baseline_fps - fps) / baseline_fps * 100.0 : 0;
-                    if (degradation > 5.0) {
+                    if (degradation > STRESS_THROTTLE_WARN) {
                         Log::warn("[%3.0fs] %.1f FPS (avg %.1f ms) — THROTTLING: %.1f%% degradation",
                                 stress_timer.elapsed_sec(), fps, avg_ms, degradation);
-                    } else if (degradation > 2.0) {
+                    } else if (degradation > STRESS_THROTTLE_SEVERE) {
                         Log::info("[%3.0fs] %.1f FPS (avg %.1f ms) — minor degradation: %.1f%%",
                                 stress_timer.elapsed_sec(), fps, avg_ms, degradation);
                     } else {

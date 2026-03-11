@@ -96,7 +96,7 @@ GL2Renderer::~GL2Renderer() {
 }
 
 GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
-    GLuint s = glCreateShader(type);
+    auto s = glCreateShader(type);
     glShaderSource(s, 1, &src, nullptr);
     glCompileShader(s);
     GLint ok = 0;
@@ -112,7 +112,7 @@ GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
 }
 
 GLuint GL2Renderer::linkProgram(GLuint vs, GLuint fs) {
-    GLuint p = glCreateProgram();
+    auto p = glCreateProgram();
     glAttachShader(p, vs);
     glAttachShader(p, fs);
 
@@ -135,8 +135,8 @@ GLuint GL2Renderer::linkProgram(GLuint vs, GLuint fs) {
 }
 
 bool GL2Renderer::buildShader(ShaderProg& prog, const char* vs_src, const char* fs_src) {
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vs_src);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fs_src);
+    auto vs = compileShader(GL_VERTEX_SHADER, vs_src);
+    auto fs = compileShader(GL_FRAGMENT_SHADER, fs_src);
     if (!vs || !fs) return false;
     prog.program = linkProgram(vs, fs);
     glDeleteShader(vs);
@@ -344,18 +344,18 @@ bool GL2Renderer::init(int w, int h) {
 #endif
 
     // Slot 0 for render targets is reserved as "invalid"
-    render_targets_.push_back(GLFBO());
+    render_targets_.emplace_back();
 
     if (!buildShader(shader_3d_, VS_3D, FS_3D)) return false;
     if (!buildShader(shader_2d_color_, VS_2D, FS_2D_COLOR)) return false;
     if (!buildShader(shader_2d_tex_, VS_2D_TEX, FS_2D_TEX)) return false;
 
     // Slot 0 for all meshes/textures/custom_shaders is reserved as "invalid"
-    meshes_.push_back(GLMesh());
+    meshes_.emplace_back();
     meshes_[0].valid = false;
-    textures_.push_back(GLTex());
+    textures_.emplace_back();
     textures_[0].valid = false;
-    custom_shaders_.push_back(0); // slot 0 = invalid
+    custom_shaders_.emplace_back(0); // slot 0 = invalid
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -552,14 +552,14 @@ void GL2Renderer::useShader(ShaderType type) {
 }
 
 ShaderHandle GL2Renderer::createCustomShader(const char* vs_src, const char* fs_src) {
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vs_src);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fs_src);
+    auto vs = compileShader(GL_VERTEX_SHADER, vs_src);
+    auto fs = compileShader(GL_FRAGMENT_SHADER, fs_src);
     if (!vs || !fs) {
         if (vs) glDeleteShader(vs);
         if (fs) glDeleteShader(fs);
         return INVALID_SHADER;
     }
-    GLuint prog = linkProgram(vs, fs);
+    auto prog = linkProgram(vs, fs);
     glDeleteShader(vs);
     glDeleteShader(fs);
     if (!prog) return INVALID_SHADER;

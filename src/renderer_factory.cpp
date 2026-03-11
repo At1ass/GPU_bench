@@ -51,7 +51,7 @@ std::unique_ptr<Renderer> createRenderer(RendererBackend backend) {
     }
 
     // Auto-detect
-    std::unique_ptr<Renderer> r = createWithFallback(RendererBackend::GL4);
+    auto r = createWithFallback(RendererBackend::GL4);
     Log::info("Auto-detected GL %d.%d, using %s renderer",
             GLLoader::glMajor(), GLLoader::glMinor(), r->getRendererName());
     return r;

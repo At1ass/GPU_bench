@@ -19,7 +19,7 @@ void TexturingTest::setup(Renderer* r, int vw, int vh) {
     const RenderCaps& caps = r->getCaps();
     actual_tex_size_ = clampTexSize(tex_size_, caps.max_texture_size);
 
-    std::vector<unsigned char> pixels = genColorNoise(actual_tex_size_, 42);
+    auto pixels = genColorNoise(actual_tex_size_, 42);
     texture_ = r->createTexture(actual_tex_size_, actual_tex_size_, 3, pixels.data());
 }
 

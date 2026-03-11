@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
             printHelp();
             return 0;
         } else if (strcmp(argv[i], "--list-gpus") == 0) {
-            std::vector<GPUDevice> gpus = enumerateGPUs();
+            auto gpus = enumerateGPUs();
             printGPUList(gpus);
             return 0;
         } else if (strcmp(argv[i], "--gpu") == 0 && i + 1 < argc) {

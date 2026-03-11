@@ -28,10 +28,10 @@ void SceneTest::setup(Renderer* r, int vw, int vh) {
     sphere_  = r->createMesh(MeshGen::sphere(params_.sphere_segs, params_.sphere_rings));
     cube_    = r->createMesh(MeshGen::cubeGrid(params_.cube_grid));
 
-    std::vector<unsigned char> tpix = genCheckerboard(terrain_tex_size, std::max(1, terrain_tex_size / 64));
+    auto tpix = genCheckerboard(terrain_tex_size, std::max(1, terrain_tex_size / 64));
     terrain_tex_ = r->createTexture(terrain_tex_size, terrain_tex_size, 3, tpix.data());
 
-    std::vector<unsigned char> opix = genColorNoise(obj_tex_size, 1337);
+    auto opix = genColorNoise(obj_tex_size, 1337);
     obj_tex_ = r->createTexture(obj_tex_size, obj_tex_size, 3, opix.data());
 }
 

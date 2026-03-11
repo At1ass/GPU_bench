@@ -137,7 +137,7 @@ bool GLESRenderer::init(int w, int h) {
 #endif
 
     // Slot 0 for render targets is reserved as "invalid"
-    render_targets_.push_back(GLFBO());
+    render_targets_.emplace_back();
 
     // Build GLES shaders
     if (!buildShader(shader_3d_, GLES_VS_3D, GLES_FS_3D)) return false;
@@ -145,11 +145,11 @@ bool GLESRenderer::init(int w, int h) {
     if (!buildShader(shader_2d_tex_, GLES_VS_2D_TEX, GLES_FS_2D_TEX)) return false;
 
     // Slot 0 reserved as "invalid"
-    meshes_.push_back(GLMesh());
+    meshes_.emplace_back();
     meshes_[0].valid = false;
-    textures_.push_back(GLTex());
+    textures_.emplace_back();
     textures_[0].valid = false;
-    custom_shaders_.push_back(0);
+    custom_shaders_.emplace_back(0);
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
