@@ -757,7 +757,7 @@ void App::runTest(BenchTest* test) {
         bench_progress_ = static_cast<int>(100.0 * i / current_preset_.warmup_frames * 0.1);
         if (!config_.headless) {
             if (use_fbo) {
-                renderer_->bindRenderTarget(0);
+                renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
                 renderer_->setViewport(0, 0, window_w_, window_h_);
                 renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
                 int panel_h = static_cast<int>(window_h_ * 0.55f);
@@ -809,7 +809,7 @@ void App::runTest(BenchTest* test) {
 
         if (!config_.headless) {
             if (use_fbo) {
-                renderer_->bindRenderTarget(0);
+                renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
                 renderer_->setViewport(0, 0, window_w_, window_h_);
                 renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
                 int panel_h = static_cast<int>(window_h_ * 0.55f);
@@ -831,7 +831,7 @@ void App::runTest(BenchTest* test) {
             break;
     }
 
-    if (use_fbo) renderer_->bindRenderTarget(0);
+    if (use_fbo) renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
 
     double score = test->computeScore(times, render_w_, render_h_);
     BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);

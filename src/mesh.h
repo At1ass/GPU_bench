@@ -1,6 +1,7 @@
 #pragma once
 #include "math_types.h"
 #include <vector>
+#include <cstddef>
 
 struct Vertex {
     Vec3 pos;
@@ -13,9 +14,27 @@ struct MeshData {
     std::vector<unsigned int> indices;
 };
 
-// Opaque handles for GPU resources
-typedef unsigned int MeshHandle;
-typedef unsigned int TextureHandle;
+// Strongly-typed GPU resource handles.
+// Implicit conversion to unsigned int allows use as vector index.
+// Explicit constructor prevents accidental cross-type assignment.
+template<typename Tag>
+struct Handle {
+    unsigned int id;
 
-static const MeshHandle   INVALID_MESH    = 0;
-static const TextureHandle INVALID_TEXTURE = 0;
+    Handle() : id(0) {}
+    explicit Handle(unsigned int v) : id(v) {}
+
+    operator unsigned int() const { return id; }
+
+    bool operator==(Handle o) const { return id == o.id; }
+    bool operator!=(Handle o) const { return id != o.id; }
+};
+
+struct MeshTag {};
+struct TextureTag {};
+
+typedef Handle<MeshTag>    MeshHandle;
+typedef Handle<TextureTag> TextureHandle;
+
+static const MeshHandle    INVALID_MESH;
+static const TextureHandle INVALID_TEXTURE;

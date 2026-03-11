@@ -23,11 +23,14 @@ struct RenderCaps {
                    has_fbo(false), has_compute(false) {}
 };
 
-typedef unsigned int ShaderHandle;
-static const ShaderHandle INVALID_SHADER = 0;
+struct ShaderTag {};
+struct RenderTargetTag {};
 
-typedef unsigned int RenderTargetHandle;
-static const RenderTargetHandle INVALID_RENDER_TARGET = 0;
+typedef Handle<ShaderTag>       ShaderHandle;
+typedef Handle<RenderTargetTag> RenderTargetHandle;
+
+static const ShaderHandle       INVALID_SHADER;
+static const RenderTargetHandle INVALID_RENDER_TARGET;
 
 // Abstract renderer interface.
 class Renderer {
