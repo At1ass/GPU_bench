@@ -36,7 +36,7 @@ void TexUploadTest::render(Renderer* r) {
     // Draw a quad to ensure the upload is used
     r->setDepthTest(false);
     r->setBlending(false);
-    r->useShader(Renderer::SHADER_2D_TEXTURED);
+    r->useShader(Renderer::ShaderType::Textured2D);
     r->bindTexture(texture_);
     r->drawMesh(quad_);
 }

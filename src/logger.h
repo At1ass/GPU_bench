@@ -13,26 +13,26 @@
 
 class Log {
 public:
-    enum Level { LVL_DEBUG, LVL_INFO, LVL_WARN, LVL_ERROR };
+    enum class Level { Debug, Info, Warn, Error };
 
-    static void init(const char* log_file = 0) {
+    static void init(const char* log_file = nullptr) {
         if (log_file) {
             s_file = fopen(log_file, "w");
             if (!s_file)
                 fprintf(stderr, "[LOG] Could not open '%s' for writing\n", log_file);
         }
-        s_level = LVL_DEBUG;
+        s_level = Level::Debug;
     }
 
     static void shutdown() {
-        if (s_file) { fclose(s_file); s_file = 0; }
+        if (s_file) { fclose(s_file); s_file = nullptr; }
     }
 
     static void setLevel(Level lvl) { s_level = lvl; }
 
     static void dbg(const char* fmt, ...) {
 #ifdef LOG_DEBUG
-        if (s_level > LVL_DEBUG) return;
+        if (s_level > Level::Debug) return;
         va_list ap; va_start(ap, fmt);
         write("[DBG] ", fmt, ap);
         va_end(ap);
@@ -42,14 +42,14 @@ public:
     }
 
     static void info(const char* fmt, ...) {
-        if (s_level > LVL_INFO) return;
+        if (s_level > Level::Info) return;
         va_list ap; va_start(ap, fmt);
         write("[INF] ", fmt, ap);
         va_end(ap);
     }
 
     static void warn(const char* fmt, ...) {
-        if (s_level > LVL_WARN) return;
+        if (s_level > Level::Warn) return;
         va_list ap; va_start(ap, fmt);
         write("[WRN] ", fmt, ap);
         va_end(ap);

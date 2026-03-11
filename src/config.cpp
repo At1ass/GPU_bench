@@ -111,7 +111,7 @@ bool loadConfig(const char* path, BenchPreset& preset) {
     if (!f) return false;
 
     // Start from Medium as base
-    preset = getPreset(PRESET_MEDIUM);
+    preset = getPreset(static_cast<int>(PresetIndex::Medium));
     preset.name = "Custom";
 
     char line[512];

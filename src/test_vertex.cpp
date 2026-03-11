@@ -37,7 +37,7 @@ void VertexTest::setup(Renderer* r, int vw, int vh) {
 void VertexTest::render(Renderer* r) {
     r->setDepthTest(true);
     r->setBlending(false);
-    r->useShader(Renderer::SHADER_3D);
+    r->useShader(Renderer::ShaderType::Scene3D);
 
     float aspect = static_cast<float>(vw_) / vh_;
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 100.0f));

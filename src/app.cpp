@@ -37,16 +37,16 @@ App::App()
       initialized_(false), window_w_(800), window_h_(600),
       render_w_(800), render_h_(600), selected_resolution_(RES_NATIVE),
       last_frame_time_(0.0),
-      selected_preset_index_(PRESET_MEDIUM), suggested_preset_(PRESET_MEDIUM),
+      selected_preset_index_(static_cast<int>(PresetIndex::Medium)), suggested_preset_(static_cast<int>(PresetIndex::Medium)),
       bench_progress_(0),
-      pending_action_(ACTION_NONE),
+      pending_action_(PendingAction::None),
       preview_terrain_(INVALID_MESH), preview_sphere_(INVALID_MESH),
       preview_tex_(INVALID_TEXTURE), preview_angle_(0.0f), preview_ready_(false),
       bench_rt_(INVALID_RENDER_TARGET),
-      gpu_tier_(GPU_TIER_MID)
+      gpu_tier_(GPUTier::Mid)
 {
     for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
-    current_preset_ = getPreset(PRESET_MEDIUM);
+    current_preset_ = getPreset(static_cast<int>(PresetIndex::Medium));
 }
 
 App::~App() { shutdown(); }
@@ -81,13 +81,13 @@ bool App::init(const AppConfig& cfg) {
         applyPreset(cfg.preset_index);
     }
 
-    ctx_.reset(createRenderContext(cfg));
+    ctx_ = createRenderContext(cfg);
     if (!ctx_ || !ctx_->init(cfg)) {
         Log::err("Failed to initialize render context");
         return false;
     }
 
-    renderer_.reset(createRenderer(cfg.backend));
+    renderer_ = createRenderer(cfg.backend);
     if (!renderer_ || !renderer_->init(window_w_, window_h_)) {
         Log::err("Renderer init failed");
         return false;
@@ -96,8 +96,8 @@ bool App::init(const AppConfig& cfg) {
     hw_info_ = HWInfo::detect();
 
     // Fallback to sync timing if GPU timer queries unavailable
-    if (config_.timing_mode == TIMING_GPU && !renderer_->hasTimerQueries()) {
-        config_.timing_mode = TIMING_SYNC;
+    if (config_.timing_mode == TimingMode::GPU && !renderer_->hasTimerQueries()) {
+        config_.timing_mode = TimingMode::Sync;
         Log::warn("GPU timer queries not available, falling back to sync timing");
     }
 
@@ -178,7 +178,7 @@ void App::shutdown() {
 }
 
 void App::applyPreset(int index) {
-    if (index >= 0 && index < PRESET_COUNT) {
+    if (index >= 0 && index < static_cast<int>(PresetIndex::Count)) {
         current_preset_ = getPreset(index);
         selected_preset_index_ = index;
     }
@@ -248,7 +248,7 @@ void App::renderPreviewScene(float dt) {
 
     renderer_->setDepthTest(true);
     renderer_->setBlending(false);
-    renderer_->useShader(Renderer::SHADER_3D);
+    renderer_->useShader(Renderer::ShaderType::Scene3D);
 
     float aspect = static_cast<float>(window_w_) / static_cast<float>(view_h);
     renderer_->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 200.0f));
@@ -385,7 +385,7 @@ void App::renderUI() {
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
         | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
-    ImGui::Begin("##panel", NULL, flags);
+    ImGui::Begin("##panel", nullptr, flags);
 
     // ---- Hardware info + resolution ----
     ImGui::Text("CPU: %s", hw_info_.cpu_name.c_str());
@@ -439,8 +439,8 @@ void App::renderUI() {
         ImGui::Text("Preset:");
         ImGui::SameLine();
 
-        const char* preset_labels[PRESET_COUNT] = {"Light", "Medium", "Heavy", "Ultra"};
-        for (int i = 0; i < PRESET_COUNT; i++) {
+        const char* preset_labels[static_cast<int>(PresetIndex::Count)] = {"Light", "Medium", "Heavy", "Ultra"};
+        for (int i = 0; i < static_cast<int>(PresetIndex::Count); i++) {
             if (i > 0) ImGui::SameLine();
             char label[64];
             if (i == suggested_preset_)
@@ -589,11 +589,11 @@ void App::renderUI() {
 
         if (!can_run) ImGui::BeginDisabled();
         if (ImGui::Button("Run Selected", ImVec2(110, 0))) {
-            pending_action_ = ACTION_RUN_SELECTED;
+            pending_action_ = PendingAction::RunSelected;
         }
         ImGui::SameLine();
         if (ImGui::Button("Run All", ImVec2(80, 0))) {
-            pending_action_ = ACTION_RUN_ALL;
+            pending_action_ = PendingAction::RunAll;
         }
         if (!can_run) ImGui::EndDisabled();
 
@@ -725,7 +725,7 @@ void App::runTest(BenchTest* test) {
     renderer_->resetState();
     test->setup(renderer_.get(), render_w_, render_h_);
 
-    bool use_gpu_timer = (config_.timing_mode == TIMING_GPU) && renderer_->hasTimerQueries();
+    bool use_gpu_timer = (config_.timing_mode == TimingMode::GPU) && renderer_->hasTimerQueries();
 
     // Warmup
     bool sanity_ok = true;
@@ -913,10 +913,10 @@ void App::exportResults() {
     ecfg.gpu_tier = gpuTierName(gpu_tier_);
 
     switch (config_.output_format) {
-        case OUTPUT_CSV:
+        case OutputFormat::CSV:
             exportCSV(out, results_, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg);
             break;
-        case OUTPUT_JSON:
+        case OutputFormat::JSON:
             exportJSON(out, results_, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
                        &composite_score_, &bottleneck_info_);
             break;
@@ -1167,10 +1167,10 @@ void App::run() {
 
         ctx_->swapBuffers();
 
-        if (pending_action_ != ACTION_NONE) {
+        if (pending_action_ != PendingAction::None) {
             PendingAction action = pending_action_;
-            pending_action_ = ACTION_NONE;
-            if (action == ACTION_RUN_ALL) {
+            pending_action_ = PendingAction::None;
+            if (action == PendingAction::RunAll) {
                 for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
             }
             runSelectedTests();

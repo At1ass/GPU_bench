@@ -22,8 +22,8 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
                 const char* gpu_name, const char* gl_version,
                 const char* renderer_name, const char* preset_name,
                 const ExportConfig& ecfg,
-                const CompositeScore* composite = 0,
-                const BottleneckInfo* bottleneck = 0);
+                const CompositeScore* composite = nullptr,
+                const BottleneckInfo* bottleneck = nullptr);
 
 void exportCSV(FILE* out, const std::vector<BenchResult>& results,
                const HWInfo& hw, const RenderCaps& caps,
@@ -36,5 +36,5 @@ void exportJSON(FILE* out, const std::vector<BenchResult>& results,
                 const char* gpu_name, const char* gl_version,
                 const char* renderer_name, const char* preset_name,
                 const ExportConfig& ecfg,
-                const CompositeScore* composite = 0,
-                const BottleneckInfo* bottleneck = 0);
+                const CompositeScore* composite = nullptr,
+                const BottleneckInfo* bottleneck = nullptr);

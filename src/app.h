@@ -11,15 +11,15 @@
 #include <vector>
 #include <string>
 
-enum OutputFormat {
-    OUTPUT_TEXT = 0,
-    OUTPUT_CSV,
-    OUTPUT_JSON
+enum class OutputFormat {
+    Text = 0,
+    CSV,
+    JSON
 };
 
-enum TimingMode {
-    TIMING_SYNC = 0,  // CPU timer + glFinish
-    TIMING_GPU         // GPU timer queries
+enum class TimingMode {
+    Sync = 0,  // CPU timer + glFinish
+    GPU        // GPU timer queries
 };
 
 #include "renderer_backend.h"
@@ -104,7 +104,7 @@ private:
     int bench_progress_;
 
     // Deferred actions (set by UI, executed in run loop)
-    enum PendingAction { ACTION_NONE, ACTION_RUN_SELECTED, ACTION_RUN_ALL };
+    enum class PendingAction { None, RunSelected, RunAll };
     PendingAction pending_action_;
 
     // Preview scene (shown when idle)

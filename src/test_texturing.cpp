@@ -26,7 +26,7 @@ void TexturingTest::setup(Renderer* r, int vw, int vh) {
 void TexturingTest::render(Renderer* r) {
     r->setDepthTest(false);
     r->setBlending(false);
-    r->useShader(Renderer::SHADER_2D_TEXTURED);
+    r->useShader(Renderer::ShaderType::Textured2D);
     r->bindTexture(texture_);
 
     for (int i = 0; i < layers_; i++) {

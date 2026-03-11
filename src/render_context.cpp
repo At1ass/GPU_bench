@@ -3,7 +3,7 @@
 #include "logger.h"
 #include <cstdio>
 
-RenderContext::RenderContext() : window_(0), headless_(false) {}
+RenderContext::RenderContext() : window_(nullptr), headless_(false) {}
 RenderContext::~RenderContext() {}
 
 bool RenderContext::initSDL(const AppConfig& cfg) {
@@ -41,7 +41,7 @@ bool RenderContext::initSDL(const AppConfig& cfg) {
 void RenderContext::shutdownSDL() {
     if (window_) {
         SDL_DestroyWindow(window_);
-        window_ = 0;
+        window_ = nullptr;
     }
     SDL_Quit();
 }

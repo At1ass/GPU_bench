@@ -50,7 +50,7 @@ public:
     virtual void          destroyTexture(TextureHandle h) = 0;
 
     // Shader selection (built-in shaders)
-    enum ShaderType { SHADER_3D, SHADER_2D_COLOR, SHADER_2D_TEXTURED };
+    enum class ShaderType { Scene3D, Color2D, Textured2D };
     virtual void useShader(ShaderType type) = 0;
 
     // Custom shaders (for ShaderALU, StateChange tests)
@@ -62,7 +62,7 @@ public:
     virtual void         setUniform1f(int loc, float v) = 0;
     virtual void         setUniform4f(int loc, float r, float g, float b, float a) = 0;
 
-    // Transforms (for SHADER_3D)
+    // Transforms (for ShaderType::Scene3D)
     virtual void setProjection(const Mat4& m) = 0;
     virtual void setView(const Mat4& m) = 0;
     virtual void setModel(const Mat4& m) = 0;

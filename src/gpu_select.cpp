@@ -48,10 +48,10 @@ static std::string lookupPciName(unsigned int vendor_id, unsigned int device_id)
         "/usr/share/hwdata/pci.ids",
         "/usr/share/misc/pci.ids",
         "/usr/share/pci.ids",
-        NULL
+        nullptr
     };
 
-    FILE* f = NULL;
+    FILE* f = nullptr;
     for (int i = 0; pci_ids_paths[i]; i++) {
         f = fopen(pci_ids_paths[i], "r");
         if (f) break;
@@ -124,7 +124,7 @@ std::vector<GPUDevice> enumerateGPUs() {
     if (!dir) return gpus;
 
     struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL) {
+    while ((entry = readdir(dir)) != nullptr) {
         // Match "card0", "card1", etc. Skip "card0-DP-1" etc.
         if (strncmp(entry->d_name, "card", 4) != 0) continue;
         const char* numpart = entry->d_name + 4;
@@ -221,7 +221,7 @@ bool selectGPU(int index) {
     // Enumerate to find vendor info for the target GPU
     std::vector<GPUDevice> gpus = enumerateGPUs();
 
-    const GPUDevice* target = NULL;
+    const GPUDevice* target = nullptr;
     for (size_t i = 0; i < gpus.size(); i++) {
         if (gpus[i].index == index) {
             target = &gpus[i];
@@ -276,7 +276,7 @@ bool selectGPU(int index) {
             static const char* mesa_egl_paths[] = {
                 "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
                 "/usr/share/egl/egl_external_platform.d/50_mesa.json",
-                NULL
+                nullptr
             };
             for (int j = 0; mesa_egl_paths[j]; j++) {
                 if (access(mesa_egl_paths[j], R_OK) == 0) {
@@ -366,10 +366,10 @@ typedef HRESULT (WINAPI *PFN_CreateDXGIFactory)(REFIID, void**);
 
 static std::string wcharToUtf8(const WCHAR* wstr) {
     if (!wstr || !wstr[0]) return "";
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
     if (len <= 0) return "";
     std::string result(len - 1, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &result[0], len, NULL, NULL);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &result[0], len, nullptr, nullptr);
     return result;
 }
 
@@ -391,7 +391,7 @@ std::vector<GPUDevice> enumerateGPUs() {
         return gpus;
     }
 
-    CB_IDXGIFactory* factory = NULL;
+    CB_IDXGIFactory* factory = nullptr;
     HRESULT hr = createFactory(CB_IID_IDXGIFactory, (void**)&factory);
     if (hr != S_OK || !factory) {
         FreeLibrary(dxgi_dll);
@@ -399,7 +399,7 @@ std::vector<GPUDevice> enumerateGPUs() {
     }
 
     for (UINT i = 0; ; i++) {
-        CB_IDXGIAdapter* adapter = NULL;
+        CB_IDXGIAdapter* adapter = nullptr;
         hr = factory->lpVtbl->EnumAdapters(factory, i, &adapter);
         if (hr != S_OK || !adapter) break;
 
@@ -452,7 +452,7 @@ std::vector<GPUDevice> enumerateGPUs() {
 bool selectGPU(int index) {
     std::vector<GPUDevice> gpus = enumerateGPUs();
 
-    const GPUDevice* target = NULL;
+    const GPUDevice* target = nullptr;
     for (size_t i = 0; i < gpus.size(); i++) {
         if (gpus[i].index == index) {
             target = &gpus[i];

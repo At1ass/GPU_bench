@@ -20,7 +20,7 @@ void OverdrawTest::setup(Renderer* r, int vw, int vh) {
 void OverdrawTest::render(Renderer* r) {
     r->setDepthTest(false);
     r->setBlending(true);
-    r->useShader(Renderer::SHADER_2D_COLOR);
+    r->useShader(Renderer::ShaderType::Color2D);
 
     for (int i = 0; i < params_.layers; i++) {
         // Uniform color with configurable alpha

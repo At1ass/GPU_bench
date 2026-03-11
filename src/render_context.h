@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL.h>
+#include <memory>
 
 struct AppConfig;
 
@@ -48,4 +49,4 @@ protected:
 
 // Factory: creates the appropriate RenderContext for the given config.
 // Currently always returns GLRenderContext; future: VulkanRenderContext.
-RenderContext* createRenderContext(const AppConfig& cfg);
+std::unique_ptr<RenderContext> createRenderContext(const AppConfig& cfg);

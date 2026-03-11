@@ -21,8 +21,8 @@ typedef unsigned long long GLuint64;
 
 GPUTimer::GPUTimer()
     : available_(false), initialized_(false), query_(0),
-      gen_queries_(0), delete_queries_(0), begin_query_(0),
-      end_query_(0), get_query_ui64v_(0), get_query_iv_(0) {}
+      gen_queries_(nullptr), delete_queries_(nullptr), begin_query_(nullptr),
+      end_query_(nullptr), get_query_ui64v_(nullptr), get_query_iv_(nullptr) {}
 
 GPUTimer::~GPUTimer() {
     if (initialized_ && query_ && delete_queries_) {

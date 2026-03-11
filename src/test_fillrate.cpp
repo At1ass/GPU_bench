@@ -58,7 +58,7 @@ void FillrateTest::setup(Renderer* r, int vw, int vh) {
 void FillrateTest::render(Renderer* r) {
     r->setDepthTest(false);
     r->setBlending(false);
-    r->useShader(Renderer::SHADER_2D_COLOR);
+    r->useShader(Renderer::ShaderType::Color2D);
 
     for (int i = 0; i < layers_; i++) {
         float t = static_cast<float>(i) / layers_;

@@ -79,11 +79,11 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
                                 const CompositeScore& scores);
 
 // GPU performance tier classification
-enum GPUTier {
-    GPU_TIER_LEGACY = 0,  // GL 2.x class, very old GPUs
-    GPU_TIER_LOW    = 1,  // Low-end / old discrete or integrated
-    GPU_TIER_MID    = 2,  // Mid-range
-    GPU_TIER_HIGH   = 3   // High-end
+enum class GPUTier {
+    Legacy = 0,  // GL 2.x class, very old GPUs
+    Low    = 1,  // Low-end / old discrete or integrated
+    Mid    = 2,  // Mid-range
+    High   = 3   // High-end
 };
 
 const char* gpuTierName(GPUTier tier);

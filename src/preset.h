@@ -34,12 +34,12 @@ struct BenchPreset {
     ShaderFMAParams   shader_fma;
 };
 
-enum PresetIndex {
-    PRESET_LIGHT  = 0,
-    PRESET_MEDIUM = 1,
-    PRESET_HEAVY  = 2,
-    PRESET_ULTRA  = 3,
-    PRESET_COUNT  = 4
+enum class PresetIndex {
+    Light  = 0,
+    Medium = 1,
+    Heavy  = 2,
+    Ultra  = 3,
+    Count  = 4
 };
 
 // Get one of the 4 fixed presets

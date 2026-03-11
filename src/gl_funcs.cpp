@@ -7,7 +7,7 @@
 // =========================================================================
 // Variable definitions — generated from X-macro lists
 // =========================================================================
-#define CB_DEFINE_PTR(name) PFNCB_##name cb_##name = 0;
+#define CB_DEFINE_PTR(name) PFNCB_##name cb_##name = nullptr;
 CB_GL_REQUIRED_FUNCS(CB_DEFINE_PTR)
 CB_GL_SOFTREQ_FUNCS(CB_DEFINE_PTR)
 CB_GL3_OPTIONAL_FUNCS(CB_DEFINE_PTR)

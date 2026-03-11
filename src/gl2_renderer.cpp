@@ -78,7 +78,7 @@ static const char* FS_2D_TEX =
 
 // ---- Implementation ----
 
-GL2Renderer::GL2Renderer() : current_shader_(0), initialized_(false),
+GL2Renderer::GL2Renderer() : current_shader_(nullptr), initialized_(false),
     blit_quad_(INVALID_MESH), blit_quad_ready_(false), has_blit_framebuffer_(false) {
     memset(&shader_3d_, 0, sizeof(shader_3d_));
     memset(&shader_2d_color_, 0, sizeof(shader_2d_color_));
@@ -91,13 +91,13 @@ GL2Renderer::~GL2Renderer() {
 
 GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
     GLuint s = glCreateShader(type);
-    glShaderSource(s, 1, &src, 0);
+    glShaderSource(s, 1, &src, nullptr);
     glCompileShader(s);
     GLint ok = 0;
     glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
     if (!ok) {
         char log[512];
-        glGetShaderInfoLog(s, sizeof(log), 0, log);
+        glGetShaderInfoLog(s, sizeof(log), nullptr, log);
         Log::err("Shader compile error: %s", log);
         glDeleteShader(s);
         return 0;
@@ -120,7 +120,7 @@ GLuint GL2Renderer::linkProgram(GLuint vs, GLuint fs) {
     glGetProgramiv(p, GL_LINK_STATUS, &ok);
     if (!ok) {
         char log[512];
-        glGetProgramInfoLog(p, sizeof(log), 0, log);
+        glGetProgramInfoLog(p, sizeof(log), nullptr, log);
         Log::err("Program link error: %s", log);
         glDeleteProgram(p);
         return 0;
@@ -280,7 +280,7 @@ void GL2Renderer::detectCaps() {
         DIR* drm_dir = opendir("/sys/class/drm");
         if (drm_dir) {
             struct dirent* entry;
-            while ((entry = readdir(drm_dir)) != NULL) {
+            while ((entry = readdir(drm_dir)) != nullptr) {
                 if (strncmp(entry->d_name, "card", 4) != 0) continue;
                 // Skip render nodes like "card0-DP-1"
                 if (strchr(entry->d_name, '-')) continue;
@@ -402,7 +402,7 @@ void GL2Renderer::shutdown() {
     if (shader_2d_color_.program) { glDeleteProgram(shader_2d_color_.program); shader_2d_color_.program = 0; }
     if (shader_2d_tex_.program) { glDeleteProgram(shader_2d_tex_.program); shader_2d_tex_.program = 0; }
 
-    current_shader_ = 0;
+    current_shader_ = nullptr;
     initialized_ = false;
 }
 
@@ -539,9 +539,9 @@ void GL2Renderer::destroyTexture(TextureHandle h) {
 
 void GL2Renderer::useShader(ShaderType type) {
     switch (type) {
-        case SHADER_3D:          current_shader_ = &shader_3d_; break;
-        case SHADER_2D_COLOR:    current_shader_ = &shader_2d_color_; break;
-        case SHADER_2D_TEXTURED: current_shader_ = &shader_2d_tex_; break;
+        case ShaderType::Scene3D:     current_shader_ = &shader_3d_; break;
+        case ShaderType::Color2D:    current_shader_ = &shader_2d_color_; break;
+        case ShaderType::Textured2D: current_shader_ = &shader_2d_tex_; break;
     }
     glUseProgram(current_shader_->program);
 }
@@ -573,7 +573,7 @@ ShaderHandle GL2Renderer::createCustomShader(const char* vs_src, const char* fs_
 
 void GL2Renderer::useCustomShader(ShaderHandle h) {
     if (!isValidShader(h)) return;
-    current_shader_ = 0; // no built-in shader active
+    current_shader_ = nullptr; // no built-in shader active
     glUseProgram(custom_shaders_[h]);
 }
 
@@ -721,14 +721,14 @@ void GL2Renderer::resetState() {
     glDepthMask(GL_TRUE);
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
-    current_shader_ = 0;
+    current_shader_ = nullptr;
 }
 
 // --- Unbind state (for ImGui interop) ---
 void GL2Renderer::unbindState() {
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
-    current_shader_ = 0;
+    current_shader_ = nullptr;
 }
 
 // --- Scissor ---
@@ -855,7 +855,7 @@ void GL2Renderer::blitToScreen(RenderTargetHandle rt,
         setViewport(dst_x, dst_y, dst_w, dst_h);
         setDepthTest(false);
         setBlending(false);
-        useShader(SHADER_2D_TEXTURED);
+        useShader(ShaderType::Textured2D);
         glBindTexture(GL_TEXTURE_2D, fbo.color_tex);
         drawMesh(blit_quad_);
     }

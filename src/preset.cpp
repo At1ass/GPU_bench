@@ -2,7 +2,7 @@
 #include "compat.h"
 #include <cstdio>
 
-static const BenchPreset PRESETS[PRESET_COUNT] = {
+static const BenchPreset PRESETS[static_cast<int>(PresetIndex::Count)] = {
     // Light
     {
         "Light", 60, 300, 3.0,
@@ -66,12 +66,12 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
 };
 
 const BenchPreset& getPreset(int index) {
-    if (index < 0 || index >= PRESET_COUNT) index = PRESET_MEDIUM;
+    if (index < 0 || index >= static_cast<int>(PresetIndex::Count)) index = static_cast<int>(PresetIndex::Medium);
     return PRESETS[index];
 }
 
 BenchPreset getCustomPreset() {
-    BenchPreset p = PRESETS[PRESET_MEDIUM];
+    BenchPreset p = PRESETS[static_cast<int>(PresetIndex::Medium)];
     p.name = "Custom";
     return p;
 }
@@ -141,23 +141,23 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
 
 int suggestPresetIndex(const RenderCaps& caps) {
     // Start from VRAM-based suggestion
-    int preset = PRESET_MEDIUM;
+    int preset = static_cast<int>(PresetIndex::Medium);
     if (caps.estimated_vram_mb > 0) {
-        if (caps.estimated_vram_mb < 64)        preset = PRESET_LIGHT;
-        else if (caps.estimated_vram_mb < 256)  preset = PRESET_MEDIUM;
-        else if (caps.estimated_vram_mb < 1024) preset = PRESET_HEAVY;
-        else                                    preset = PRESET_ULTRA;
+        if (caps.estimated_vram_mb < 64)        preset = static_cast<int>(PresetIndex::Light);
+        else if (caps.estimated_vram_mb < 256)  preset = static_cast<int>(PresetIndex::Medium);
+        else if (caps.estimated_vram_mb < 1024) preset = static_cast<int>(PresetIndex::Heavy);
+        else                                    preset = static_cast<int>(PresetIndex::Ultra);
     }
 
     // Limit by max texture size (Heavy/Ultra need large textures)
-    if (caps.max_texture_size <= 2048 && preset > PRESET_MEDIUM)
-        preset = PRESET_MEDIUM;
-    if (caps.max_texture_size <= 1024 && preset > PRESET_LIGHT)
-        preset = PRESET_LIGHT;
+    if (caps.max_texture_size <= 2048 && preset > static_cast<int>(PresetIndex::Medium))
+        preset = static_cast<int>(PresetIndex::Medium);
+    if (caps.max_texture_size <= 1024 && preset > static_cast<int>(PresetIndex::Light))
+        preset = static_cast<int>(PresetIndex::Light);
 
     // Limit by GL version (GL 2.x without VAO → cap at Medium)
-    if (caps.gl_major < 3 && !caps.has_vao && preset > PRESET_MEDIUM)
-        preset = PRESET_MEDIUM;
+    if (caps.gl_major < 3 && !caps.has_vao && preset > static_cast<int>(PresetIndex::Medium))
+        preset = static_cast<int>(PresetIndex::Medium);
 
     return preset;
 }

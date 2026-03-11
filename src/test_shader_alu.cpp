@@ -65,7 +65,7 @@ void ShaderALUTest::render(Renderer* r) {
         r->setUniform1f(u_time_loc_, time_);
     } else {
         // Fallback: use built-in shader
-        r->useShader(Renderer::SHADER_2D_COLOR);
+        r->useShader(Renderer::ShaderType::Color2D);
         r->setColor(1.0f, 0.0f, 0.0f, 1.0f);
     }
 

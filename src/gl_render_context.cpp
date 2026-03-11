@@ -9,7 +9,7 @@
 #include <cstring>
 
 GLRenderContext::GLRenderContext()
-    : gl_context_(0), imgui_initialized_(false) {}
+    : gl_context_(nullptr), imgui_initialized_(false) {}
 
 GLRenderContext::~GLRenderContext() { shutdown(); }
 
@@ -72,7 +72,7 @@ bool GLRenderContext::initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = NULL;
+    io.IniFilename = nullptr;
     ImGui::StyleColorsDark();
     ImGui_ImplSDL2_InitForOpenGL(window_, gl_context_);
 
@@ -127,7 +127,7 @@ void GLRenderContext::shutdown() {
     }
     if (gl_context_) {
         SDL_GL_DeleteContext(gl_context_);
-        gl_context_ = 0;
+        gl_context_ = nullptr;
     }
     shutdownSDL();
 }
@@ -160,8 +160,8 @@ void GLRenderContext::setVSync(bool enable) {
 }
 
 // Factory
-RenderContext* createRenderContext(const AppConfig& cfg) {
+std::unique_ptr<RenderContext> createRenderContext(const AppConfig& cfg) {
     // Currently only GL/GLES. Future: check cfg for Vulkan.
     (void)cfg;
-    return new GLRenderContext();
+    return std::unique_ptr<RenderContext>(new GLRenderContext());
 }

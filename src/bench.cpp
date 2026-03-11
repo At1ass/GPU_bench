@@ -60,7 +60,7 @@ static const BenchResult* findResult(const std::vector<BenchResult>& results, co
     for (size_t i = 0; i < results.size(); i++) {
         if (results[i].name == name) return &results[i];
     }
-    return 0;
+    return nullptr;
 }
 
 // Geometric mean of non-zero values
@@ -130,10 +130,10 @@ CompositeScore computeCompositeScores(const std::vector<BenchResult>& results) {
 
 const char* gpuTierName(GPUTier tier) {
     switch (tier) {
-        case GPU_TIER_LEGACY: return "legacy";
-        case GPU_TIER_LOW:    return "low";
-        case GPU_TIER_MID:    return "mid";
-        case GPU_TIER_HIGH:   return "high";
+        case GPUTier::Legacy: return "legacy";
+        case GPUTier::Low:    return "low";
+        case GPUTier::Mid:    return "mid";
+        case GPUTier::High:   return "high";
         default:              return "unknown";
     }
 }
@@ -145,38 +145,38 @@ GPUTier classifyGPUTier(const RenderCaps& caps,
     if (probe_fill_mpixs > 0 && probe_geom_ktris > 0) {
         // Combined score: geometric mean of fill and geometry probe
         double combined = sqrt(probe_fill_mpixs * probe_geom_ktris);
-        if (combined < 50)    return GPU_TIER_LEGACY;
-        if (combined < 500)   return GPU_TIER_LOW;
-        if (combined < 5000)  return GPU_TIER_MID;
-        return GPU_TIER_HIGH;
+        if (combined < 50)    return GPUTier::Legacy;
+        if (combined < 500)   return GPUTier::Low;
+        if (combined < 5000)  return GPUTier::Mid;
+        return GPUTier::High;
     }
 
     // Fallback: classify from caps only
     // GL 2.x without VAO → legacy
     if (caps.gl_major < 3 && !caps.has_vao)
-        return GPU_TIER_LEGACY;
+        return GPUTier::Legacy;
 
     // Use VRAM as rough proxy
     if (caps.estimated_vram_mb > 0) {
-        if (caps.estimated_vram_mb < 128)  return GPU_TIER_LEGACY;
-        if (caps.estimated_vram_mb < 512)  return GPU_TIER_LOW;
-        if (caps.estimated_vram_mb < 2048) return GPU_TIER_MID;
-        return GPU_TIER_HIGH;
+        if (caps.estimated_vram_mb < 128)  return GPUTier::Legacy;
+        if (caps.estimated_vram_mb < 512)  return GPUTier::Low;
+        if (caps.estimated_vram_mb < 2048) return GPUTier::Mid;
+        return GPUTier::High;
     }
 
     // Use max texture size as last resort
-    if (caps.max_texture_size <= 2048) return GPU_TIER_LEGACY;
-    if (caps.max_texture_size <= 4096) return GPU_TIER_LOW;
-    return GPU_TIER_MID;
+    if (caps.max_texture_size <= 2048) return GPUTier::Legacy;
+    if (caps.max_texture_size <= 4096) return GPUTier::Low;
+    return GPUTier::Mid;
 }
 
 int tierToPresetIndex(GPUTier tier) {
     switch (tier) {
-        case GPU_TIER_LEGACY: return PRESET_LIGHT;
-        case GPU_TIER_LOW:    return PRESET_MEDIUM;
-        case GPU_TIER_MID:    return PRESET_HEAVY;
-        case GPU_TIER_HIGH:   return PRESET_ULTRA;
-        default:              return PRESET_MEDIUM;
+        case GPUTier::Legacy: return static_cast<int>(PresetIndex::Light);
+        case GPUTier::Low:    return static_cast<int>(PresetIndex::Medium);
+        case GPUTier::Mid:    return static_cast<int>(PresetIndex::Heavy);
+        case GPUTier::High:   return static_cast<int>(PresetIndex::Ultra);
+        default:              return static_cast<int>(PresetIndex::Medium);
     }
 }
 

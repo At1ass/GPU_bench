@@ -29,11 +29,11 @@ int main(int argc, char* argv[]) {
     AppConfig cfg;
     cfg.width = 800;
     cfg.height = 600;
-    cfg.preset_index = PRESET_MEDIUM;
+    cfg.preset_index = static_cast<int>(PresetIndex::Medium);
     cfg.backend = RendererBackend::Auto;
     cfg.headless = false;
-    cfg.output_format = OUTPUT_TEXT;
-    cfg.timing_mode = TIMING_SYNC;
+    cfg.output_format = OutputFormat::Text;
+    cfg.timing_mode = TimingMode::Sync;
     cfg.output_file = "";
     cfg.config_path = "";
     cfg.test_filter = "all";
@@ -55,10 +55,10 @@ int main(int argc, char* argv[]) {
             gpu_index = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--preset") == 0 && i + 1 < argc) {
             i++;
-            if (strcmp(argv[i], "light") == 0)       cfg.preset_index = PRESET_LIGHT;
-            else if (strcmp(argv[i], "medium") == 0)  cfg.preset_index = PRESET_MEDIUM;
-            else if (strcmp(argv[i], "heavy") == 0)   cfg.preset_index = PRESET_HEAVY;
-            else if (strcmp(argv[i], "ultra") == 0)   cfg.preset_index = PRESET_ULTRA;
+            if (strcmp(argv[i], "light") == 0)       cfg.preset_index = static_cast<int>(PresetIndex::Light);
+            else if (strcmp(argv[i], "medium") == 0)  cfg.preset_index = static_cast<int>(PresetIndex::Medium);
+            else if (strcmp(argv[i], "heavy") == 0)   cfg.preset_index = static_cast<int>(PresetIndex::Heavy);
+            else if (strcmp(argv[i], "ultra") == 0)   cfg.preset_index = static_cast<int>(PresetIndex::Ultra);
             else { fprintf(stderr, "Unknown preset: %s\n", argv[i]); return 1; }
         } else if (strcmp(argv[i], "--renderer") == 0 && i + 1 < argc) {
             i++;
@@ -76,9 +76,9 @@ int main(int argc, char* argv[]) {
             cfg.test_filter = argv[++i];
         } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
             i++;
-            if (strcmp(argv[i], "text") == 0)       cfg.output_format = OUTPUT_TEXT;
-            else if (strcmp(argv[i], "csv") == 0)   cfg.output_format = OUTPUT_CSV;
-            else if (strcmp(argv[i], "json") == 0)  cfg.output_format = OUTPUT_JSON;
+            if (strcmp(argv[i], "text") == 0)       cfg.output_format = OutputFormat::Text;
+            else if (strcmp(argv[i], "csv") == 0)   cfg.output_format = OutputFormat::CSV;
+            else if (strcmp(argv[i], "json") == 0)  cfg.output_format = OutputFormat::JSON;
             else { fprintf(stderr, "Unknown output format: %s\n", argv[i]); return 1; }
         } else if (strcmp(argv[i], "--output-file") == 0 && i + 1 < argc) {
             cfg.output_file = argv[++i];
@@ -88,8 +88,8 @@ int main(int argc, char* argv[]) {
             cfg.height = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--timing") == 0 && i + 1 < argc) {
             i++;
-            if (strcmp(argv[i], "sync") == 0)      cfg.timing_mode = TIMING_SYNC;
-            else if (strcmp(argv[i], "gpu") == 0)  cfg.timing_mode = TIMING_GPU;
+            if (strcmp(argv[i], "sync") == 0)      cfg.timing_mode = TimingMode::Sync;
+            else if (strcmp(argv[i], "gpu") == 0)  cfg.timing_mode = TimingMode::GPU;
             else { fprintf(stderr, "Unknown timing mode: %s\n", argv[i]); return 1; }
         } else if (strcmp(argv[i], "--render-res") == 0 && i + 1 < argc) {
             i++;
