@@ -83,6 +83,12 @@ GPU timing uses `GL_TIME_ELAPSED` queries (requires GL 3.3+ or GL_ARB_timer_quer
 # Force OpenGL 3.0+ renderer
 ./gpu_benchmark --renderer gl3 --headless --test all
 
+# Force OpenGL 4.3+ renderer (compute shader support)
+./gpu_benchmark --renderer gl4 --headless --test all
+
+# Force OpenGL ES 2.0/3.0 renderer (for embedded/mobile-class GPUs)
+./gpu_benchmark --renderer gles --headless --test all
+
 # Auto-detect (default)
 ./gpu_benchmark --renderer auto --headless --test all
 ```
@@ -138,8 +144,11 @@ Use comma-separated lowercase names:
 
 ```
 fillrate, geometry, texturing, scene, drawcall, overdraw,
-texupload, statechange, vertex, shaderalu, shaderfma, drawcallraw
+texupload, statechange, vertex, shaderalu, shaderfma, drawcallraw,
+instanced_draw, compute_fma
 ```
+
+**Note:** Tests requiring unsupported GL features are automatically skipped in headless mode and greyed out in GUI. For example, `compute_fma` requires GL 4.3+ and will be skipped on older GPUs.
 
 Or `all` to run everything:
 

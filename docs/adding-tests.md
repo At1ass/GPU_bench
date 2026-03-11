@@ -27,11 +27,52 @@ The benchmark harness calls these methods in order:
 3. `cleanup()` — destroy GPU resources
 4. `computeScore()` — compute a score from collected frame times
 
+### Test Registry (X-macro)
+
+Tests are registered via the X-macro file `src/tests/test_registry.def` — the
+**single source of truth** for all tests. Adding a new test means adding one
+line to this file. Everything else (enum IDs, the `g_tests[]` metadata table,
+UI labels, CLI names) is generated automatically.
+
+Each line has the format:
+
+```
+X(TestId, ClassName, "DisplayName", "cli_name", Category, "Description", "Unit", preset_field, required_caps)
+```
+
+The generated infrastructure lives in two headers:
+
+- **`src/tests/test_registry.h`** — `TestId` enum, `TestInfo` struct,
+  `TestCap` capability flags, `g_tests[]` array, `NUM_TESTS` constant.
+- **`src/tests/tests.h`** — test class declarations and helper includes.
+
+### Capability Flags
+
+The 9th field in `test_registry.def` is a bitmask of `TestCap` flags that
+declare which GL features the test requires. Available flags
+(from `src/tests/test_registry.h`):
+
+| Flag | Bit | Meaning |
+|------|-----|---------|
+| `Cap_None` | 0 | No special requirements (GL 2.0) |
+| `Cap_FBO` | 1 << 0 | Framebuffer objects |
+| `Cap_VAO` | 1 << 1 | Vertex Array Objects |
+| `Cap_Instancing` | 1 << 2 | Instanced rendering (GL 3.3+ / ARB) |
+| `Cap_Compute` | 1 << 3 | Compute shaders (GL 4.3+) |
+| `Cap_TimerQuery` | 1 << 4 | GL_TIME_ELAPSED queries |
+| `Cap_GL3` | 1 << 5 | Requires OpenGL 3.x context |
+| `Cap_GL4` | 1 << 6 | Requires OpenGL 4.x context |
+
+At startup the harness calls `getAvailableCaps()` to probe the current GL
+context. Tests whose `required_caps` are not satisfied are **automatically
+disabled** in the UI and skipped in CLI/headless runs — no manual checking
+needed in your test code.
+
 ## Step-by-Step Guide
 
 ### 1. Define parameters
 
-Add a parameter struct in `src/preset.h`:
+Add a parameter struct in `src/bench/preset.h`:
 
 ```cpp
 struct MyTestParams { int complexity; };
@@ -48,7 +89,7 @@ struct BenchPreset {
 
 ### 2. Set preset values
 
-In `src/preset.cpp`, add values for all 4 presets:
+In `src/bench/preset.cpp`, add values for all 4 presets:
 
 ```cpp
 static const BenchPreset PRESETS[PRESET_COUNT] = {
@@ -77,7 +118,7 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
 
 ### 3. Implement the test
 
-Create `src/test_mytest.cpp`:
+Create `src/tests/test_mytest.cpp`:
 
 ```cpp
 #include "tests.h"
@@ -128,7 +169,7 @@ double MyTestClass::computeScore(const std::vector<double>& times, int vw, int v
 
 ### 4. Declare the class
 
-In `src/tests.h`:
+In `src/tests/tests.h`:
 
 ```cpp
 class MyTestClass : public BenchTest {
@@ -150,25 +191,27 @@ private:
 
 ### 5. Register the test
 
-**`src/app.h`** — increment `NUM_TESTS` and add the test name:
+Add **one line** to `src/tests/test_registry.def`:
 
 ```cpp
-static const int NUM_TESTS = 13; // was 12
+X(MyTest, MyTestClass, "MyTest", "mytest", Compute, "Description of what this test measures", "Mops/s", mytest, Cap_None)
 ```
 
-**`src/app.cpp`** — add to `test_names_[]`:
+That's it — the `TestId` enum value, `g_tests[]` entry, CLI name, and UI label
+are all generated automatically from this single line. No need to edit
+`app.h` or `app.cpp`.
+
+If your test requires specific GL features, set the capability flags
+accordingly. For example, a test that needs instanced rendering:
 
 ```cpp
-const char* App::test_names_[NUM_TESTS] = {
-    // ... existing tests ...
-    "MyTest"
-};
+X(MyTest, MyTestClass, "MyTest", "mytest", Geometry, "Instanced test", "Mtri/s", mytest, Cap_Instancing)
 ```
 
-Add to `runSelectedTests()`:
+Or a compute shader test (GL 4.3+):
 
 ```cpp
-if (test_enabled_[12] && running_) { MyTestClass t(p.mytest); runTest(&t); }
+X(MyTest, MyTestClass, "MyTest", "mytest", Compute, "Compute test", "GFLOP/s", mytest, Cap_Compute)
 ```
 
 ### 6. Add to build
@@ -178,7 +221,7 @@ In `CMakeLists.txt`, add to `SOURCES`:
 ```cmake
 set(SOURCES
     # ... existing sources ...
-    src/test_mytest.cpp
+    src/tests/test_mytest.cpp
 )
 ```
 
@@ -224,6 +267,7 @@ Tests interact with the GPU through the `Renderer` abstract interface. Key metho
 | `createMesh(MeshData)` | Upload vertex/index data, returns handle |
 | `destroyMesh(handle)` | Free GPU mesh resources |
 | `drawMesh(handle)` | Draw a mesh |
+| `drawMeshInstanced(handle, count)` | Draw mesh with hardware instancing (GL3+) |
 | `createTexture(w, h, ch, pixels)` | Create texture from pixel data |
 | `destroyTexture(handle)` | Free GPU texture |
 | `bindTexture(handle)` | Bind texture for rendering |
@@ -231,11 +275,17 @@ Tests interact with the GPU through the `Renderer` abstract interface. Key metho
 | `createCustomShader(vs, fs)` | Compile custom GLSL shader |
 | `setColor(r, g, b, a)` | Set current draw color |
 | `setModel(Mat4)` | Set model transform matrix |
+| `setUniformMat4(loc, Mat4)` | Set a mat4 uniform by location |
 | `setDepthTest(bool)` | Enable/disable depth test |
 | `setBlending(bool)` | Enable/disable alpha blending |
 | `setViewport(x, y, w, h)` | Set GL viewport |
 | `clear(r, g, b, a)` | Clear framebuffer |
 | `resetState()` | Reset GL state to defaults |
+| `createComputeShader(source)` | Compile compute shader (GL4.3+ only) |
+| `dispatchCompute(x, y, z)` | Launch compute work groups (GL4.3+ only) |
+| `createSSBO(binding)` | Create shader storage buffer object (GL4.3+ only) |
+| `destroySSBO()` | Destroy SSBO |
+| `bindSSBO()` | Bind SSBO for use |
 
 ### Mesh generation helpers
 
@@ -261,6 +311,18 @@ r->drawMesh(quad);
 r->destroyCustomShader(sh);
 ```
 
+## File Reference
+
+| What | Where |
+|------|-------|
+| Test implementation | `src/tests/test_mytest.cpp` |
+| Test class declaration | `src/tests/tests.h` |
+| Test registration (X-macro) | `src/tests/test_registry.def` |
+| Registry types & enums | `src/tests/test_registry.h` |
+| Preset parameter structs | `src/bench/preset.h` |
+| Preset values | `src/bench/preset.cpp` |
+| Build file | `CMakeLists.txt` |
+
 ## Guidelines
 
 - **Always clean up** all GPU resources in `cleanup()` — meshes, textures, shaders
@@ -269,3 +331,4 @@ r->destroyCustomShader(sh);
 - **Target GLSL 1.20** for maximum compatibility (GL 2.0+)
 - **Don't call glFinish()** in render() — the harness handles synchronization
 - **Score should scale linearly** with the workload parameter for meaningful comparisons
+- **Set capability flags** in `test_registry.def` if your test needs GL3+/GL4+ features

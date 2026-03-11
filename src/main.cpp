@@ -1,5 +1,5 @@
 #include "app.h"
-#include "gpu_select.h"
+#include "platform/gpu_select.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>

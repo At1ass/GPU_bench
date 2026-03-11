@@ -1,22 +1,15 @@
 #include "app.h"
-#include "mesh_gen.h"
-#include "renderer_factory.h"
-#include "config.h"
-#include "results.h"
-#include <imgui.h>
-#include "compat.h"
-#include "logger.h"
+#include "geometry/mesh_gen.h"
+#include "renderer/renderer_factory.h"
+#include "platform/config.h"
+#include "bench/results.h"
+#include "platform/compat.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cmath>
 #include <cstring>
 
 static const float PREVIEW_ROT_SPEED = 0.3f;
-
-// Probe test parameters
-static constexpr int PROBE_FRAMES      = 40;
-static constexpr int PROBE_RESOLUTION  = 256;
-static constexpr int PROBE_FILL_LAYERS = 50;
-static constexpr int PROBE_WARMUP      = 5;
 
 // Preview scene parameters
 static constexpr float PREVIEW_FOV       = 60.0f;
@@ -25,18 +18,6 @@ static constexpr float PREVIEW_FAR_CLIP  = 200.0f;
 static constexpr float PREVIEW_CAM_DIST  = 22.0f;
 static constexpr float PREVIEW_CAM_Y     = 14.0f;
 static constexpr int   PREVIEW_TEX_SIZE  = 256;
-
-// Validation limits
-static constexpr int MIN_WARMUP_FRAMES  = 30;
-static constexpr int MIN_MEASURE_FRAMES = 60;
-
-// Stress test parameters
-static constexpr double STRESS_TARGET_FRAME_MS  = 40.0;
-static constexpr double STRESS_REPORT_INTERVAL  = 10.0;
-static constexpr int    STRESS_MAX_PASSES        = 10000;
-static constexpr double STRESS_CALIBRATION_RATIO = 0.8;
-static constexpr double STRESS_THROTTLE_WARN     = 5.0;
-static constexpr double STRESS_THROTTLE_SEVERE   = 2.0;
 
 
 const ResolutionOption App::RESOLUTIONS[] = {
@@ -50,19 +31,18 @@ const ResolutionOption App::RESOLUTIONS[] = {
     { 3440, 1440, "3440x1440" },
     { 3840, 2160, "3840x2160" },
 };
+
 const int App::NUM_RESOLUTIONS = sizeof(App::RESOLUTIONS) / sizeof(App::RESOLUTIONS[0]);
 
 App::App()
-    : running_(false), benchmarking_(false),
+    : running_(false),
       initialized_(false), window_w_(800), window_h_(600),
       render_w_(800), render_h_(600), selected_resolution_(RES_NATIVE),
       last_frame_time_(0.0),
       selected_preset_index_(static_cast<int>(PresetIndex::Medium)), suggested_preset_(static_cast<int>(PresetIndex::Medium)),
-      bench_progress_(0),
       pending_action_(PendingAction::None),
       preview_terrain_(INVALID_MESH), preview_sphere_(INVALID_MESH),
       preview_tex_(INVALID_TEXTURE), preview_angle_(0.0f), preview_ready_(false),
-      bench_rt_(INVALID_RENDER_TARGET),
       gpu_tier_(GPUTier::Mid)
 {
     for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
@@ -122,7 +102,10 @@ bool App::init(const AppConfig& cfg) {
     }
 
     // Quick probe for GPU tier detection and preset recommendation
-    runQuickProbe();
+    // Pass nullptr for callbacks — UI is not ready during init
+    gpu_tier_ = bench_runner_.runQuickProbe(renderer_.get(), ctx_.get(),
+                                            render_w_, render_h_, nullptr);
+    suggested_preset_ = tierToPresetIndex(gpu_tier_);
     validateCurrentPreset();
 
     // Set up render resolution
@@ -178,11 +161,6 @@ void App::shutdown() {
     if (!initialized_) return;
     initialized_ = false;
     Log::shutdown();
-
-    if (bench_rt_ != INVALID_RENDER_TARGET && renderer_) {
-        renderer_->destroyRenderTarget(bench_rt_);
-        bench_rt_ = INVALID_RENDER_TARGET;
-    }
 
     if (!config_.headless) {
         cleanupPreviewScene();
@@ -310,597 +288,127 @@ bool App::isTestSelected(const char* name) const {
     return false;
 }
 
-void App::runQuickProbe() {
-    // Quick ~1 second probe to estimate GPU performance tier.
-    // Runs short fillrate + geometry tests at small viewport.
-    const int PROBE_W = PROBE_RESOLUTION, PROBE_H = PROBE_RESOLUTION;
+// --- BenchCallbacks implementation ---
 
-    ctx_->setVSync(false);
-    renderer_->resetState();
+bool App::onFrame(RenderTargetHandle rt) {
+    processEvents();
 
-    double fill_score = 0;
-    double geom_score = 0;
-
-    // Probe fillrate
-    {
-        FillrateParams fp; fp.layers = PROBE_FILL_LAYERS;
-        FillrateTest test(fp);
-        test.setup(renderer_.get(), PROBE_W, PROBE_H);
-        renderer_->setViewport(0, 0, PROBE_W, PROBE_H);
-
-        // Warmup
-        for (int i = 0; i < PROBE_WARMUP; i++) {
-            renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            test.render(renderer_.get());
-            renderer_->finish();
+    if (!config_.headless) {
+        // Present benchmark output to screen
+        if (rt != INVALID_RENDER_TARGET) {
+            renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
+            renderer_->setViewport(0, 0, window_w_, window_h_);
+            renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
+            int panel_h = static_cast<int>(window_h_ * 0.55f);
+            int view_h = window_h_ - panel_h;
+            if (view_h > 0)
+                renderer_->blitToScreen(rt, 0, panel_h, window_w_, view_h);
         }
-
-        // Measure
-        std::vector<double> times;
-        times.reserve(PROBE_FRAMES);
-        Timer ft;
-        for (int i = 0; i < PROBE_FRAMES; i++) {
-            renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            renderer_->finish();
-            ft.reset();
-            test.render(renderer_.get());
-            renderer_->finish();
-            times.push_back(ft.elapsed_ms());
-        }
-        fill_score = test.computeScore(times, PROBE_W, PROBE_H);
-        test.cleanup(renderer_.get());
+        renderer_->setViewport(0, 0, window_w_, window_h_);
+        renderer_->setDepthTest(false);
+        renderer_->setBlending(false);
+        renderer_->unbindState();
+        renderUI();
     }
 
-    // Probe geometry: grid 10
-    {
-        GeometryParams gp; gp.grid_size = 10;
-        GeometryTest test(gp);
-        renderer_->resetState();
-        test.setup(renderer_.get(), PROBE_W, PROBE_H);
-        renderer_->setViewport(0, 0, PROBE_W, PROBE_H);
-
-        for (int i = 0; i < PROBE_WARMUP; i++) {
-            renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            test.render(renderer_.get());
-            renderer_->finish();
-        }
-
-        std::vector<double> times;
-        times.reserve(PROBE_FRAMES);
-        Timer ft;
-        for (int i = 0; i < PROBE_FRAMES; i++) {
-            renderer_->clear(0.0f, 0.0f, 0.0f, 1.0f);
-            renderer_->finish();
-            ft.reset();
-            test.render(renderer_.get());
-            renderer_->finish();
-            times.push_back(ft.elapsed_ms());
-        }
-        geom_score = test.computeScore(times, PROBE_W, PROBE_H);
-        test.cleanup(renderer_.get());
-    }
-
-    renderer_->resetState();
-    ctx_->setVSync(true);
-
-    gpu_tier_ = classifyGPUTier(renderer_->getCaps(), fill_score, geom_score);
-    suggested_preset_ = tierToPresetIndex(gpu_tier_);
-
-    Log::info("Quick probe: fill=%.1f Mpix/s, geom=%.1f Ktris/s -> tier=%s, preset=%d",
-            fill_score, geom_score, gpuTierName(gpu_tier_), suggested_preset_);
+    ctx_->swapBuffers();
+    return running_;
 }
 
-void App::computeAnalysis() {
-    composite_score_ = computeCompositeScores(results_);
-    bottleneck_info_ = detectBottleneck(results_, composite_score_);
+bool App::onPoll() {
+    processEvents();
+    return running_;
+}
+
+// --- Benchmark execution ---
+
+void App::runSelectedTests() {
+    BenchConfig cfg;
+    cfg.warmup_frames = current_preset_.warmup_frames;
+    cfg.measure_frames = current_preset_.measure_frames;
+    cfg.min_duration_sec = current_preset_.min_duration_sec;
+    cfg.timing_mode = config_.timing_mode;
+    cfg.headless = config_.headless;
+    cfg.render_w = render_w_;
+    cfg.render_h = render_h_;
+    cfg.window_w = window_w_;
+    cfg.window_h = window_h_;
+
+    uint32_t caps = getAvailableCaps(renderer_->getCaps());
+    bench_runner_.runSelected(renderer_.get(), ctx_.get(), current_preset_, cfg,
+                              test_enabled_, caps, this);
 }
 
 void App::renderUI() {
-    ctx_->imguiNewFrame();
+    // Build read-only view
+    UIView view;
+    view.hw_info = &hw_info_;
+    view.gpu_renderer = renderer_->getGPURenderer();
+    view.gl_version = renderer_->getGLVersion();
+    view.renderer_name = renderer_->getRendererName();
+    view.caps = &renderer_->getCaps();
+    view.supports_render_targets = renderer_->supportsRenderTargets();
+    view.gpu_tier = gpu_tier_;
+    view.window_w = window_w_;
+    view.window_h = window_h_;
+    view.render_w = render_w_;
+    view.render_h = render_h_;
+    view.suggested_preset = suggested_preset_;
+    view.bench_active = bench_runner_.isActive();
+    view.bench_status = &bench_runner_.status();
+    view.bench_progress = bench_runner_.progress();
+    view.results = &bench_runner_.results();
+    view.composite = &bench_runner_.compositeScore();
+    view.bottleneck = &bench_runner_.bottleneckInfo();
+    view.resolutions = RESOLUTIONS;
+    view.num_resolutions = NUM_RESOLUTIONS;
+    view.validation_error = &validation_error_;
 
-    float panel_h = window_h_ * 0.55f;
-    ImGui::SetNextWindowPos(ImVec2(0, window_h_ - panel_h));
-    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(window_w_), panel_h));
+    // Build mutable state
+    UIState state;
+    state.current_preset = &current_preset_;
+    state.selected_preset_index = &selected_preset_index_;
+    state.test_enabled = test_enabled_;
+    state.selected_resolution = &selected_resolution_;
+    state.validation_error = &validation_error_;
 
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
-        | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+    // Render UI and get action
+    UIAction action = bench_ui_.render(ctx_.get(), view, state);
 
-    ImGui::Begin("##panel", nullptr, flags);
-
-    // ---- Hardware info + resolution ----
-    ImGui::Text("CPU: %s", hw_info_.cpu_name.c_str());
-    ImGui::SameLine(static_cast<float>(window_w_) * 0.5f);
-    ImGui::Text("GPU: %s", renderer_->getGPURenderer());
-    ImGui::Text("OS: %s %s", hw_info_.os_name.c_str(), hw_info_.os_version.c_str());
-    ImGui::SameLine(static_cast<float>(window_w_) * 0.5f);
-    ImGui::Text("GL: %s  Renderer: %s", renderer_->getGLVersion(), renderer_->getRendererName());
-    const RenderCaps& caps = renderer_->getCaps();
-    if (caps.estimated_vram_mb > 0) {
-        ImGui::SameLine();
-        ImGui::Text("  VRAM: %d MB", caps.estimated_vram_mb);
-    }
-    // Capabilities line
-    ImGui::Text("MaxTex: %d  Attribs: %d", caps.max_texture_size, caps.max_vertex_attribs);
-    ImGui::SameLine();
-    auto capLabel = [](const char* name, bool supported) {
-        if (supported)
-            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s", name);
-        else
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", name);
-    };
-    capLabel("VAO", caps.has_vao);
-    ImGui::SameLine(); capLabel("Instancing", caps.has_instancing);
-    ImGui::SameLine(); capLabel("FBO", caps.has_fbo);
-    ImGui::SameLine(); capLabel("TimerQ", caps.has_timer_queries);
-    ImGui::SameLine();
-    ImVec4 tier_colors[] = {
-        ImVec4(0.7f, 0.5f, 0.3f, 1.0f),  // legacy
-        ImVec4(0.8f, 0.8f, 0.3f, 1.0f),  // low
-        ImVec4(0.3f, 0.8f, 0.3f, 1.0f),  // mid
-        ImVec4(0.3f, 0.6f, 1.0f, 1.0f),  // high
-    };
-    int ti = static_cast<int>(gpu_tier_);
-    if (ti < 0 || ti > 3) ti = 2;
-    ImGui::TextColored(tier_colors[ti], "Tier: %s", gpuTierName(gpu_tier_));
-    // Resolution display
-    ImGui::Text("Window: %dx%d", window_w_, window_h_);
-    ImGui::SameLine();
-    if (render_w_ == window_w_ && render_h_ == window_h_) {
-        ImGui::Text("  Render: %dx%d (native)", render_w_, render_h_);
-    } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f),
-            "  Render: %dx%d", render_w_, render_h_);
-    }
-
-    ImGui::Separator();
-
-    // ---- Preset selection ----
-    if (!benchmarking_) {
-        ImGui::Text("Preset:");
-        ImGui::SameLine();
-
-        const char* preset_labels[static_cast<int>(PresetIndex::Count)] = {"Light", "Medium", "Heavy", "Ultra"};
-        for (int i = 0; i < static_cast<int>(PresetIndex::Count); i++) {
-            if (i > 0) ImGui::SameLine();
-            char label[64];
-            if (i == suggested_preset_)
-                snprintf(label, sizeof(label), "%s*", preset_labels[i]);
-            else
-                snprintf(label, sizeof(label), "%s", preset_labels[i]);
-
-            bool is_selected = (selected_preset_index_ == i);
-            if (is_selected) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.6f, 0.3f, 1.0f));
-            }
-            if (ImGui::Button(label, ImVec2(80, 0))) {
-                applyPreset(i);
-                validateCurrentPreset();
-            }
-            if (is_selected) {
-                ImGui::PopStyleColor();
-            }
-        }
-        if (suggested_preset_ >= 0) {
-            ImGui::SameLine();
-            ImGui::TextDisabled("(* = recommended)");
-        }
-
-        if (selected_preset_index_ < 0) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "[Custom]");
-        }
-
-        if (!validation_error_.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Error: %s", validation_error_.c_str());
-        }
-
-        // ---- Render resolution selector ----
-        ImGui::Text("Render:");
-        ImGui::SameLine();
-
-        // Native button
-        {
-            bool is_native = (selected_resolution_ == RES_NATIVE);
-            if (is_native) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.6f, 0.3f, 1.0f));
-            char native_label[64];
-            snprintf(native_label, sizeof(native_label), "Native (%dx%d)", window_w_, window_h_);
-            if (ImGui::Button(native_label)) {
-                selected_resolution_ = RES_NATIVE;
-                updateRenderResolution();
-            }
-            if (is_native) ImGui::PopStyleColor();
-        }
-
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(140);
-
-        // Build combo items
-        char combo_label[64];
-        if (selected_resolution_ >= 0 && selected_resolution_ < NUM_RESOLUTIONS)
-            snprintf(combo_label, sizeof(combo_label), "%s", RESOLUTIONS[selected_resolution_].label);
-        else
-            snprintf(combo_label, sizeof(combo_label), "Select...");
-
-        if (ImGui::BeginCombo("##res", (selected_resolution_ == RES_NATIVE) ? "---" : combo_label)) {
-            for (int i = 0; i < NUM_RESOLUTIONS; i++) {
-                bool is_sel = (selected_resolution_ == i);
-                // Mark if FBO needed
-                bool needs_fbo = (RESOLUTIONS[i].w > window_w_ || RESOLUTIONS[i].h > window_h_);
-                char item_label[64];
-                if (needs_fbo && !renderer_->supportsRenderTargets())
-                    snprintf(item_label, sizeof(item_label), "%s (no FBO)", RESOLUTIONS[i].label);
-                else if (needs_fbo)
-                    snprintf(item_label, sizeof(item_label), "%s (FBO)", RESOLUTIONS[i].label);
-                else
-                    snprintf(item_label, sizeof(item_label), "%s", RESOLUTIONS[i].label);
-
-                // Disable if needs FBO and no support
-                bool disabled = needs_fbo && !renderer_->supportsRenderTargets();
-                if (disabled) ImGui::BeginDisabled();
-
-                if (ImGui::Selectable(item_label, is_sel)) {
-                    selected_resolution_ = i;
-                    updateRenderResolution();
-                }
-                if (is_sel) ImGui::SetItemDefaultFocus();
-
-                if (disabled) ImGui::EndDisabled();
-            }
-            ImGui::EndCombo();
-        }
-
-        // Collapsible custom parameters
-        if (ImGui::TreeNode("Custom Parameters")) {
-            bool changed = false;
-            ImGui::Text("Timing:"); ImGui::SameLine();
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Warmup##w", &current_preset_.warmup_frames, 10, 50);
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Measure##m", &current_preset_.measure_frames, 50, 200);
-
-            ImGui::Separator();
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Fillrate layers", &current_preset_.fillrate.layers, 50, 200);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Geometry grid", &current_preset_.geometry.grid_size, 5, 10);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Texturing tex size", &current_preset_.texturing.tex_size, 256, 512);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Texturing layers", &current_preset_.texturing.layers, 50, 100);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("DrawCall draws", &current_preset_.drawcall.draws_per_frame, 100, 500);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Overdraw layers", &current_preset_.overdraw.layers, 50, 100);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("TexUpload size", &current_preset_.texupload.tex_size, 128, 256);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("StateChange switches", &current_preset_.statechange.switches, 50, 100);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("Vertex count", &current_preset_.vertex.vertex_count, 10000, 100000);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("ShaderALU iters", &current_preset_.shader_alu.iterations, 10, 50);
-            ImGui::SetNextItemWidth(80);
-            changed |= ImGui::InputInt("ShaderFMA iters", &current_preset_.shader_fma.iterations, 10, 50);
-
-            if (changed) {
-                selected_preset_index_ = -1;
-                current_preset_.name = "Custom";
-                validateCurrentPreset();
-            }
-
-            ImGui::TreePop();
-        }
-
-        if (current_preset_.warmup_frames < MIN_WARMUP_FRAMES) current_preset_.warmup_frames = MIN_WARMUP_FRAMES;
-        if (current_preset_.measure_frames < MIN_MEASURE_FRAMES) current_preset_.measure_frames = MIN_MEASURE_FRAMES;
-
-        ImGui::Separator();
-
-        // ---- Test selection ----
-        ImGui::Text("Tests:");
-        for (int i = 0; i < NUM_TESTS; i++) {
-            if (i > 0 && i % 6 != 0) ImGui::SameLine();
-            ImGui::Checkbox(g_tests[i].display_name, &test_enabled_[i]);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s", g_tests[i].description);
-        }
-
-        // ---- Benchmark controls ----
-        bool can_run = validation_error_.empty();
-
-        if (!can_run) ImGui::BeginDisabled();
-        if (ImGui::Button("Run Selected", ImVec2(110, 0))) {
+    // Dispatch action
+    switch (action.type) {
+        case UIAction::ApplyPreset:
+            applyPreset(action.preset_index);
+            validateCurrentPreset();
+            break;
+        case UIAction::ResolutionChanged:
+            updateRenderResolution();
+            break;
+        case UIAction::CustomParamsChanged:
+            selected_preset_index_ = -1;
+            current_preset_.name = "Custom";
+            validateCurrentPreset();
+            break;
+        case UIAction::RunSelected:
             pending_action_ = PendingAction::RunSelected;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Run All", ImVec2(80, 0))) {
+            break;
+        case UIAction::RunAll:
             pending_action_ = PendingAction::RunAll;
-        }
-        if (!can_run) ImGui::EndDisabled();
-
-        ImGui::SameLine();
-        if (ImGui::Button("Clear", ImVec2(60, 0))) {
-            results_.clear();
-            composite_score_ = CompositeScore();
-            bottleneck_info_ = BottleneckInfo();
-        }
-        ImGui::SameLine();
-        if (!results_.empty() && ImGui::Button("Export", ImVec2(60, 0))) {
+            break;
+        case UIAction::Clear:
+            bench_runner_.clearResults();
+            break;
+        case UIAction::Export:
             exportResults();
-        }
-    } else {
-        ImGui::Text("Status: %s", bench_status_.c_str());
-        ImGui::ProgressBar(bench_progress_ / 100.0f, ImVec2(-1, 0));
-    }
-
-    ImGui::Separator();
-
-    // ---- Composite score ----
-    if (!results_.empty()) {
-        int cats_present = (composite_score_.fill > 0 ? 1 : 0)
-                         + (composite_score_.geometry > 0 ? 1 : 0)
-                         + (composite_score_.compute > 0 ? 1 : 0)
-                         + (composite_score_.overhead > 0 ? 1 : 0);
-        if (composite_score_.overall > 0) {
-            ImVec4 color = (cats_present < 4)
-                ? ImVec4(0.8f, 0.8f, 0.4f, 1.0f)
-                : ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
-            ImGui::TextColored(color,
-                "Composite: %.1f  |  Fill: %.1f  Geometry: %.1f  Compute: %.1f  Overhead: %.1f",
-                composite_score_.overall, composite_score_.fill,
-                composite_score_.geometry, composite_score_.compute, composite_score_.overhead);
-            if (cats_present < 4) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.4f, 1.0f), " (partial — run all for full score)");
-            }
-        }
-    }
-
-    // ---- Bottleneck analysis ----
-    if (!results_.empty() && !bottleneck_info_.detail.empty()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Bottleneck: %s", bottleneck_info_.detail.c_str());
-    }
-
-    // ---- Results table ----
-    if (!results_.empty() && ImGui::BeginTable("results", 10,
-            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp
-            | ImGuiTableFlags_ScrollY)) {
-        ImGui::TableSetupColumn("Test",       ImGuiTableColumnFlags_None, 1.2f);
-        ImGui::TableSetupColumn("Score",      ImGuiTableColumnFlags_None, 1.0f);
-        ImGui::TableSetupColumn("Unit",       ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("Avg (ms)",   ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("Min (ms)",   ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("Max (ms)",   ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("P1 (ms)",    ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("Median (ms)",ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("P99 (ms)",   ImGuiTableColumnFlags_None, 0.8f);
-        ImGui::TableSetupColumn("CV%",        ImGuiTableColumnFlags_None, 0.6f);
-        ImGui::TableHeadersRow();
-
-        for (size_t i = 0; i < results_.size(); i++) {
-            const BenchResult& r = results_[i];
-            ImGui::TableNextRow();
-
-            if (!r.valid) {
-                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::GetColorU32(ImVec4(0.4f, 0.1f, 0.1f, 0.5f)));
-            }
-
-            ImGui::TableSetColumnIndex(0);
-            if (!r.sanity_ok) {
-                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s [!]", r.name.c_str());
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Sanity check failed: render output was black");
-            } else {
-                ImGui::Text("%s", r.name.c_str());
-            }
-            ImGui::TableSetColumnIndex(1); ImGui::Text("%.1f", r.score);
-            ImGui::TableSetColumnIndex(2); ImGui::Text("%s", r.unit.c_str());
-            ImGui::TableSetColumnIndex(3); ImGui::Text("%.3f", r.avg_ms);
-            ImGui::TableSetColumnIndex(4); ImGui::Text("%.3f", r.min_ms);
-            ImGui::TableSetColumnIndex(5); ImGui::Text("%.3f", r.max_ms);
-            ImGui::TableSetColumnIndex(6); ImGui::Text("%.3f", r.p1_ms);
-            ImGui::TableSetColumnIndex(7); ImGui::Text("%.3f", r.median_ms);
-            ImGui::TableSetColumnIndex(8); ImGui::Text("%.3f", r.p99_ms);
-
-            ImGui::TableSetColumnIndex(9);
-            double cv_pct = r.cv * 100.0;
-            ImVec4 cv_color;
-            if (cv_pct < 5.0)       cv_color = ImVec4(0.3f, 1.0f, 0.3f, 1.0f);
-            else if (cv_pct < 15.0) cv_color = ImVec4(1.0f, 1.0f, 0.3f, 1.0f);
-            else                    cv_color = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-            ImGui::TextColored(cv_color, "%.1f%%", cv_pct);
-        }
-        ImGui::EndTable();
-    }
-
-    ImGui::End();
-    ImGui::Render();
-    ctx_->imguiRender();
-}
-
-void App::runTest(BenchTest* test) {
-    benchmarking_ = true;
-    bench_status_ = std::string("Running: ") + test->name();
-    bench_progress_ = 0;
-
-    ctx_->setVSync(false);
-
-    // Determine if we need render target (render resolution != window)
-    bool use_fbo = (render_w_ != window_w_ || render_h_ != window_h_) && renderer_->supportsRenderTargets();
-    if (use_fbo) {
-        // Recreate render target if needed
-        if (bench_rt_ != INVALID_RENDER_TARGET) {
-            renderer_->destroyRenderTarget(bench_rt_);
-            bench_rt_ = INVALID_RENDER_TARGET;
-        }
-        bench_rt_ = renderer_->createRenderTarget(render_w_, render_h_);
-        if (bench_rt_ == INVALID_RENDER_TARGET) {
-            use_fbo = false;
-            Log::warn("Render target creation failed, falling back to viewport-only");
-        }
-    }
-
-    // Bind render target for rendering if needed
-    if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
-
-    renderer_->resetState();
-    test->setup(renderer_.get(), render_w_, render_h_);
-
-    bool use_gpu_timer = (config_.timing_mode == TimingMode::GPU) && renderer_->hasTimerQueries();
-
-    // Warmup
-    bool sanity_ok = true;
-    bench_status_ = std::string("Warmup: ") + test->name();
-    for (int i = 0; i < current_preset_.warmup_frames && running_; i++) {
-        processEvents();
-        if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
-        renderer_->setViewport(0, 0, render_w_, render_h_);
-        renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
-        test->render(renderer_.get());
-        renderer_->finish();
-
-        // Sanity check after first warmup frame: verify non-black output
-        if (i == 0) {
-            unsigned char px[4 * 4 * 4] = {0}; // 4x4 RGBA
-            int cx = render_w_ / 2 - 2, cy = render_h_ / 2 - 2;
-            if (cx < 0) cx = 0;
-            if (cy < 0) cy = 0;
-            renderer_->readPixels(cx, cy, 4, 4, px);
-            int nonzero = 0;
-            for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
-            if (nonzero == 0) {
-                sanity_ok = false;
-                Log::warn("Sanity check FAILED for '%s' — render output is black",
-                        test->name());
-            }
-        }
-
-        bench_progress_ = static_cast<int>(100.0 * i / current_preset_.warmup_frames * 0.1);
-        if (!config_.headless) {
-            if (use_fbo) {
-                renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
-                renderer_->setViewport(0, 0, window_w_, window_h_);
-                renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
-                int panel_h = static_cast<int>(window_h_ * 0.55f);
-                int view_h = window_h_ - panel_h;
-                if (view_h > 0)
-                    renderer_->blitToScreen(bench_rt_, 0, panel_h, window_w_, view_h);
-            }
-            renderer_->setViewport(0, 0, window_w_, window_h_);
-            renderer_->setDepthTest(false);
-            renderer_->setBlending(false);
-            renderer_->unbindState();
-            renderUI();
-        }
-        ctx_->swapBuffers();
-    }
-
-    // Measurement
-    bench_status_ = std::string("Measuring: ") + test->name();
-    std::vector<double> times;
-    std::vector<double> gpu_times;
-    times.reserve(current_preset_.measure_frames * 2);
-    if (use_gpu_timer) gpu_times.reserve(current_preset_.measure_frames * 2);
-    Timer total_timer;
-    Timer frame_t;
-
-    int frame = 0;
-    while (running_) {
-        processEvents();
-        if (use_fbo) renderer_->bindRenderTarget(bench_rt_);
-        renderer_->setViewport(0, 0, render_w_, render_h_);
-        renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
-
-        renderer_->finish();
-
-        if (use_gpu_timer) renderer_->timerBegin();
-        frame_t.reset();
-        test->render(renderer_.get());
-        if (use_gpu_timer) renderer_->timerEnd();
-        renderer_->finish();
-        double ms = frame_t.elapsed_ms();
-        times.push_back(ms);
-        if (use_gpu_timer) gpu_times.push_back(renderer_->timerElapsedMs());
-
-        double elapsed = total_timer.elapsed_sec();
-        bench_progress_ = 10 + static_cast<int>(90.0 * std::min(
-            static_cast<double>(frame) / current_preset_.measure_frames,
-            elapsed / current_preset_.min_duration_sec
-        ));
-
-        if (!config_.headless) {
-            if (use_fbo) {
-                renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
-                renderer_->setViewport(0, 0, window_w_, window_h_);
-                renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
-                int panel_h = static_cast<int>(window_h_ * 0.55f);
-                int view_h = window_h_ - panel_h;
-                if (view_h > 0)
-                    renderer_->blitToScreen(bench_rt_, 0, panel_h, window_w_, view_h);
-            }
-            renderer_->setViewport(0, 0, window_w_, window_h_);
-            renderer_->setDepthTest(false);
-            renderer_->setBlending(false);
-            renderer_->unbindState();
-            renderUI();
-        }
-
-        ctx_->swapBuffers();
-        frame++;
-
-        if (frame >= current_preset_.measure_frames && elapsed >= current_preset_.min_duration_sec)
+            break;
+        default:
             break;
     }
-
-    if (use_fbo) renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
-
-    double score = test->computeScore(times, render_w_, render_h_);
-    BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);
-
-    if (!gpu_times.empty()) {
-        double gpu_sum = 0;
-        for (size_t i = 0; i < gpu_times.size(); i++) gpu_sum += gpu_times[i];
-        result.gpu_ms = gpu_sum / gpu_times.size();
-    }
-
-    result.sanity_ok = sanity_ok;
-    if (!sanity_ok) result.valid = false;
-
-    results_.push_back(result);
-
-    test->cleanup(renderer_.get());
-    benchmarking_ = false;
-    bench_status_ = "Done";
-    ctx_->setVSync(true);
-}
-
-void App::runSelectedTests() {
-    results_.clear();
-
-    for (int i = 0; i < NUM_TESTS && running_; i++) {
-        if (!test_enabled_[i]) continue;
-        BenchTest* test = g_tests[i].factory(current_preset_);
-        runTest(test);
-        delete test;
-    }
-
-    // Clean up render target after all tests
-    if (bench_rt_ != INVALID_RENDER_TARGET) {
-        renderer_->destroyRenderTarget(bench_rt_);
-        bench_rt_ = INVALID_RENDER_TARGET;
-    }
-
-    computeAnalysis();
-}
-
-void App::runAllTests() {
-    for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
-    runSelectedTests();
 }
 
 void App::exportResults() {
-    if (results_.empty()) return;
+    const auto& results = bench_runner_.results();
+    if (results.empty()) return;
 
     FILE* out = stdout;
     bool close_file = false;
@@ -927,17 +435,20 @@ void App::exportResults() {
     ecfg.vsync = false;
     ecfg.gpu_tier = gpuTierName(gpu_tier_);
 
+    const auto& composite = bench_runner_.compositeScore();
+    const auto& bottleneck_info = bench_runner_.bottleneckInfo();
+
     switch (config_.output_format) {
         case OutputFormat::CSV:
-            exportCSV(out, results_, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg);
+            exportCSV(out, results, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg);
             break;
         case OutputFormat::JSON:
-            exportJSON(out, results_, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
-                       &composite_score_, &bottleneck_info_);
+            exportJSON(out, results, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
+                       &composite, &bottleneck_info);
             break;
         default:
-            exportText(out, results_, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
-                       &composite_score_, &bottleneck_info_);
+            exportText(out, results, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
+                       &composite, &bottleneck_info);
             break;
     }
 
@@ -951,204 +462,11 @@ void App::runHeadless() {
     }
 
     if (config_.stress_duration_sec > 0) {
-        // Stress mode: combined shader that stresses ALL GPU units simultaneously
-        // - FMA loops (shader cores / CUDA cores)
-        // - Transcendentals (SFU units)
-        // - Texture sampling (TMU units)
-        // - Blending (ROP units)
-        // - Multiple passes (memory bandwidth)
-        // Self-calibrating: adjusts pass count to saturate any GPU.
-
-        static const char* STRESS_VS =
-            "#version 120\n"
-            "attribute vec2 a_pos;\n"
-            "attribute vec2 a_uv;\n"
-            "varying vec2 v_uv;\n"
-            "void main() {\n"
-            "    v_uv = a_uv;\n"
-            "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
-            "}\n";
-
-        // Combined stress fragment shader:
-        // - 4 texture samples per pixel (TMU stress)
-        // - FMA loop with data dependency (ALU stress)
-        // - sin/cos per iteration (SFU stress)
-        // - Output with alpha < 1.0 + blending (ROP stress)
-        static const char* STRESS_FS =
-            "#version 120\n"
-            "varying vec2 v_uv;\n"
-            "uniform sampler2D u_tex;\n"
-            "uniform int u_iterations;\n"
-            "uniform float u_time;\n"
-            "void main() {\n"
-            "    vec4 t0 = texture2D(u_tex, v_uv);\n"
-            "    vec4 t1 = texture2D(u_tex, v_uv * 2.0 + vec2(u_time * 0.01));\n"
-            "    vec4 t2 = texture2D(u_tex, v_uv * 4.0 - vec2(u_time * 0.02));\n"
-            "    vec4 t3 = texture2D(u_tex, v_uv.yx * 3.0 + vec2(u_time * 0.015));\n"
-            "    vec4 acc = t0 * 0.25 + t1 * 0.25 + t2 * 0.25 + t3 * 0.25;\n"
-            "    vec4 fma_acc = acc;\n"
-            "    for (int i = 0; i < u_iterations; i++) {\n"
-            "        fma_acc = fma_acc * acc + fma_acc;\n"
-            "        fma_acc = fma_acc * vec4(0.5) + vec4(0.25);\n"
-            "        acc.x = sin(fma_acc.x * 3.14159);\n"
-            "        acc.y = cos(fma_acc.y * 3.14159);\n"
-            "        acc.z = sqrt(abs(fma_acc.z));\n"
-            "        acc.w = fma_acc.w;\n"
-            "        fma_acc = fma_acc * acc + fma_acc;\n"
-            "        fma_acc = fma_acc * vec4(0.5) + vec4(0.25);\n"
-            "    }\n"
-            "    gl_FragColor = vec4(fma_acc.rgb * 0.5 + 0.25, 0.8);\n"
-            "}\n";
-
-        ctx_->setVSync(false);
-        renderer_->resetState();
-
-        // Create stress resources
-        MeshHandle stress_quad = renderer_->createMesh(MeshGen::quad());
-        ShaderHandle stress_shader = renderer_->createCustomShader(STRESS_VS, STRESS_FS);
-
-        // Create noise texture for TMU stress
-        int tex_size = 1024;
-        auto noise = genColorNoise(tex_size, 42);
-        TextureHandle stress_tex = renderer_->createTexture(tex_size, tex_size, 3, noise.data());
-
-        int u_tex_loc = -1, u_iter_loc = -1, u_time_loc = -1;
-        if (stress_shader != INVALID_SHADER) {
-            u_tex_loc = renderer_->getCustomUniformLoc(stress_shader, "u_tex");
-            u_iter_loc = renderer_->getCustomUniformLoc(stress_shader, "u_iterations");
-            u_time_loc = renderer_->getCustomUniformLoc(stress_shader, "u_time");
-        }
-
-        int iterations = current_preset_.shader_alu.iterations;
-
-        // Helper lambda-like: render one stress pass
-        #define STRESS_RENDER_PASS(time_val) do { \
-            if (stress_shader != INVALID_SHADER) { \
-                renderer_->useCustomShader(stress_shader); \
-                renderer_->setUniform1i(u_iter_loc, iterations); \
-                renderer_->setUniform1f(u_time_loc, time_val); \
-                renderer_->setUniform1i(u_tex_loc, 0); \
-            } \
-            renderer_->bindTexture(stress_tex); \
-            renderer_->drawMesh(stress_quad); \
-        } while(0)
-
-        // --- Calibration: find pass count to hit ~40ms per frame ---
-        const double TARGET_FRAME_MS = STRESS_TARGET_FRAME_MS;
-        int passes = 1;
-        float stress_time = 0.0f;
-
-        Log::info("Stress test: calibrating...");
-
-        renderer_->setViewport(0, 0, render_w_, render_h_);
-        renderer_->setDepthTest(false);
-        renderer_->setBlending(true);
-
-        for (int attempt = 0; attempt < 8 && running_; attempt++) {
-            processEvents();
-            // Warmup pass
-            renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
-            for (int i = 0; i < passes; i++) STRESS_RENDER_PASS(stress_time);
-            renderer_->finish();
-
-            // Measure
-            Timer cal_t;
-            renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
-            for (int i = 0; i < passes; i++) STRESS_RENDER_PASS(stress_time);
-            renderer_->finish();
-            double ms = cal_t.elapsed_ms();
-
-            Log::info("  %d passes = %.1f ms", passes, ms);
-
-            if (ms >= TARGET_FRAME_MS * STRESS_CALIBRATION_RATIO) break;
-
-            int new_passes = (ms > 0.1)
-                ? static_cast<int>(passes * TARGET_FRAME_MS / ms + 0.5) : passes * 4;
-            if (new_passes <= passes) new_passes = passes + 1;
-            if (new_passes > STRESS_MAX_PASSES) new_passes = STRESS_MAX_PASSES;
-            passes = new_passes;
-        }
-        ctx_->swapBuffers();
-
-        Log::info("Stress test: combined shader (%s, %d iters, %d passes/frame), %d seconds",
-                current_preset_.name, iterations, passes, config_.stress_duration_sec);
-
-        // --- Main stress loop ---
-        Timer stress_timer;
-        Timer interval_timer;
-        const double REPORT_INTERVAL = STRESS_REPORT_INTERVAL;
-        int total_frames = 0;
-        double interval_time_sum = 0;
-        int interval_frames = 0;
-        double baseline_fps = 0;
-        int interval_num = 0;
-
-        while (running_ && stress_timer.elapsed_sec() < config_.stress_duration_sec) {
-            processEvents();
-
-            renderer_->setViewport(0, 0, render_w_, render_h_);
-            renderer_->setDepthTest(false);
-            renderer_->setBlending(true);
-            renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
-
-            renderer_->finish();
-            Timer frame_t;
-            for (int i = 0; i < passes; i++) {
-                STRESS_RENDER_PASS(stress_time);
-                stress_time += 0.001f;
-            }
-            renderer_->finish();
-            double ms = frame_t.elapsed_ms();
-
-            interval_time_sum += ms;
-            interval_frames++;
-            total_frames++;
-
-            ctx_->swapBuffers();
-
-            // Periodic report
-            if (interval_timer.elapsed_sec() >= REPORT_INTERVAL) {
-                interval_num++;
-                double avg_ms = interval_time_sum / interval_frames;
-                double fps = (avg_ms > 0) ? 1000.0 / avg_ms : 0;
-
-                if (interval_num == 1) {
-                    baseline_fps = fps;
-                    Log::info("[%3.0fs] Baseline: %.1f FPS (avg %.1f ms)",
-                            stress_timer.elapsed_sec(), fps, avg_ms);
-                } else {
-                    double degradation = (baseline_fps > 0)
-                        ? (baseline_fps - fps) / baseline_fps * 100.0 : 0;
-                    if (degradation > STRESS_THROTTLE_WARN) {
-                        Log::warn("[%3.0fs] %.1f FPS (avg %.1f ms) — THROTTLING: %.1f%% degradation",
-                                stress_timer.elapsed_sec(), fps, avg_ms, degradation);
-                    } else if (degradation > STRESS_THROTTLE_SEVERE) {
-                        Log::info("[%3.0fs] %.1f FPS (avg %.1f ms) — minor degradation: %.1f%%",
-                                stress_timer.elapsed_sec(), fps, avg_ms, degradation);
-                    } else {
-                        Log::info("[%3.0fs] %.1f FPS (avg %.1f ms)",
-                                stress_timer.elapsed_sec(), fps, avg_ms);
-                    }
-                }
-
-                interval_time_sum = 0;
-                interval_frames = 0;
-                interval_timer.reset();
-            }
-        }
-
-        #undef STRESS_RENDER_PASS
-
-        renderer_->destroyMesh(stress_quad);
-        renderer_->destroyTexture(stress_tex);
-        if (stress_shader != INVALID_SHADER)
-            renderer_->destroyCustomShader(stress_shader);
-        ctx_->setVSync(true);
-
-        double total_sec = stress_timer.elapsed_sec();
-        Log::info("Stress test completed: %d frames in %.0fs (avg %.1f FPS)",
-                total_frames, total_sec,
-                (total_sec > 0) ? total_frames / total_sec : 0);
+        StressRunner stress;
+        stress.run(renderer_.get(), ctx_.get(),
+                   current_preset_.shader_alu.iterations,
+                   render_w_, render_h_,
+                   config_.stress_duration_sec, this);
     } else {
         runSelectedTests();
     }
@@ -1170,7 +488,7 @@ void App::run() {
 
         processEvents();
 
-        if (!benchmarking_) {
+        if (!bench_runner_.isActive()) {
             renderer_->setViewport(0, 0, window_w_, window_h_);
             renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
             renderPreviewScene(static_cast<float>(dt));

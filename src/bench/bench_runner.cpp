@@ -1,0 +1,265 @@
+#include "bench/bench_runner.h"
+#include "tests/tests.h"
+#include "renderer/renderer.h"
+#include "renderer/render_context.h"
+#include "platform/logger.h"
+#include <cmath>
+#include <algorithm>
+
+// Probe test parameters
+static const int PROBE_FRAMES      = 40;
+static const int PROBE_RESOLUTION  = 256;
+static const int PROBE_FILL_LAYERS = 50;
+static const int PROBE_WARMUP      = 5;
+
+BenchRunner::BenchRunner()
+    : progress_(0), active_(false), bench_rt_(INVALID_RENDER_TARGET) {}
+
+void BenchRunner::clearResults() {
+    results_.clear();
+    composite_ = CompositeScore();
+    bottleneck_ = BottleneckInfo();
+}
+
+void BenchRunner::computeAnalysis() {
+    composite_ = computeCompositeScores(results_);
+    bottleneck_ = detectBottleneck(results_, composite_);
+}
+
+void BenchRunner::runSelected(Renderer* r, RenderContext* ctx,
+                              const BenchPreset& preset, const BenchConfig& cfg,
+                              const bool* test_enabled, uint32_t available_caps,
+                              BenchCallbacks* cb) {
+    results_.clear();
+    for (int i = 0; i < NUM_TESTS; i++) {
+        if (!test_enabled[i]) continue;
+        // Skip tests requiring unsupported capabilities
+        if ((g_tests[i].required_caps & available_caps) != g_tests[i].required_caps) {
+            Log::info("Skipping '%s' — requires unsupported capabilities", g_tests[i].display_name);
+            continue;
+        }
+        if (cb && !cb->onPoll()) break;
+        BenchTest* test = g_tests[i].factory(preset);
+        runTest(test, r, ctx, cfg, cb);
+        delete test;
+    }
+    // Clean up render target
+    if (bench_rt_ != INVALID_RENDER_TARGET) {
+        r->destroyRenderTarget(bench_rt_);
+        bench_rt_ = INVALID_RENDER_TARGET;
+    }
+    computeAnalysis();
+}
+
+void BenchRunner::runAll(Renderer* r, RenderContext* ctx,
+                         const BenchPreset& preset, const BenchConfig& cfg,
+                         uint32_t available_caps, BenchCallbacks* cb) {
+    bool all_enabled[NUM_TESTS];
+    for (int i = 0; i < NUM_TESTS; i++) all_enabled[i] = true;
+    runSelected(r, ctx, preset, cfg, all_enabled, available_caps, cb);
+}
+
+void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
+                          const BenchConfig& cfg, BenchCallbacks* cb) {
+    active_ = true;
+    status_ = std::string("Running: ") + test->name();
+    progress_ = 0;
+
+    ctx->setVSync(false);
+
+    // Determine if we need render target (render resolution != window)
+    bool use_fbo = (cfg.render_w != cfg.window_w || cfg.render_h != cfg.window_h) && r->supportsRenderTargets();
+    if (use_fbo) {
+        if (bench_rt_ != INVALID_RENDER_TARGET) {
+            r->destroyRenderTarget(bench_rt_);
+            bench_rt_ = INVALID_RENDER_TARGET;
+        }
+        bench_rt_ = r->createRenderTarget(cfg.render_w, cfg.render_h);
+        if (bench_rt_ == INVALID_RENDER_TARGET) {
+            use_fbo = false;
+            Log::warn("Render target creation failed, falling back to viewport-only");
+        }
+    }
+
+    if (use_fbo) r->bindRenderTarget(bench_rt_);
+
+    r->resetState();
+    test->setup(r, cfg.render_w, cfg.render_h);
+
+    bool use_gpu_timer = (cfg.timing_mode == TimingMode::GPU) && r->hasTimerQueries();
+    RenderTargetHandle rt = use_fbo ? bench_rt_ : INVALID_RENDER_TARGET;
+
+    // Warmup
+    bool sanity_ok = true;
+    status_ = std::string("Warmup: ") + test->name();
+    for (int i = 0; i < cfg.warmup_frames; i++) {
+        if (use_fbo) r->bindRenderTarget(bench_rt_);
+        r->setViewport(0, 0, cfg.render_w, cfg.render_h);
+        r->clear(0.1f, 0.1f, 0.12f, 1.0f);
+        test->render(r);
+        r->finish();
+
+        // Sanity check after first warmup frame
+        if (i == 0) {
+            unsigned char px[4 * 4 * 4] = {0};
+            int cx = cfg.render_w / 2 - 2, cy = cfg.render_h / 2 - 2;
+            if (cx < 0) cx = 0;
+            if (cy < 0) cy = 0;
+            r->readPixels(cx, cy, 4, 4, px);
+            int nonzero = 0;
+            for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
+            if (nonzero == 0) {
+                sanity_ok = false;
+                Log::warn("Sanity check FAILED for '%s' — render output is black", test->name());
+            }
+        }
+
+        progress_ = static_cast<int>(100.0 * i / cfg.warmup_frames * 0.1);
+        if (cb && !cb->onFrame(rt)) goto cleanup;
+    }
+
+    // Measurement
+    {
+        status_ = std::string("Measuring: ") + test->name();
+        std::vector<double> times;
+        std::vector<double> gpu_times;
+        times.reserve(cfg.measure_frames * 2);
+        if (use_gpu_timer) gpu_times.reserve(cfg.measure_frames * 2);
+        Timer total_timer;
+        Timer frame_t;
+
+        int frame = 0;
+        for (;;) {
+            if (use_fbo) r->bindRenderTarget(bench_rt_);
+            r->setViewport(0, 0, cfg.render_w, cfg.render_h);
+            r->clear(0.1f, 0.1f, 0.12f, 1.0f);
+
+            r->finish();
+
+            if (use_gpu_timer) r->timerBegin();
+            frame_t.reset();
+            test->render(r);
+            if (use_gpu_timer) r->timerEnd();
+            r->finish();
+            double ms = frame_t.elapsed_ms();
+            times.push_back(ms);
+            if (use_gpu_timer) gpu_times.push_back(r->timerElapsedMs());
+
+            double elapsed = total_timer.elapsed_sec();
+            progress_ = 10 + static_cast<int>(90.0 * std::min(
+                static_cast<double>(frame) / cfg.measure_frames,
+                elapsed / cfg.min_duration_sec
+            ));
+
+            if (cb && !cb->onFrame(rt)) goto cleanup;
+
+            frame++;
+            if (frame >= cfg.measure_frames && elapsed >= cfg.min_duration_sec)
+                break;
+        }
+
+        if (use_fbo) r->bindRenderTarget(INVALID_RENDER_TARGET);
+
+        double score = test->computeScore(times, cfg.render_w, cfg.render_h);
+        BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);
+
+        if (!gpu_times.empty()) {
+            double gpu_sum = 0;
+            for (size_t i = 0; i < gpu_times.size(); i++) gpu_sum += gpu_times[i];
+            result.gpu_ms = gpu_sum / gpu_times.size();
+        }
+
+        result.sanity_ok = sanity_ok;
+        if (!sanity_ok) result.valid = false;
+
+        results_.push_back(result);
+    }
+
+cleanup:
+    test->cleanup(r);
+    active_ = false;
+    status_ = "Done";
+    ctx->setVSync(true);
+}
+
+GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,
+                                    int render_w, int render_h,
+                                    BenchCallbacks* cb) {
+    const int PROBE_W = PROBE_RESOLUTION, PROBE_H = PROBE_RESOLUTION;
+
+    (void)render_w;
+    (void)render_h;
+
+    ctx->setVSync(false);
+    r->resetState();
+
+    double fill_score = 0;
+    double geom_score = 0;
+
+    // Probe fillrate
+    {
+        FillrateParams fp; fp.layers = PROBE_FILL_LAYERS;
+        FillrateTest test(fp);
+        test.setup(r, PROBE_W, PROBE_H);
+        r->setViewport(0, 0, PROBE_W, PROBE_H);
+
+        for (int i = 0; i < PROBE_WARMUP; i++) {
+            r->clear(0.0f, 0.0f, 0.0f, 1.0f);
+            test.render(r);
+            r->finish();
+        }
+
+        std::vector<double> times;
+        times.reserve(PROBE_FRAMES);
+        Timer ft;
+        for (int i = 0; i < PROBE_FRAMES; i++) {
+            if (cb && !cb->onPoll()) break;
+            r->clear(0.0f, 0.0f, 0.0f, 1.0f);
+            r->finish();
+            ft.reset();
+            test.render(r);
+            r->finish();
+            times.push_back(ft.elapsed_ms());
+        }
+        fill_score = test.computeScore(times, PROBE_W, PROBE_H);
+        test.cleanup(r);
+    }
+
+    // Probe geometry
+    {
+        GeometryParams gp; gp.grid_size = 10;
+        GeometryTest test(gp);
+        r->resetState();
+        test.setup(r, PROBE_W, PROBE_H);
+        r->setViewport(0, 0, PROBE_W, PROBE_H);
+
+        for (int i = 0; i < PROBE_WARMUP; i++) {
+            r->clear(0.0f, 0.0f, 0.0f, 1.0f);
+            test.render(r);
+            r->finish();
+        }
+
+        std::vector<double> times;
+        times.reserve(PROBE_FRAMES);
+        Timer ft;
+        for (int i = 0; i < PROBE_FRAMES; i++) {
+            if (cb && !cb->onPoll()) break;
+            r->clear(0.0f, 0.0f, 0.0f, 1.0f);
+            r->finish();
+            ft.reset();
+            test.render(r);
+            r->finish();
+            times.push_back(ft.elapsed_ms());
+        }
+        geom_score = test.computeScore(times, PROBE_W, PROBE_H);
+        test.cleanup(r);
+    }
+
+    r->resetState();
+    ctx->setVSync(true);
+
+    GPUTier tier = classifyGPUTier(r->getCaps(), fill_score, geom_score);
+    Log::info("Quick probe: fill=%.1f Mpix/s, geom=%.1f Ktris/s -> tier=%s",
+            fill_score, geom_score, gpuTierName(tier));
+    return tier;
+}

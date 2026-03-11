@@ -53,39 +53,59 @@ endif()
 
 # --- Main executable ---
 set(SOURCES
+    # App
     src/main.cpp
     src/app.cpp
-    src/gl_funcs.cpp
-    src/gl2_renderer.cpp
-    src/gl3_renderer.cpp
-    src/gl4_renderer.cpp
-    src/gles_renderer.cpp
-    src/render_context.cpp
-    src/gl_render_context.cpp
-    src/gl_loader.cpp
-    src/renderer_factory.cpp
-    src/mesh_gen.cpp
-    src/bench.cpp
-    src/test_fillrate.cpp
-    src/test_geometry.cpp
-    src/test_texturing.cpp
-    src/test_scene.cpp
-    src/test_drawcall.cpp
-    src/test_overdraw.cpp
-    src/test_texupload.cpp
-    src/test_statechange.cpp
-    src/test_vertex.cpp
-    src/test_shader_alu.cpp
-    src/test_shader_fma.cpp
-    src/test_drawcall_raw.cpp
-    src/gpu_timer.cpp
-    src/hwinfo.cpp
-    src/preset.cpp
-    src/config.cpp
-    src/results.cpp
-    src/gpu_select.cpp
-    src/test_registry.cpp
-    src/logger.cpp
+
+    # Renderer
+    src/renderer/gl_funcs.cpp
+    src/renderer/gl2_renderer.cpp
+    src/renderer/gl3_renderer.cpp
+    src/renderer/gl4_renderer.cpp
+    src/renderer/gles_renderer.cpp
+    src/renderer/render_context.cpp
+    src/renderer/gl_render_context.cpp
+    src/renderer/gl_loader.cpp
+    src/renderer/renderer_factory.cpp
+    src/renderer/gpu_timer.cpp
+
+    # Geometry
+    src/geometry/mesh_gen.cpp
+
+    # Bench engine
+    src/bench/bench.cpp
+    src/bench/bench_runner.cpp
+    src/bench/stress_runner.cpp
+    src/bench/preset.cpp
+    src/bench/results.cpp
+
+    # Tests
+    src/tests/test_registry.cpp
+    src/tests/test_fillrate.cpp
+    src/tests/test_geometry.cpp
+    src/tests/test_texturing.cpp
+    src/tests/test_scene.cpp
+    src/tests/test_drawcall.cpp
+    src/tests/test_drawcall_raw.cpp
+    src/tests/test_overdraw.cpp
+    src/tests/test_texupload.cpp
+    src/tests/test_statechange.cpp
+    src/tests/test_vertex.cpp
+    src/tests/test_shader_alu.cpp
+    src/tests/test_shader_fma.cpp
+    src/tests/test_instanced_draw.cpp
+    src/tests/test_compute_fma.cpp
+
+    # UI
+    src/ui/bench_ui.cpp
+
+    # Platform
+    src/platform/hwinfo.cpp
+    src/platform/config.cpp
+    src/platform/gpu_select.cpp
+    src/platform/logger.cpp
+
+    # ImGui backend
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
@@ -117,10 +137,13 @@ endif()
 
 if(WIN32)
     target_link_libraries(gpu_benchmark PRIVATE advapi32)
-    # MinGW: statically link C/C++ runtime to reduce DLL dependencies.
-    # libwinpthread-1.dll is still needed (posix thread model) — ship it alongside the exe.
+    # Force console subsystem so stderr/stdout work in terminal.
+    # SDL2's .dll.a pulls -mwindows (GUI subsystem) which suppresses console I/O.
+    # We need console for --headless mode and log output.
     if(MINGW)
-        target_link_libraries(gpu_benchmark PRIVATE -static-libgcc -static-libstdc++)
+        target_link_libraries(gpu_benchmark PRIVATE -mconsole -static-libgcc -static-libstdc++)
+    elseif(MSVC)
+        set_target_properties(gpu_benchmark PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
     endif()
 endif()
 

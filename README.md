@@ -4,9 +4,9 @@ Cross-platform OpenGL benchmark for comparing GPU performance across different h
 
 ## Features
 
-- **12 GPU tests** covering fill rate, geometry, texturing, compute, draw call overhead, and more
+- **14 GPU tests** covering fill rate, geometry, texturing, compute, draw call overhead, and more
 - **4 preset levels** (Light / Medium / Heavy / Ultra) for reproducible results
-- **Two renderers**: OpenGL 2.0 (maximum compatibility) and OpenGL 3.0+ (VAO, instancing)
+- **Four renderers**: GL2 (OpenGL 2.0), GL3 (3.0+), GL4 (4.3+), GLES (2.0/3.0) with capability-based test filtering
 - **GPU timer queries** (GL_TIME_ELAPSED) for precise GPU-side timing on GL 3.3+
 - **Composite scoring** with geometric mean by category and bottleneck detection
 - **Auto GPU tier classification** via quick probe at startup
@@ -36,6 +36,8 @@ Cross-platform OpenGL benchmark for comparing GPU performance across different h
 | ShaderALU | Gops | Fragment shader transcendentals (sin/cos/pow/sqrt) |
 | ShaderFMA | GFLOP/s | Fragment shader pure FMA throughput (acc = acc * a + b) |
 | DrawCallRaw | Kcalls/s | Draw call overhead without uniform updates |
+| InstancedDraw | Mtri/s | Instanced rendering throughput via glDrawElementsInstanced (GL3+) |
+| ComputeFMA | GFLOP/s | Compute shader FMA throughput via SSBO (GL4.3+) |
 
 For detailed test descriptions, scoring formulas, and parameters, see [docs/tests.md](docs/tests.md).
 
@@ -78,7 +80,7 @@ gpu_benchmark [options]
 
 Options:
   --preset <light|medium|heavy|ultra>   Preset (default: medium)
-  --renderer <gl2|gl3|auto>             Renderer (default: auto)
+  --renderer <gl2|gl3|gl4|gles|auto>             Renderer (default: auto)
   --config <path>                       Load config INI file
   --headless                            No GUI, run tests, print results
   --test <name,...>                      Run specific tests (comma-separated, or "all")
@@ -197,27 +199,43 @@ GPU_bechmark/
   extern/
     imgui/                            # ImGui v1.89.9 (git submodule)
   src/
-    main.cpp                          # CLI argument parsing, entry point
-    app.h / app.cpp                   # Application loop, ImGui UI, headless/stress mode
-    renderer.h                        # Abstract renderer interface
-    gl2_renderer.h / .cpp             # OpenGL 2.0 renderer
-    gl3_renderer.h / .cpp             # OpenGL 3.0+ renderer (inherits GL2)
-    renderer_factory.h / .cpp         # GL version detection, renderer creation
-    gl_funcs.h / .cpp                 # GL function loader (X-macro architecture)
-    bench.h / .cpp                    # Statistics, composite score, bottleneck, GPU tier
-    tests.h                           # All 12 test class declarations
-    test_*.cpp                        # Individual test implementations
-    gpu_timer.h / .cpp                # GPU timer queries (GL_TIME_ELAPSED)
-    preset.h / .cpp                   # Preset definitions, validation
-    config.h / .cpp                   # INI config save/load
-    results.h / .cpp                  # Text/CSV/JSON export
-    hwinfo.h / .cpp                   # CPU, OS detection
-    gpu_select.h / .cpp               # GPU enumeration and selection
-    mesh.h / mesh_gen.h / .cpp        # Vertex data, procedural mesh generation
-    math_types.h                      # Vec2, Vec3, Vec4, Mat4
-    timer.h                           # High-resolution timer
-    logger.h / .cpp                   # Logging utilities
-    compat.h                          # Platform compatibility helpers
+    main.cpp                          # CLI parsing, entry point
+    app.h / app.cpp                   # Application coordinator
+    ui/
+      bench_ui.h / .cpp               # UI layer (UIView/UIState/UIAction)
+    bench/
+      bench.h / .cpp                  # Statistics, composite score, bottleneck, GPU tier
+      bench_runner.h / .cpp           # Test execution loop
+      stress_runner.h / .cpp          # Stress test mode
+      preset.h / .cpp                 # Preset definitions, validation
+      results.h / .cpp                # Text/CSV/JSON export
+    tests/
+      tests.h                         # Base test helpers
+      test_registry.h / .cpp / .def   # X-macro test registry with capability flags
+      test_*.cpp                      # 14 test implementations
+    renderer/
+      renderer.h                      # Abstract renderer interface
+      gl2_renderer.h / .cpp           # OpenGL 2.0 renderer (base)
+      gl3_renderer.h / .cpp           # OpenGL 3.0+ (VAO, instancing)
+      gl4_renderer.h / .cpp           # OpenGL 4.3+ (compute, SSBO)
+      gles_renderer.h / .cpp          # OpenGL ES 2.0/3.0
+      renderer_factory.h / .cpp       # Auto-detection and creation
+      gl_funcs.h / .cpp               # GL function loading (X-macro)
+      gl_loader.h / .cpp              # imgl3w loader
+      gpu_timer.h / .cpp              # GPU timer queries
+      render_context.h / .cpp         # Window + GL context (abstract)
+      gl_render_context.h / .cpp      # SDL2 + GL context (concrete)
+    geometry/
+      math_types.h                    # Vec2, Vec3, Vec4, Mat4
+      mesh.h                          # Vertex data types
+      mesh_gen.h / .cpp               # Procedural mesh generation
+    platform/
+      config.h / .cpp                 # INI config save/load
+      hwinfo.h / .cpp                 # CPU, OS detection
+      gpu_select.h / .cpp             # GPU enumeration and selection
+      logger.h / .cpp                 # Logging
+      timer.h                         # High-resolution timer
+      compat.h                        # Platform compatibility
 ```
 
 ## Compatibility
@@ -226,6 +244,7 @@ GPU_bechmark/
 
 - OpenGL 2.0 support (GeForce 6000+, Radeon HD 2000+, Intel GMA 950+)
 - For GL3 renderer: OpenGL 3.0+ (GeForce 8000+, Radeon HD 2000+, Intel HD 2000+)
+- For GL4 renderer: OpenGL 4.3+ (GeForce 400+, Radeon HD 5000+, Intel Haswell+)
 
 ### Tested platforms
 
@@ -240,7 +259,7 @@ GPU_bechmark/
 - **PRIME offloading** (`DRI_PRIME`): buffer sharing between NVIDIA proprietary (display) and Mesa (render) drivers is not supported — the window will be black, but `--headless` works correctly
 - `glTexSubImage2D` on very old drivers may be slow (TexUpload test)
 - ShaderALU/ShaderFMA tests require GLSL 1.20 support
-- Stress test cannot reach full GPU TDP via OpenGL alone (compute shaders require GL 4.3)
+- Stress test is more effective with `--renderer gl4` (compute shaders via GL 4.3); without GL4, it falls back to fragment-only stress which cannot reach full GPU TDP
 
 ## License
 

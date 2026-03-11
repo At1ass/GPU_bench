@@ -1,15 +1,17 @@
 #pragma once
-#include "renderer.h"
-#include "render_context.h"
-#include "bench.h"
-#include "tests.h"
-#include "preset.h"
-#include "test_registry.h"
-#include "hwinfo.h"
-#include "timer.h"
+#include "renderer/renderer.h"
+#include "renderer/render_context.h"
+#include "bench/bench.h"
+#include "tests/tests.h"
+#include "bench/preset.h"
+#include "tests/test_registry.h"
+#include "bench/bench_runner.h"
+#include "ui/bench_ui.h"
+#include "bench/stress_runner.h"
+#include "platform/hwinfo.h"
+#include "platform/timer.h"
 #include <SDL.h>
 #include <memory>
-#include <vector>
 #include <string>
 
 enum class OutputFormat {
@@ -18,12 +20,9 @@ enum class OutputFormat {
     JSON
 };
 
-enum class TimingMode {
-    Sync = 0,  // CPU timer + glFinish
-    GPU        // GPU timer queries
-};
+// TimingMode is defined in bench_runner.h
 
-#include "renderer_backend.h"
+#include "renderer/renderer_backend.h"
 
 struct AppConfig {
     int width;
@@ -43,15 +42,10 @@ struct AppConfig {
 
 // NUM_TESTS is defined in test_registry.h
 
-struct ResolutionOption {
-    int w, h;
-    const char* label;
-};
-
 // -1 = native, 0..N = index into RESOLUTIONS[]
 static constexpr int RES_NATIVE = -1;
 
-class App {
+class App : public BenchCallbacks {
 public:
     App();
     ~App();
@@ -60,12 +54,14 @@ public:
     void run();
     void shutdown();
 
+    // BenchCallbacks implementation
+    bool onFrame(RenderTargetHandle rt) override;
+    bool onPoll() override;
+
 private:
     void processEvents();
     void renderUI();
     void renderPreviewScene(float dt);
-    void runTest(BenchTest* test);
-    void runAllTests();
     void runSelectedTests();
     void runHeadless();
     void exportResults();
@@ -77,7 +73,6 @@ private:
     HWInfo        hw_info_;
 
     bool running_;
-    bool benchmarking_;
     bool initialized_;
     int  window_w_, window_h_;
     int  render_w_, render_h_;     // actual test rendering resolution
@@ -96,12 +91,11 @@ private:
     // Test selection checkboxes
     bool test_enabled_[NUM_TESTS];
 
-    // Benchmark state
-    std::vector<BenchResult> results_;
-    CompositeScore composite_score_;
-    BottleneckInfo bottleneck_info_;
-    std::string bench_status_;
-    int bench_progress_;
+    // Benchmark engine (owns results, composite score, bottleneck info)
+    BenchRunner bench_runner_;
+
+    // UI layer
+    BenchUI bench_ui_;
 
     // Deferred actions (set by UI, executed in run loop)
     enum class PendingAction { None, RunSelected, RunAll };
@@ -118,12 +112,7 @@ private:
     void cleanupPreviewScene();
     void validateCurrentPreset();
     void applyPreset(int index);
-    void computeAnalysis();
     void updateRenderResolution();
-    void runQuickProbe();
-
-    // Render target for off-screen rendering at non-native resolution
-    RenderTargetHandle bench_rt_;
 
     GPUTier gpu_tier_;
 

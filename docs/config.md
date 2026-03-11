@@ -58,6 +58,13 @@ iterations=200
 
 [shader_fma]
 iterations=100
+
+[instanced_draw]
+instance_count=5000
+
+[compute_fma]
+iterations=100
+work_groups=1024
 ```
 
 ## Parameter Reference
@@ -152,6 +159,19 @@ iterations=100
 |-----|------|-------------------|-------------|
 | `iterations` | int | 100 | Fragment shader FMA loop iterations |
 
+### [instanced_draw]
+
+| Key | Type | Default (Medium) | Description |
+|-----|------|-------------------|-------------|
+| `instance_count` | int | 5000 | Number of instances per draw call |
+
+### [compute_fma]
+
+| Key | Type | Default (Medium) | Description |
+|-----|------|-------------------|-------------|
+| `iterations` | int | 100 | Compute shader FMA loop iterations |
+| `work_groups` | int | 1024 | Number of work groups dispatched |
+
 ## Preset Comparison
 
 | Parameter | Light | Medium | Heavy | Ultra |
@@ -171,6 +191,9 @@ iterations=100
 | vertex.count | 100K | 500K | 2M | 8M |
 | shader_alu.iterations | 50 | 200 | 500 | 1500 |
 | shader_fma.iterations | 50 | 100 | 200 | 400 |
+| instanced_draw.instance_count | 1000 | 5000 | 20000 | 50000 |
+| compute_fma.iterations | 50 | 100 | 200 | 400 |
+| compute_fma.work_groups | 256 | 1024 | 4096 | 16384 |
 
 ## Saving Configs
 

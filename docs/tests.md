@@ -2,13 +2,13 @@
 
 ## Overview
 
-The benchmark includes 12 tests organized into 4 categories for composite scoring:
+The benchmark includes 14 tests organized into 4 categories for composite scoring:
 
 | Category | Tests | What it measures |
 |----------|-------|------------------|
 | **Fill** | Fillrate, Overdraw, Texturing | Pixel output, blending, texel fetch |
-| **Geometry** | Geometry, Vertex | Triangle throughput, vertex processing |
-| **Compute** | ShaderALU, ShaderFMA | Fragment shader math (transcendentals + FMA) |
+| **Geometry** | Geometry, Vertex, InstancedDraw (GL3+) | Triangle throughput, vertex processing, instancing |
+| **Compute** | ShaderALU, ShaderFMA, ComputeFMA (GL4.3+) | Fragment shader math (transcendentals + FMA), compute shaders |
 | **Overhead** | DrawCall, DrawCallRaw, StateChange, TexUpload | CPU/driver overhead |
 
 The **Scene** test is a combined workload and does not belong to any single category.
@@ -101,6 +101,26 @@ score = vertex_count / avg_time_sec / 1e6
 
 **What affects it:** Vertex shader units, vertex buffer bandwidth, attribute fetch speed.
 
+### InstancedDraw
+
+**Unit**: Mtri/s (megatriangles per second)
+
+Draws many instances of a small sphere mesh using GL3+ hardware instancing (`glDrawElementsInstanced`). Each instance is positioned via `gl_InstanceID` in a grid pattern using a GLSL 1.40 vertex shader.
+
+**Parameters**: `instance_count` — number of instances per frame.
+
+**Scoring**: `(triangles_per_instance × instance_count) / avg_frame_time_sec / 1e6`
+
+**Preset values**:
+| Preset | instance_count |
+|--------|---------------|
+| Light  | 1000          |
+| Medium | 5000          |
+| Heavy  | 20000         |
+| Ultra  | 50000         |
+
+**Requires**: GL3+ with instancing support (Cap_Instancing). Disabled on GL2 renderer.
+
 ---
 
 ## Compute Category
@@ -138,6 +158,33 @@ score = (viewport_w * viewport_h * flops_per_pixel) / avg_time_sec / 1e9
 ```
 
 **Comparing ShaderALU vs ShaderFMA:** If ShaderFMA score >> ShaderALU score (3x or more), the GPU has significantly more FMA units than SFU units. This is typical for NVIDIA Turing+ and AMD RDNA+ architectures.
+
+### ComputeFMA
+
+**Unit:** GFLOP/s (giga floating-point operations per second)
+
+Pure compute shader FMA benchmark. Uses a GLSL 4.30 compute shader with two interleaved vec4 FMA accumulators (`acc = acc * a + b`) writing results to a Shader Storage Buffer Object (SSBO). Local workgroup size is 64.
+
+**Parameters:**
+- `iterations` — FMA loop iterations per invocation
+- `work_groups` — number of workgroups dispatched
+
+**Scoring formula:**
+```
+score = (work_groups × 64 × iterations × 24) / avg_frame_time_sec / 1e9
+```
+
+Where 24 = FLOPs per iteration (2 vec4 accumulators × 4 components × 3 ops per FMA iteration = 24 FLOP).
+
+**Preset values:**
+| Preset | iterations | work_groups |
+|--------|-----------|-------------|
+| Light  | 50        | 256         |
+| Medium | 100       | 1024        |
+| Heavy  | 200       | 4096        |
+| Ultra  | 400       | 16384       |
+
+**Requires:** GL4.3+ with compute shader support (Cap_Compute). Disabled on GL2/GL3 renderers.
 
 ---
 

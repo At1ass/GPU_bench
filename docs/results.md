@@ -13,6 +13,8 @@ Each test produces the following metrics:
 | **Median (ms)** | 50th percentile frame time |
 | **CV%** | Coefficient of variation (stddev / avg * 100) |
 | **Frames** | Total frames measured |
+| **gpu_ms** | GPU-side timing from `GL_TIME_ELAPSED` queries (0 if unavailable). Only present in JSON output. |
+| **sanity_ok** | Sanity check result — if `false`, the test's render output was black (shader compilation failure or rendering bug) and the result is marked invalid. |
 
 ### CV% — Stability Indicator
 
@@ -48,8 +50,8 @@ The composite score aggregates all test results into category scores using geome
 | Category | Tests included |
 |----------|---------------|
 | **Fill** | Fillrate, Overdraw, Texturing |
-| **Geometry** | Geometry, Vertex |
-| **Compute** | ShaderALU, ShaderFMA |
+| **Geometry** | Geometry, Vertex, InstancedDraw |
+| **Compute** | ShaderALU, ShaderFMA, ComputeFMA |
 | **Overhead** | DrawCall, DrawCallRaw, StateChange, TexUpload |
 
 **Overall** = geometric mean of the 4 category scores.
@@ -129,4 +131,4 @@ Full structured output including:
 - GPU capabilities (VAO, instancing, FBO, timer queries, GPU tier)
 - Test config (resolution, warmup/measure frames, vsync)
 - Composite scores and bottleneck analysis
-- Per-test results with all metrics
+- Per-test results with all metrics (14 tests total)

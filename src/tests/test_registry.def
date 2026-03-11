@@ -1,0 +1,20 @@
+// Canonical test registry — single source of truth for all tests.
+// Format: X(id, class, display_name, cli_name, category, description, unit, preset_field, caps)
+//
+// Adding a new test = adding one line here. Everything else is generated.
+// caps: bitmask of TestCap flags required to run this test.
+
+X(Fillrate,    FillrateTest,    "Fillrate",    "fillrate",     Fill,     "Pixel fill throughput (opaque quads)",  "MPix/s",   fillrate,    Cap_None)
+X(Geometry,    GeometryTest,    "Geometry",    "geometry",     Geometry, "Triangle throughput",                   "Mtri/s",   geometry,    Cap_None)
+X(Texturing,   TexturingTest,   "Texturing",   "texturing",    Fill,     "Texture sampling rate",                "MTex/s",   texturing,   Cap_None)
+X(Scene,       SceneTest,       "Scene",       "scene",        Mixed,    "Complex scene rendering workload",     "FPS",      scene,       Cap_None)
+X(DrawCall,    DrawCallTest,    "DrawCall",    "drawcall",     Overhead, "Driver draw call overhead",            "calls/s",  drawcall,    Cap_None)
+X(Overdraw,    OverdrawTest,    "Overdraw",    "overdraw",     Fill,     "ROP overdraw stress (blended quads)",  "MPix/s",   overdraw,    Cap_None)
+X(TexUpload,   TexUploadTest,   "TexUpload",   "texupload",    Overhead, "Texture upload bandwidth",             "MB/s",     texupload,   Cap_None)
+X(StateChange, StateChangeTest, "StateChange", "statechange",  Overhead, "Pipeline state change overhead",       "ops/s",    statechange, Cap_None)
+X(Vertex,      VertexTest,      "Vertex",      "vertex",       Geometry, "Vertex processing rate",               "Mverts/s", vertex,      Cap_None)
+X(ShaderALU,   ShaderALUTest,   "ShaderALU",   "shader_alu",   Compute,  "Shader ALU throughput (sin/cos/pow)",  "GFLOP/s",  shader_alu,  Cap_None)
+X(ShaderFMA,   ShaderFMATest,   "ShaderFMA",   "shader_fma",   Compute,  "Shader FMA throughput (pure MAD)",     "GFLOP/s",  shader_fma,  Cap_None)
+X(DrawCallRaw,   DrawCallRawTest,   "DrawCallRaw",   "drawcall_raw",   Overhead,  "Raw driver submission (no uniforms)",       "calls/s",  drawcall,       Cap_None)
+X(InstancedDraw, InstancedDrawTest, "InstancedDraw", "instanced_draw", Geometry,  "Instanced rendering throughput (GL3+)",    "Mtri/s",   instanced_draw, Cap_Instancing)
+X(ComputeFMA,    ComputeFMATest,    "ComputeFMA",    "compute_fma",    Compute,   "Compute shader FMA throughput (GL4.3+)",   "GFLOP/s",  compute_fma,    Cap_Compute)
