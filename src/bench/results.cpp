@@ -1,8 +1,10 @@
 #include "bench/results.h"
+#include "tests/test_registry.h"
 #include "platform/compat.h"
 
 void exportText(FILE* out, const std::vector<BenchResult>& results,
                 const HWInfo& hw, const RenderCaps& caps,
+                uint32_t available_caps,
                 const char* gpu_name, const char* gl_version,
                 const char* renderer_name, const char* preset_name,
                 const ExportConfig& ecfg,
@@ -19,8 +21,10 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
         fprintf(out, "VRAM: %d MB\n", caps.estimated_vram_mb);
     fprintf(out, "MaxTex: %d  Attribs: %d  VAO: %s  Instancing: %s  FBO: %s  TimerQ: %s\n",
             caps.max_texture_size, caps.max_vertex_attribs,
-            caps.has_vao ? "yes" : "no", caps.has_instancing ? "yes" : "no",
-            caps.has_fbo ? "yes" : "no", caps.has_timer_queries ? "yes" : "no");
+            (available_caps & Cap_VAO) ? "yes" : "no",
+            (available_caps & Cap_Instancing) ? "yes" : "no",
+            (available_caps & Cap_FBO) ? "yes" : "no",
+            (available_caps & Cap_TimerQuery) ? "yes" : "no");
     fprintf(out, "GPU Tier: %s\n", ecfg.gpu_tier);
     fprintf(out, "Resolution: %dx%d\n", ecfg.width, ecfg.height);
     fprintf(out, "Warmup: %d frames, Measure: %d frames\n", ecfg.warmup_frames, ecfg.measure_frames);
@@ -53,9 +57,11 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
 
 void exportCSV(FILE* out, const std::vector<BenchResult>& results,
                const HWInfo& hw, const RenderCaps& caps,
+               uint32_t available_caps,
                const char* gpu_name, const char* gl_version,
                const char* renderer_name, const char* preset_name,
                const ExportConfig& ecfg) {
+    (void)available_caps;
     (void)ecfg;
     fprintf(out, "preset,cpu,gpu,gl_version,renderer,os,vram_mb,test,score,unit,avg_ms,min_ms,max_ms,median_ms,p1_ms,p99_ms,cv,frames,valid,sanity_ok\n");
     for (const auto& r : results) {
@@ -83,6 +89,7 @@ static void jsonEscape(FILE* out, const char* s) {
 
 void exportJSON(FILE* out, const std::vector<BenchResult>& results,
                 const HWInfo& hw, const RenderCaps& caps,
+                uint32_t available_caps,
                 const char* gpu_name, const char* gl_version,
                 const char* renderer_name, const char* preset_name,
                 const ExportConfig& ecfg,
@@ -104,10 +111,10 @@ void exportJSON(FILE* out, const std::vector<BenchResult>& results,
     fprintf(out, "    \"gl_minor\": %d,\n", caps.gl_minor);
     fprintf(out, "    \"max_texture_size\": %d,\n", caps.max_texture_size);
     fprintf(out, "    \"max_vertex_attribs\": %d,\n", caps.max_vertex_attribs);
-    fprintf(out, "    \"has_vao\": %s,\n", caps.has_vao ? "true" : "false");
-    fprintf(out, "    \"has_instancing\": %s,\n", caps.has_instancing ? "true" : "false");
-    fprintf(out, "    \"has_fbo\": %s,\n", caps.has_fbo ? "true" : "false");
-    fprintf(out, "    \"has_timer_queries\": %s,\n", caps.has_timer_queries ? "true" : "false");
+    fprintf(out, "    \"has_vao\": %s,\n", (available_caps & Cap_VAO) ? "true" : "false");
+    fprintf(out, "    \"has_instancing\": %s,\n", (available_caps & Cap_Instancing) ? "true" : "false");
+    fprintf(out, "    \"has_fbo\": %s,\n", (available_caps & Cap_FBO) ? "true" : "false");
+    fprintf(out, "    \"has_timer_queries\": %s,\n", (available_caps & Cap_TimerQuery) ? "true" : "false");
     fprintf(out, "    \"has_generate_mipmap\": %s,\n", caps.has_generate_mipmap_func ? "true" : "false");
     fprintf(out, "    \"vram_mb\": %d,\n", caps.estimated_vram_mb);
     fprintf(out, "    \"gpu_tier\": \"%s\"\n", ecfg.gpu_tier);

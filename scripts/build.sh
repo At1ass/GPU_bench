@@ -8,8 +8,11 @@ usage() {
     echo "Usage: $0 <target>"
     echo ""
     echo "Targets:"
-    echo "  all             Build all targets (linux + mingw64 + mingw32)"
-    echo "  linux           Native Linux build"
+    echo "  all             Build all targets (native + mingw64 + mingw32)"
+    echo "  native          Native build (auto-detects Linux/macOS/FreeBSD)"
+    echo "  linux           Alias for native"
+    echo "  macos           Alias for native"
+    echo "  freebsd         Alias for native"
     echo "  mingw64         Cross-compile for Windows 64-bit (MinGW-w64)"
     echo "  mingw32         Cross-compile for Windows 32-bit (MinGW-w64, Win XP)"
     echo "  clean           Remove all build directories"
@@ -20,15 +23,24 @@ usage() {
     exit 1
 }
 
-JOBS="${JOBS:-$(nproc 2>/dev/null || echo 4)}"
+JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}"
 
-build_linux() {
-    local build_dir="$PROJECT_DIR/build_linux"
-    echo "=== Building for Linux (${BUILD_TYPE}) ==="
+# Detect build tool: use gmake on FreeBSD if available, make elsewhere
+if command -v gmake >/dev/null 2>&1 && [ "$(uname -s)" = "FreeBSD" ]; then
+    MAKE_CMD=gmake
+else
+    MAKE_CMD=make
+fi
+
+build_native() {
+    local os_name
+    os_name="$(uname -s)"
+    local build_dir="$PROJECT_DIR/build_native"
+    echo "=== Building for ${os_name} (${BUILD_TYPE}) ==="
     mkdir -p "$build_dir"
     cd "$build_dir"
     cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_EXPORT_COMPILE_COMMANDS=1
-    make -j"$JOBS"
+    $MAKE_CMD -j"$JOBS"
     echo ""
     echo "Done: $build_dir/gpu_benchmark"
 }
@@ -46,7 +58,7 @@ build_mingw64() {
     mkdir -p "$build_dir"
     cd "$build_dir"
     cmake "$PROJECT_DIR" -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
-    make -j"$JOBS"
+    $MAKE_CMD -j"$JOBS"
 
     local sysroot="/usr/x86_64-w64-mingw32"
     for dll in SDL2.dll libwinpthread-1.dll; do
@@ -75,7 +87,7 @@ build_mingw32() {
     mkdir -p "$build_dir"
     cd "$build_dir"
     cmake "$PROJECT_DIR" -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
-    make -j"$JOBS"
+    $MAKE_CMD -j"$JOBS"
 
     local sysroot="/usr/i686-w64-mingw32"
     for dll in SDL2.dll libwinpthread-1.dll; do
@@ -93,27 +105,27 @@ build_mingw32() {
 
 clean() {
     echo "Cleaning build directories..."
-    rm -rf "$PROJECT_DIR"/build_linux
+    rm -rf "$PROJECT_DIR"/build_native "$PROJECT_DIR"/build_linux
     rm -rf "$PROJECT_DIR"/build_mingw64 "$PROJECT_DIR"/build_mingw32
     echo "Done."
 }
 
 build_all() {
-    build_linux
+    build_native
     build_mingw64
     build_mingw32
     echo ""
     echo "=== All targets built ==="
-    echo "  Linux:   $PROJECT_DIR/build_linux/gpu_benchmark"
+    echo "  Native:  $PROJECT_DIR/build_native/gpu_benchmark"
     echo "  Win64:   $PROJECT_DIR/build_mingw64/gpu_benchmark.exe"
     echo "  Win32:   $PROJECT_DIR/build_mingw32/gpu_benchmark.exe"
 }
 
 case "${1:-}" in
-    all)          build_all ;;
-    linux)        build_linux ;;
-    mingw64)      build_mingw64 ;;
-    mingw32)      build_mingw32 ;;
-    clean)        clean ;;
-    *)            usage ;;
+    all)                        build_all ;;
+    native|linux|macos|freebsd) build_native ;;
+    mingw64)                    build_mingw64 ;;
+    mingw32)                    build_mingw32 ;;
+    clean)                      clean ;;
+    *)                          usage ;;
 esac

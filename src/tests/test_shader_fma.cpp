@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cmath>
 
-static const char* SHADER_FMA_VS = R"(
+static const char* SHADER_FMA_VS_120 = R"(
 #version 120
 attribute vec2 a_pos;
 attribute vec2 a_uv;
@@ -17,7 +17,7 @@ void main() {
 // Pure FMA shader with data-dependent operands to prevent driver optimization.
 // Two interleaved accumulator chains create a dependency that can't be collapsed.
 // Each iteration: 2x vec4 mul + 2x vec4 add + 1x vec4 add (cross-feed) = 20 FLOPs
-static const char* SHADER_FMA_FS = R"(
+static const char* SHADER_FMA_FS_120 = R"(
 #version 120
 varying vec2 v_uv;
 uniform int u_iterations;
@@ -31,6 +31,36 @@ void main() {
         acc0 = acc0 * vec4(0.5) + vec4(0.25);
     }
     gl_FragColor = vec4((acc0.xyz + acc1.xyz) * 0.5, 1.0);
+}
+)";
+
+// GLSL 150 core profile variants
+static const char* SHADER_FMA_VS_150 = R"(
+#version 150
+in vec2 a_pos;
+in vec2 a_uv;
+out vec2 v_uv;
+void main() {
+    v_uv = a_uv;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
+
+static const char* SHADER_FMA_FS_150 = R"(
+#version 150
+in vec2 v_uv;
+uniform int u_iterations;
+uniform float u_time;
+out vec4 fragColor;
+void main() {
+    vec4 acc0 = vec4(v_uv.x * 0.01 + 0.5, v_uv.y * 0.01 + 0.5, u_time * 0.001 + 0.5, 0.5);
+    vec4 acc1 = vec4(v_uv.y * 0.01 + 0.3, v_uv.x * 0.01 + 0.7, u_time * 0.002 + 0.4, 0.6);
+    for (int i = 0; i < u_iterations; i++) {
+        acc0 = acc0 * acc1 + acc0;
+        acc1 = acc1 * acc0 + acc1;
+        acc0 = acc0 * vec4(0.5) + vec4(0.25);
+    }
+    fragColor = vec4((acc0.xyz + acc1.xyz) * 0.5, 1.0);
 }
 )";
 
@@ -50,7 +80,9 @@ void ShaderFMATest::setup(Renderer* r, int vw, int vh) {
     time_ = 0.0f;
     quad_ = r->createMesh(MeshGen::quad());
 
-    shader_ = r->createCustomShader(SHADER_FMA_VS, SHADER_FMA_FS);
+    const char* vs = r->isCoreProfile() ? SHADER_FMA_VS_150 : SHADER_FMA_VS_120;
+    const char* fs = r->isCoreProfile() ? SHADER_FMA_FS_150 : SHADER_FMA_FS_120;
+    shader_ = r->createCustomShader(vs, fs);
     if (shader_ != INVALID_SHADER) {
         u_iterations_loc_ = r->getCustomUniformLoc(shader_, "u_iterations");
         u_time_loc_ = r->getCustomUniformLoc(shader_, "u_time");

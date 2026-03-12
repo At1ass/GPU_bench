@@ -99,10 +99,6 @@ bool GLESRenderer::init(int w, int h) {
 
     detectCaps();
 
-    // GLESRenderer does not implement instancing or compute — disable
-    caps_.has_instancing = false;
-    caps_.has_compute = false;
-
     // Determine GLES version from GL_VERSION string
     // GLES reports "OpenGL ES X.Y ..." or "OpenGL ES-CM X.Y ..."
     gles3_ = false;
@@ -123,9 +119,8 @@ bool GLESRenderer::init(int w, int h) {
             caps_.supports_32bit_indices = true;
     }
 
-    // GLES 3.0+ has VAO, FBO, glGenerateMipmap built-in
+    // GLES 3.0+ has FBO, glGenerateMipmap built-in
     if (gles3_) {
-        caps_.has_vao = true;
         caps_.has_fbo = true;
         caps_.has_generate_mipmap_func = true;
     }
@@ -172,9 +167,8 @@ bool GLESRenderer::init(int w, int h) {
 
     setViewport(0, 0, w, h);
 
-    Log::info("GLESRenderer: GLES %s, vao=%s, 32bit_idx=%s",
+    Log::info("GLESRenderer: GLES %s, 32bit_idx=%s",
             gles3_ ? "3.0+" : "2.0",
-            caps_.has_vao ? "yes" : "no",
             caps_.supports_32bit_indices ? "yes" : "no");
 
     initialized_ = true;

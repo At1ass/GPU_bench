@@ -2,6 +2,7 @@
 #include "geometry/mesh.h"
 #include "geometry/math_types.h"
 #include <vector>
+#include <type_traits>
 
 struct RenderCaps {
     int max_texture_size = 256;
@@ -10,12 +11,9 @@ struct RenderCaps {
     int estimated_vram_mb = 0;  // 0 = unknown
     int gl_major = 2;
     int gl_minor = 0;
-    bool has_vao = false;
-    bool has_instancing = false;
     bool has_generate_mipmap_func = false;
     bool has_timer_queries = false;
     bool has_fbo = false;
-    bool has_compute = false;
 
     RenderCaps() = default;
 };
@@ -31,6 +29,11 @@ using BufferHandle       = Handle<BufferTag>;
 static const ShaderHandle       INVALID_SHADER;
 static const RenderTargetHandle INVALID_RENDER_TARGET;
 static const BufferHandle       INVALID_BUFFER;
+
+// Forward declarations for feature interfaces
+struct GL3Features;
+struct GL4Features;
+struct ComputeFeatures;
 
 // Abstract renderer interface.
 class Renderer {
@@ -76,7 +79,6 @@ public:
 
     // Draw
     virtual void drawMesh(MeshHandle h) = 0;
-    virtual void drawMeshInstanced(MeshHandle h, int instance_count) = 0;
 
     // Texture re-upload (for TexUpload test)
     virtual void uploadTextureData(TextureHandle h, int w, int h_,
@@ -118,18 +120,19 @@ public:
     virtual void   timerEnd() = 0;
     virtual double timerElapsedMs() = 0;
 
-    // Compute shaders (GL 4.3+ / GLES 3.1+)
-    virtual ShaderHandle createComputeShader(const char* source) = 0;
-    virtual void         dispatchCompute(int groups_x, int groups_y, int groups_z) = 0;
-    virtual void         computeMemoryBarrier() = 0;
-
-    // Shader Storage Buffer Objects (GL 4.3+ / GLES 3.1+)
-    virtual BufferHandle createSSBO(int size_bytes) = 0;
-    virtual void         destroySSBO(BufferHandle h) = 0;
-    virtual void         bindSSBO(BufferHandle h, int binding) = 0;
+    // Feature groups (nullptr if not supported by this renderer)
+    virtual GL3Features*     gl3()     { return nullptr; }
+    virtual GL4Features*     gl4()     { return nullptr; }
+    virtual ComputeFeatures* compute() { return nullptr; }
+    virtual const GL3Features*     gl3()     const { return nullptr; }
+    virtual const GL4Features*     gl4()     const { return nullptr; }
+    virtual const ComputeFeatures* compute() const { return nullptr; }
 
     // Hardware capabilities
     virtual const RenderCaps& getCaps() const = 0;
+
+    // Core profile: GLSL 1.20/1.40 unavailable, tests must use 1.50+
+    virtual bool isCoreProfile() const { return false; }
 
     // Info
     virtual const char* getGPUVendor() const = 0;
@@ -137,3 +140,18 @@ public:
     virtual const char* getGLVersion() const = 0;
     virtual const char* getRendererName() const = 0;
 };
+
+// Handle type safety
+static_assert(!std::is_same<MeshHandle, TextureHandle>::value, "");
+static_assert(!std::is_same<MeshHandle, ShaderHandle>::value, "");
+static_assert(!std::is_same<MeshHandle, BufferHandle>::value, "");
+static_assert(!std::is_same<TextureHandle, ShaderHandle>::value, "");
+static_assert(!std::is_same<TextureHandle, BufferHandle>::value, "");
+static_assert(!std::is_same<ShaderHandle, BufferHandle>::value, "");
+static_assert(!std::is_same<BufferHandle, RenderTargetHandle>::value, "");
+
+static_assert(std::is_trivially_copyable<MeshHandle>::value, "");
+static_assert(std::is_trivially_copyable<BufferHandle>::value, "");
+static_assert(std::is_trivially_copyable<ShaderHandle>::value, "");
+static_assert(std::is_trivially_copyable<TextureHandle>::value, "");
+static_assert(std::is_trivially_copyable<RenderTargetHandle>::value, "");

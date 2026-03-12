@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cmath>
 
-static const char* SHADER_ALU_VS = R"(
+static const char* SHADER_ALU_VS_120 = R"(
 #version 120
 attribute vec2 a_pos;
 attribute vec2 a_uv;
@@ -17,7 +17,7 @@ void main() {
 // Heavy fragment shader with sin/cos/pow/sqrt loop
 // The loop count is controlled by a uniform u_iterations
 // We unroll in groups of 4 operations per iteration to give the compiler less room to optimize away
-static const char* SHADER_ALU_FS = R"(
+static const char* SHADER_ALU_FS_120 = R"(
 #version 120
 varying vec2 v_uv;
 uniform int u_iterations;
@@ -31,6 +31,36 @@ void main() {
         acc.w = pow(abs(acc.w), 0.99) + acc.x * 0.01;
     }
     gl_FragColor = vec4(acc.xyz * 0.5 + 0.5, 1.0);
+}
+)";
+
+// GLSL 150 core profile variants
+static const char* SHADER_ALU_VS_150 = R"(
+#version 150
+in vec2 a_pos;
+in vec2 a_uv;
+out vec2 v_uv;
+void main() {
+    v_uv = a_uv;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
+
+static const char* SHADER_ALU_FS_150 = R"(
+#version 150
+in vec2 v_uv;
+uniform int u_iterations;
+uniform float u_time;
+out vec4 fragColor;
+void main() {
+    vec4 acc = vec4(v_uv.x, v_uv.y, u_time * 0.01, 1.0);
+    for (int i = 0; i < u_iterations; i++) {
+        acc.x = sin(acc.x * 1.1 + acc.y);
+        acc.y = cos(acc.y * 1.2 + acc.z);
+        acc.z = sqrt(abs(acc.z * acc.x + 0.5));
+        acc.w = pow(abs(acc.w), 0.99) + acc.x * 0.01;
+    }
+    fragColor = vec4(acc.xyz * 0.5 + 0.5, 1.0);
 }
 )";
 
@@ -50,7 +80,9 @@ void ShaderALUTest::setup(Renderer* r, int vw, int vh) {
     time_ = 0.0f;
     quad_ = r->createMesh(MeshGen::quad());
 
-    shader_ = r->createCustomShader(SHADER_ALU_VS, SHADER_ALU_FS);
+    const char* vs = r->isCoreProfile() ? SHADER_ALU_VS_150 : SHADER_ALU_VS_120;
+    const char* fs = r->isCoreProfile() ? SHADER_ALU_FS_150 : SHADER_ALU_FS_120;
+    shader_ = r->createCustomShader(vs, fs);
     if (shader_ != INVALID_SHADER) {
         u_iterations_loc_ = r->getCustomUniformLoc(shader_, "u_iterations");
         u_time_loc_ = r->getCustomUniformLoc(shader_, "u_time");

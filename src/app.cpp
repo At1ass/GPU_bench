@@ -334,7 +334,7 @@ void App::runSelectedTests() {
     cfg.window_w = window_w_;
     cfg.window_h = window_h_;
 
-    uint32_t caps = getAvailableCaps(renderer_->getCaps());
+    uint32_t caps = getAvailableCaps(*renderer_);
     bench_runner_.runSelected(renderer_.get(), ctx_.get(), current_preset_, cfg,
                               test_enabled_, caps, this);
 }
@@ -347,6 +347,7 @@ void App::renderUI() {
     view.gl_version = renderer_->getGLVersion();
     view.renderer_name = renderer_->getRendererName();
     view.caps = &renderer_->getCaps();
+    view.available_caps = getAvailableCaps(*renderer_);
     view.supports_render_targets = renderer_->supportsRenderTargets();
     view.gpu_tier = gpu_tier_;
     view.window_w = window_w_;
@@ -438,16 +439,18 @@ void App::exportResults() {
     const auto& composite = bench_runner_.compositeScore();
     const auto& bottleneck_info = bench_runner_.bottleneckInfo();
 
+    uint32_t available_caps = getAvailableCaps(*renderer_);
+
     switch (config_.output_format) {
         case OutputFormat::CSV:
-            exportCSV(out, results, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg);
+            exportCSV(out, results, hw_info_, renderer_->getCaps(), available_caps, gpu, gl_ver, rname, pname, ecfg);
             break;
         case OutputFormat::JSON:
-            exportJSON(out, results, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
+            exportJSON(out, results, hw_info_, renderer_->getCaps(), available_caps, gpu, gl_ver, rname, pname, ecfg,
                        &composite, &bottleneck_info);
             break;
         default:
-            exportText(out, results, hw_info_, renderer_->getCaps(), gpu, gl_ver, rname, pname, ecfg,
+            exportText(out, results, hw_info_, renderer_->getCaps(), available_caps, gpu, gl_ver, rname, pname, ecfg,
                        &composite, &bottleneck_info);
             break;
     }

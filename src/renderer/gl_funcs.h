@@ -17,7 +17,7 @@
 
 #include <SDL.h>
 
-#if defined(_WIN32) || defined(CB_STATIC_GL)
+#if defined(_WIN32) || defined(__APPLE__) || defined(CB_STATIC_GL)
   #define CB_NEED_GL_LOAD
 
   // imgl3w provides: GL types, constants, ~50 GL functions (as macros),
@@ -158,6 +158,144 @@
   #define GL_RED                          0x1903
   #endif
 
+  // Texture arrays (GL 3.0+)
+  #ifndef GL_TEXTURE_2D_ARRAY
+  #define GL_TEXTURE_2D_ARRAY             0x8C1A
+  #endif
+
+  // MRT additional color attachments
+  #ifndef GL_COLOR_ATTACHMENT1
+  #define GL_COLOR_ATTACHMENT1            0x8CE1
+  #endif
+  #ifndef GL_COLOR_ATTACHMENT2
+  #define GL_COLOR_ATTACHMENT2            0x8CE2
+  #endif
+  #ifndef GL_COLOR_ATTACHMENT3
+  #define GL_COLOR_ATTACHMENT3            0x8CE3
+  #endif
+
+  // Uniform buffer objects (GL 3.1+)
+  #ifndef GL_UNIFORM_BUFFER
+  #define GL_UNIFORM_BUFFER               0x8A11
+  #endif
+
+  // Rasterizer discard (GL 3.0+)
+  #ifndef GL_RASTERIZER_DISCARD
+  #define GL_RASTERIZER_DISCARD           0x8C89
+  #endif
+
+  // Transform feedback (GL 3.0+)
+  #ifndef GL_TRANSFORM_FEEDBACK_BUFFER
+  #define GL_TRANSFORM_FEEDBACK_BUFFER    0x8C8E
+  #endif
+  #ifndef GL_INTERLEAVED_ATTRIBS
+  #define GL_INTERLEAVED_ATTRIBS          0x8C8C
+  #endif
+  #ifndef GL_POINTS
+  #define GL_POINTS                       0x0000
+  #endif
+
+  // Indirect draw (GL 4.3+)
+  #ifndef GL_DRAW_INDIRECT_BUFFER
+  #define GL_DRAW_INDIRECT_BUFFER         0x8F3F
+  #endif
+
+  // Geometry shader (GL 3.2+)
+  #ifndef GL_GEOMETRY_SHADER
+  #define GL_GEOMETRY_SHADER              0x8DD9
+  #endif
+
+  // Tessellation (GL 4.0+)
+  #ifndef GL_PATCHES
+  #define GL_PATCHES                      0x000E
+  #endif
+  #ifndef GL_PATCH_VERTICES
+  #define GL_PATCH_VERTICES               0x8E72
+  #endif
+  #ifndef GL_TESS_CONTROL_SHADER
+  #define GL_TESS_CONTROL_SHADER          0x8E88
+  #endif
+  #ifndef GL_TESS_EVALUATION_SHADER
+  #define GL_TESS_EVALUATION_SHADER       0x8E87
+  #endif
+
+  // Image load/store (GL 4.2+)
+  #ifndef GL_READ_ONLY
+  #define GL_READ_ONLY                    0x88B8
+  #endif
+  #ifndef GL_WRITE_ONLY
+  #define GL_WRITE_ONLY                   0x88B9
+  #endif
+  #ifndef GL_READ_WRITE
+  #define GL_READ_WRITE                   0x88BA
+  #endif
+  #ifndef GL_RGBA32F
+  #define GL_RGBA32F                      0x8814
+  #endif
+  #ifndef GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
+  #define GL_SHADER_IMAGE_ACCESS_BARRIER_BIT 0x00000020
+  #endif
+
+  // Buffer storage / persistent mapping (GL 4.4+)
+  #ifndef GL_MAP_READ_BIT
+  #define GL_MAP_READ_BIT                 0x0001
+  #endif
+  #ifndef GL_MAP_WRITE_BIT
+  #define GL_MAP_WRITE_BIT                0x0002
+  #endif
+  #ifndef GL_MAP_PERSISTENT_BIT
+  #define GL_MAP_PERSISTENT_BIT           0x0040
+  #endif
+  #ifndef GL_MAP_COHERENT_BIT
+  #define GL_MAP_COHERENT_BIT             0x0080
+  #endif
+  #ifndef GL_DYNAMIC_STORAGE_BIT
+  #define GL_DYNAMIC_STORAGE_BIT          0x0100
+  #endif
+
+  // Sync objects (GL 3.2+, needed for persistent mapping)
+  #ifndef GL_SYNC_GPU_COMMANDS_COMPLETE
+  #define GL_SYNC_GPU_COMMANDS_COMPLETE   0x9117
+  #endif
+  #ifndef GL_ALREADY_SIGNALED
+  #define GL_ALREADY_SIGNALED             0x911A
+  #endif
+  #ifndef GL_CONDITION_SATISFIED
+  #define GL_CONDITION_SATISFIED          0x911C
+  #endif
+  #ifndef GL_TIMEOUT_EXPIRED
+  #define GL_TIMEOUT_EXPIRED              0x911B
+  #endif
+  #ifndef GL_SYNC_FLUSH_COMMANDS_BIT
+  #define GL_SYNC_FLUSH_COMMANDS_BIT      0x00000001
+  #endif
+
+  // GLsync type (guard prevents double-define if GL headers already provide it)
+  #ifndef __gl_GLsync_defined
+  typedef struct __GLsync* GLsync;
+  #define __gl_GLsync_defined
+  #endif
+
+  // GL constant validation
+  static_assert(GL_COLOR_ATTACHMENT1 == GL_COLOR_ATTACHMENT0 + 1, "Sequential");
+  static_assert(GL_COLOR_ATTACHMENT2 == GL_COLOR_ATTACHMENT0 + 2, "Sequential");
+  static_assert(GL_COLOR_ATTACHMENT3 == GL_COLOR_ATTACHMENT0 + 3, "Sequential");
+  static_assert(GL_TEXTURE_2D_ARRAY == 0x8C1A, "");
+  static_assert(GL_UNIFORM_BUFFER == 0x8A11, "");
+  static_assert(GL_TRANSFORM_FEEDBACK_BUFFER == 0x8C8E, "");
+  static_assert(GL_RASTERIZER_DISCARD == 0x8C89, "");
+  static_assert(GL_GEOMETRY_SHADER == 0x8DD9, "");
+  static_assert(GL_INTERLEAVED_ATTRIBS == 0x8C8C, "");
+  static_assert(GL_DRAW_INDIRECT_BUFFER == 0x8F3F, "");
+  static_assert(GL_PATCHES == 0x000E, "");
+  static_assert(GL_PATCH_VERTICES == 0x8E72, "");
+  static_assert(GL_TESS_CONTROL_SHADER == 0x8E88, "");
+  static_assert(GL_TESS_EVALUATION_SHADER == 0x8E87, "");
+  static_assert(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT == 0x00000020, "");
+  static_assert(GL_MAP_PERSISTENT_BIT == 0x0040, "");
+  static_assert(GL_MAP_COHERENT_BIT == 0x0080, "");
+  static_assert(GL_SYNC_GPU_COMMANDS_COMPLETE == 0x9117, "");
+
   // =========================================================================
   // Function pointer typedefs (unique signatures — must be defined manually)
   // =========================================================================
@@ -183,6 +321,26 @@
   using PFNCB_glDrawElementsInstanced   = void   (APIENTRY *)(GLenum, GLsizei, GLenum, const void*, GLsizei);
   using PFNCB_glVertexAttribDivisor     = void   (APIENTRY *)(GLuint, GLuint);
 
+  // Texture arrays (GL 3.0+)
+  using PFNCB_glTexImage3D              = void   (APIENTRY *)(GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+  using PFNCB_glTexSubImage3D           = void   (APIENTRY *)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+
+  // MRT (GL 3.0+)
+  using PFNCB_glDrawBuffers             = void   (APIENTRY *)(GLsizei, const GLenum*);
+
+  // UBO (GL 3.1+)
+  using PFNCB_glUniformBlockBinding     = void   (APIENTRY *)(GLuint, GLuint, GLuint);
+  using PFNCB_glGetUniformBlockIndex    = GLuint (APIENTRY *)(GLuint, const GLchar*);
+  using PFNCB_glBindBufferRange         = void   (APIENTRY *)(GLenum, GLuint, GLuint, GLintptr, GLsizeiptr);
+
+  // Transform feedback (GL 3.0+)
+  using PFNCB_glBeginTransformFeedback  = void   (APIENTRY *)(GLenum);
+  using PFNCB_glEndTransformFeedback    = void   (APIENTRY *)(void);
+  using PFNCB_glTransformFeedbackVaryings = void (APIENTRY *)(GLuint, GLsizei, const GLchar* const*, GLenum);
+
+  // Geometry shader (GL 3.2+)
+  // (uses compileShader with GL_GEOMETRY_SHADER constant — no new function needed)
+
   // FBO
   using PFNCB_glGenFramebuffers         = void   (APIENTRY *)(GLsizei, GLuint*);
   using PFNCB_glDeleteFramebuffers      = void   (APIENTRY *)(GLsizei, const GLuint*);
@@ -202,6 +360,28 @@
   // GL 4.3+ compute
   using PFNCB_glDispatchCompute         = void   (APIENTRY *)(GLuint, GLuint, GLuint);
   using PFNCB_glMemoryBarrier           = void   (APIENTRY *)(GLbitfield);
+
+  // GL 4.3+ indirect draw
+  using PFNCB_glDrawElementsIndirect    = void   (APIENTRY *)(GLenum, GLenum, const void*);
+  using PFNCB_glMultiDrawElementsIndirect = void (APIENTRY *)(GLenum, GLenum, const void*, GLsizei, GLsizei);
+
+  // GL 4.0 tessellation
+  using PFNCB_glPatchParameteri = void (APIENTRY *)(GLenum, GLint);
+
+  // GL 4.2 image load/store
+  using PFNCB_glBindImageTexture = void (APIENTRY *)(GLuint, GLuint, GLint,
+                                                      GLboolean, GLint, GLenum, GLenum);
+
+  // GL 4.4 buffer storage + persistent mapping
+  using PFNCB_glBufferStorage   = void   (APIENTRY *)(GLenum, GLsizeiptr, const void*, GLbitfield);
+  using PFNCB_glMapBufferRange  = void*  (APIENTRY *)(GLenum, GLintptr, GLsizeiptr, GLbitfield);
+
+  // GL 3.2+ sync objects (needed for persistent mapping)
+  using PFNCB_glFenceSync       = GLsync (APIENTRY *)(GLenum, GLbitfield);
+  using PFNCB_glClientWaitSync  = GLenum (APIENTRY *)(GLsync, GLbitfield, GLuint64);
+  using PFNCB_glDeleteSync      = void   (APIENTRY *)(GLsync);
+
+
 
   // =========================================================================
   // X-macro function lists — single source of truth.
@@ -245,12 +425,30 @@
       X(glRenderbufferStorage) \
       X(glFramebufferRenderbuffer) \
       X(glBlitFramebuffer) \
-      X(glBindBufferBase)
+      X(glBindBufferBase) \
+      X(glTexImage3D) \
+      X(glTexSubImage3D) \
+      X(glDrawBuffers) \
+      X(glUniformBlockBinding) \
+      X(glGetUniformBlockIndex) \
+      X(glBindBufferRange) \
+      X(glBeginTransformFeedback) \
+      X(glEndTransformFeedback) \
+      X(glTransformFeedbackVaryings)
 
   // GL 4.3+ optional functions (loaded in loadGL4Functions)
   #define CB_GL4_OPTIONAL_FUNCS(X) \
       X(glDispatchCompute) \
-      X(glMemoryBarrier)
+      X(glMemoryBarrier) \
+      X(glDrawElementsIndirect) \
+      X(glMultiDrawElementsIndirect) \
+      X(glPatchParameteri) \
+      X(glBindImageTexture) \
+      X(glBufferStorage) \
+      X(glMapBufferRange) \
+      X(glFenceSync) \
+      X(glClientWaitSync) \
+      X(glDeleteSync)
 
   // =========================================================================
   // Extern declarations — generated from X-macro lists
@@ -303,9 +501,40 @@
   #define glBlitFramebuffer               cb_glBlitFramebuffer
   #define glBindBufferBase                cb_glBindBufferBase
 
+  // GL 3.0+ texture array / MRT / UBO / TF extras
+  #define glTexImage3D                    cb_glTexImage3D
+  #define glTexSubImage3D                 cb_glTexSubImage3D
+  #define glDrawBuffers                   cb_glDrawBuffers
+  #define glUniformBlockBinding           cb_glUniformBlockBinding
+  #define glGetUniformBlockIndex          cb_glGetUniformBlockIndex
+  #define glBindBufferRange               cb_glBindBufferRange
+  #define glBeginTransformFeedback        cb_glBeginTransformFeedback
+  #define glEndTransformFeedback          cb_glEndTransformFeedback
+  #define glTransformFeedbackVaryings     cb_glTransformFeedbackVaryings
+
   // GL 4.3+ compute extras
   #define glDispatchCompute               cb_glDispatchCompute
   #define glMemoryBarrier                 cb_glMemoryBarrier
+
+  // GL 4.3+ indirect draw extras
+  #define glDrawElementsIndirect          cb_glDrawElementsIndirect
+  #define glMultiDrawElementsIndirect     cb_glMultiDrawElementsIndirect
+
+  // GL 4.0 tessellation
+  #define glPatchParameteri               cb_glPatchParameteri
+
+  // GL 4.2 image load/store
+  #define glBindImageTexture              cb_glBindImageTexture
+
+  // GL 4.4 buffer storage + persistent mapping
+  #define glBufferStorage                 cb_glBufferStorage
+  #define glMapBufferRange                cb_glMapBufferRange
+
+  // GL 3.2+ sync objects
+  #define glFenceSync                     cb_glFenceSync
+  #define glClientWaitSync                cb_glClientWaitSync
+  #define glDeleteSync                    cb_glDeleteSync
+
 
 #else
   // Linux: all GL functions resolved at link time
@@ -313,6 +542,45 @@
   #include <GL/gl.h>
   #include <GL/glext.h>
 #endif // CB_NEED_GL_LOAD
+
+// =========================================================================
+// Extension-only functions — never core, always loaded via function pointers
+// on ALL platforms (not available as link-time symbols on most systems).
+// =========================================================================
+
+// GLsync type (needed on both paths for persistent mapping)
+#ifndef __gl_GLsync_defined
+typedef struct __GLsync* GLsync;
+#define __gl_GLsync_defined
+#endif
+
+#ifndef APIENTRY
+  #define APIENTRY
+#endif
+
+// Typedefs for extension-only functions
+using PFNCB_glGetTextureHandleARB             = GLuint64 (APIENTRY *)(GLuint);
+using PFNCB_glMakeTextureHandleResidentARB    = void     (APIENTRY *)(GLuint64);
+using PFNCB_glMakeTextureHandleNonResidentARB = void     (APIENTRY *)(GLuint64);
+using PFNCB_glUniformHandleui64ARB            = void     (APIENTRY *)(GLint, GLuint64);
+
+// X-macro list
+#define CB_GL_EXT_FUNCS(X) \
+    X(glGetTextureHandleARB) \
+    X(glMakeTextureHandleResidentARB) \
+    X(glMakeTextureHandleNonResidentARB) \
+    X(glUniformHandleui64ARB)
+
+// Extern declarations
+#define CB_EXTERN_DECL(name) extern PFNCB_##name cb_##name;
+CB_GL_EXT_FUNCS(CB_EXTERN_DECL)
+#undef CB_EXTERN_DECL
+
+// Redirects (always go through function pointers)
+#define glGetTextureHandleARB             cb_glGetTextureHandleARB
+#define glMakeTextureHandleResidentARB    cb_glMakeTextureHandleResidentARB
+#define glMakeTextureHandleNonResidentARB cb_glMakeTextureHandleNonResidentARB
+#define glUniformHandleui64ARB            cb_glUniformHandleui64ARB
 
 // Load required GL functions. On Windows, initializes imgl3w and loads extras.
 // Returns true on success.
@@ -323,6 +591,9 @@ bool loadGL3Functions();
 
 // Load optional GL 4.3+ function pointers.
 bool loadGL4Functions();
+
+// Load extension-only function pointers (ARB_bindless_texture etc).
+bool loadGLExtFunctions();
 
 // Low-level availability checks (used by GLLoader).
 // On CB_NEED_GL_LOAD: check actual function pointers.

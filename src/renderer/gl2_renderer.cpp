@@ -3,14 +3,14 @@
 #include <cstdio>
 #include <cstring>
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#ifdef __linux__
 #include <SDL_syswm.h>
 #include <dirent.h>
 #endif
 
-// ---- Embedded GLSL 1.20 shaders ----
+// ---- Embedded GLSL 1.20 shaders (compatibility profile) ----
 
-static const char* VS_3D = R"(
+static const char* VS_3D_120 = R"(
 #version 120
 attribute vec3 a_pos;
 attribute vec3 a_normal;
@@ -27,7 +27,7 @@ void main() {
 }
 )";
 
-static const char* FS_3D = R"(
+static const char* FS_3D_120 = R"(
 #version 120
 varying vec3 v_normal;
 varying vec2 v_uv;
@@ -46,7 +46,7 @@ void main() {
 }
 )";
 
-static const char* VS_2D = R"(
+static const char* VS_2D_120 = R"(
 #version 120
 attribute vec2 a_pos;
 void main() {
@@ -54,7 +54,7 @@ void main() {
 }
 )";
 
-static const char* FS_2D_COLOR = R"(
+static const char* FS_2D_COLOR_120 = R"(
 #version 120
 uniform vec4 u_color;
 void main() {
@@ -62,7 +62,7 @@ void main() {
 }
 )";
 
-static const char* VS_2D_TEX = R"(
+static const char* VS_2D_TEX_120 = R"(
 #version 120
 attribute vec2 a_pos;
 attribute vec2 a_uv;
@@ -73,7 +73,7 @@ void main() {
 }
 )";
 
-static const char* FS_2D_TEX = R"(
+static const char* FS_2D_TEX_120 = R"(
 #version 120
 varying vec2 v_uv;
 uniform sampler2D u_tex;
@@ -82,10 +82,88 @@ void main() {
 }
 )";
 
+// ---- Embedded GLSL 1.50 shaders (core profile, macOS) ----
+
+static const char* VS_3D_150 = R"(
+#version 150
+in vec3 a_pos;
+in vec3 a_normal;
+in vec2 a_uv;
+uniform mat4 u_proj;
+uniform mat4 u_view;
+uniform mat4 u_model;
+out vec3 v_normal;
+out vec2 v_uv;
+void main() {
+    v_normal = mat3(u_model) * a_normal;
+    v_uv = a_uv;
+    gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);
+}
+)";
+
+static const char* FS_3D_150 = R"(
+#version 150
+in vec3 v_normal;
+in vec2 v_uv;
+uniform sampler2D u_tex;
+uniform float u_use_tex;
+uniform vec4 u_color;
+uniform vec3 u_light_dir;
+out vec4 fragColor;
+void main() {
+    vec3 n = normalize(v_normal);
+    float d = max(dot(n, normalize(u_light_dir)), 0.0);
+    float light = 0.15 + 0.85 * d;
+    vec4 c = u_color;
+    if (u_use_tex > 0.5)
+        c = texture(u_tex, v_uv);
+    fragColor = vec4(c.rgb * light, c.a);
+}
+)";
+
+static const char* VS_2D_150 = R"(
+#version 150
+in vec2 a_pos;
+void main() {
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
+
+static const char* FS_2D_COLOR_150 = R"(
+#version 150
+uniform vec4 u_color;
+out vec4 fragColor;
+void main() {
+    fragColor = u_color;
+}
+)";
+
+static const char* VS_2D_TEX_150 = R"(
+#version 150
+in vec2 a_pos;
+in vec2 a_uv;
+out vec2 v_uv;
+void main() {
+    v_uv = a_uv;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
+
+static const char* FS_2D_TEX_150 = R"(
+#version 150
+in vec2 v_uv;
+uniform sampler2D u_tex;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(u_tex, v_uv);
+}
+)";
+
 // ---- Implementation ----
 
 GL2Renderer::GL2Renderer() : current_shader_(nullptr), initialized_(false),
-    blit_quad_(INVALID_MESH), blit_quad_ready_(false), has_blit_framebuffer_(false) {
+    core_profile_(false), blit_quad_(INVALID_MESH), blit_quad_ready_(false),
+    has_blit_framebuffer_(false) {
     memset(&shader_3d_, 0, sizeof(shader_3d_));
     memset(&shader_2d_color_, 0, sizeof(shader_2d_color_));
     memset(&shader_2d_tex_, 0, sizeof(shader_2d_tex_));
@@ -192,20 +270,12 @@ void GL2Renderer::detectCaps() {
         }
     }
 
-    // Detect capabilities via function pointers first, extension strings as fallback.
-    caps_.has_vao = false;
-    caps_.has_instancing = false;
+    // Detect GL2-level capabilities via function pointers first, extension strings as fallback.
     caps_.has_generate_mipmap_func = false;
     caps_.has_timer_queries = false;
     caps_.has_fbo = false;
 
-    // VAO: check function pointers (imgl3w or link-time)
 #ifdef CB_NEED_GL_LOAD
-    caps_.has_vao = (imgl3wProcs.gl.GenVertexArrays != 0)
-                 && (imgl3wProcs.gl.BindVertexArray != 0)
-                 && (imgl3wProcs.gl.DeleteVertexArrays != 0);
-    caps_.has_instancing = (cb_glDrawElementsInstanced != 0)
-                        && (cb_glVertexAttribDivisor != 0);
     caps_.has_generate_mipmap_func = (cb_glGenerateMipmap != 0);
     caps_.has_fbo = (cb_glGenFramebuffers != 0)
                  && (cb_glBindFramebuffer != 0)
@@ -218,20 +288,13 @@ void GL2Renderer::detectCaps() {
     // Linux with GL_GLEXT_PROTOTYPES: symbols always exist at link time,
     // but may not be functional. Use GL version + extension strings.
     if (caps_.gl_major >= 3) {
-        caps_.has_vao = true;
         caps_.has_generate_mipmap_func = true;
         caps_.has_fbo = true;
-        if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 1))
-            caps_.has_instancing = true;
         if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 3))
             caps_.has_timer_queries = true;
     }
     const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     if (exts) {
-        if (!caps_.has_vao && strstr(exts, "GL_ARB_vertex_array_object"))
-            caps_.has_vao = true;
-        if (!caps_.has_instancing && strstr(exts, "GL_ARB_instanced_arrays"))
-            caps_.has_instancing = true;
         if (!caps_.has_generate_mipmap_func && strstr(exts, "GL_ARB_framebuffer_object"))
             caps_.has_generate_mipmap_func = true;
         if (!caps_.has_fbo && strstr(exts, "GL_ARB_framebuffer_object"))
@@ -265,8 +328,9 @@ void GL2Renderer::detectCaps() {
         }
     }
 
-#ifndef _WIN32
+#if !defined(_WIN32)
     // Method 3: GLX_MESA_query_renderer (Mesa: Nouveau, RadeonSI, Intel, llvmpipe, Zink)
+    // Works on Linux and FreeBSD (anywhere Mesa + GLX is available)
     if (caps_.estimated_vram_mb == 0) {
         #define GLX_RENDERER_VIDEO_MEMORY_MESA 0x8187
         typedef int (*PFNGLXQUERYRENDERERMESA)(int, int, unsigned int*);
@@ -279,7 +343,9 @@ void GL2Renderer::detectCaps() {
             }
         }
     }
+#endif // !_WIN32
 
+#ifdef __linux__
     // Method 4: Linux sysfs — scan /sys/class/drm/card*/device/mem_info_vram_total (AMD)
     // and /sys/class/drm/card*/device/resource (NVIDIA / other PCI devices)
     if (caps_.estimated_vram_mb == 0) {
@@ -307,16 +373,14 @@ void GL2Renderer::detectCaps() {
             closedir(drm_dir);
         }
     }
-#endif // !_WIN32
+#endif // __linux__
 #endif // !__APPLE__
 
     Log::warn("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
-            "vao=%s, instancing=%s, fbo=%s, timer_q=%s",
+            "fbo=%s, timer_q=%s",
             caps_.gl_major, caps_.gl_minor,
             caps_.max_texture_size, caps_.max_vertex_attribs,
             caps_.estimated_vram_mb,
-            caps_.has_vao ? "yes" : "no",
-            caps_.has_instancing ? "yes" : "no",
             caps_.has_fbo ? "yes" : "no",
             caps_.has_timer_queries ? "yes" : "no");
 }
@@ -333,12 +397,6 @@ bool GL2Renderer::init(int w, int h) {
 
     detectCaps();
 
-    // GL2Renderer does not implement instancing or compute — disable regardless
-    // of what the driver reports. Subclasses (GL3, GL4) re-enable as appropriate.
-    caps_.has_vao = false;
-    caps_.has_instancing = false;
-    caps_.has_compute = false;
-
     // Init GPU timer if available
     gpu_timer_.init();
 
@@ -352,9 +410,23 @@ bool GL2Renderer::init(int w, int h) {
     // Slot 0 for render targets is reserved as "invalid"
     render_targets_.emplace_back();
 
-    if (!buildShader(shader_3d_, VS_3D, FS_3D)) return false;
-    if (!buildShader(shader_2d_color_, VS_2D, FS_2D_COLOR)) return false;
-    if (!buildShader(shader_2d_tex_, VS_2D_TEX, FS_2D_TEX)) return false;
+    // Detect core profile: GL 3.2+ core doesn't support GLSL 1.20/1.40
+    if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 2)) {
+        int profile = 0;
+        SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profile);
+        core_profile_ = (profile == SDL_GL_CONTEXT_PROFILE_CORE);
+    }
+
+    if (core_profile_) {
+        Log::info("Core profile detected, using GLSL 1.50 shaders");
+        if (!buildShader(shader_3d_, VS_3D_150, FS_3D_150)) return false;
+        if (!buildShader(shader_2d_color_, VS_2D_150, FS_2D_COLOR_150)) return false;
+        if (!buildShader(shader_2d_tex_, VS_2D_TEX_150, FS_2D_TEX_150)) return false;
+    } else {
+        if (!buildShader(shader_3d_, VS_3D_120, FS_3D_120)) return false;
+        if (!buildShader(shader_2d_color_, VS_2D_120, FS_2D_COLOR_120)) return false;
+        if (!buildShader(shader_2d_tex_, VS_2D_TEX_120, FS_2D_TEX_120)) return false;
+    }
 
     // Slot 0 for all meshes/textures/custom_shaders is reserved as "invalid"
     meshes_.emplace_back();
@@ -517,15 +589,28 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
     glGenTextures(1, &gt.id);
     glBindTexture(GL_TEXTURE_2D, gt.id);
 
-    // GL 1.4 auto mipmap generation (works on GL 2.1 without glGenerateMipmap)
-    glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    // Mipmap generation: use glGenerateMipmap on GL3+, legacy GL_GENERATE_MIPMAP on GL2
+    if (!caps_.has_generate_mipmap_func) {
+        #ifndef GL_GENERATE_MIPMAP
+        #define GL_GENERATE_MIPMAP 0x8191
+        #endif
+        glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    GLenum fmt = (channels == 4) ? GL_RGBA : (channels == 3) ? GL_RGB : GL_LUMINANCE;
+    // GL_LUMINANCE removed in core profile — use GL_RED instead
+    GLenum fmt;
+    if (channels == 4) fmt = GL_RGBA;
+    else if (channels == 3) fmt = GL_RGB;
+    else fmt = (caps_.gl_major >= 3) ? GL_RED : GL_LUMINANCE;
     glTexImage2D(GL_TEXTURE_2D, 0, fmt, w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+
+    if (caps_.has_generate_mipmap_func) {
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -695,12 +780,6 @@ void GL2Renderer::drawMesh(MeshHandle h) {
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-void GL2Renderer::drawMeshInstanced(MeshHandle h, int instance_count) {
-    // GL2 fallback: draw in a loop (no real instancing)
-    for (int i = 0; i < instance_count; i++)
-        drawMesh(h);
 }
 
 void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels, const unsigned char* pixels) {
@@ -899,15 +978,8 @@ double GL2Renderer::timerElapsedMs() {
     return gpu_timer_.elapsed_ms();
 }
 
-// --- Compute stubs (GL2 does not support compute) ---
-ShaderHandle GL2Renderer::createComputeShader(const char*) { return INVALID_SHADER; }
-void GL2Renderer::dispatchCompute(int, int, int) {}
-void GL2Renderer::computeMemoryBarrier() {}
-BufferHandle GL2Renderer::createSSBO(int) { return INVALID_BUFFER; }
-void GL2Renderer::destroySSBO(BufferHandle) {}
-void GL2Renderer::bindSSBO(BufferHandle, int) {}
-
 const RenderCaps& GL2Renderer::getCaps() const { return caps_; }
+bool GL2Renderer::isCoreProfile() const { return core_profile_; }
 const char* GL2Renderer::getGPUVendor()   const { return gpu_vendor_.c_str(); }
 const char* GL2Renderer::getGPURenderer() const { return gpu_renderer_.c_str(); }
 const char* GL2Renderer::getGLVersion()   const { return gl_version_.c_str(); }

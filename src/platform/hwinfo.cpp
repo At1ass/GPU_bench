@@ -105,10 +105,16 @@ static std::string readFirstLine(const char* cmd) {
 HWInfo HWInfo::detect() {
     HWInfo info;
 
-    // CPU name from /proc/cpuinfo
+    // CPU name — platform-specific
+#if defined(__APPLE__)
+    info.cpu_name = readFirstLine("sysctl -n machdep.cpu.brand_string");
+#elif defined(__FreeBSD__)
+    info.cpu_name = readFirstLine("sysctl -n hw.model");
+#else
     info.cpu_name = readFirstLine(
         "grep 'model name' /proc/cpuinfo | head -n1 | cut -d: -f2"
     );
+#endif
     info.cpu_name = trimWhitespace(info.cpu_name);
     if (info.cpu_name.empty()) info.cpu_name = "Unknown CPU";
 

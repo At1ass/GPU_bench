@@ -1,4 +1,5 @@
 #include "tests/tests.h"
+#include "renderer/features.h"
 #include "renderer/renderer.h"
 #include <cstdio>
 
@@ -46,35 +47,35 @@ const char* ComputeFMATest::description() const {
            "Measures raw GPU compute performance via SSBO.";
 }
 
-void ComputeFMATest::setup(Renderer* r, int, int) {
-    shader_ = r->createComputeShader(COMPUTE_FMA_SOURCE);
+void ComputeFMATest::setupCompute(Renderer& r, ComputeFeatures& comp, int, int) {
+    shader_ = comp.createComputeShader(COMPUTE_FMA_SOURCE);
     if (shader_ == INVALID_SHADER) return;
 
-    u_iterations_loc_ = r->getCustomUniformLoc(shader_, "u_iterations");
+    u_iterations_loc_ = r.getCustomUniformLoc(shader_, "u_iterations");
 
     // Create SSBO: work_groups * LOCAL_SIZE_X invocations, each writes vec4 (16 bytes)
     int total_invocations = params_.work_groups * LOCAL_SIZE_X;
     int ssbo_size = total_invocations * 16; // sizeof(vec4)
-    ssbo_ = r->createSSBO(ssbo_size);
+    ssbo_ = comp.createSSBO(ssbo_size);
 }
 
-void ComputeFMATest::render(Renderer* r) {
+void ComputeFMATest::renderCompute(Renderer& r, ComputeFeatures& comp) {
     if (shader_ == INVALID_SHADER || ssbo_ == INVALID_BUFFER) return;
 
-    r->useCustomShader(shader_);
-    r->setUniform1i(u_iterations_loc_, params_.iterations);
-    r->bindSSBO(ssbo_, 0);
-    r->dispatchCompute(params_.work_groups, 1, 1);
-    r->computeMemoryBarrier();
+    r.useCustomShader(shader_);
+    r.setUniform1i(u_iterations_loc_, params_.iterations);
+    comp.bindSSBO(ssbo_, 0);
+    comp.dispatchCompute(params_.work_groups, 1, 1);
+    comp.computeMemoryBarrier();
 }
 
-void ComputeFMATest::cleanup(Renderer* r) {
+void ComputeFMATest::cleanupCompute(Renderer& r, ComputeFeatures& comp) {
     if (ssbo_ != INVALID_BUFFER) {
-        r->destroySSBO(ssbo_);
+        comp.destroySSBO(ssbo_);
         ssbo_ = INVALID_BUFFER;
     }
     if (shader_ != INVALID_SHADER) {
-        r->destroyCustomShader(shader_);
+        r.destroyCustomShader(shader_);
         shader_ = INVALID_SHADER;
     }
 }

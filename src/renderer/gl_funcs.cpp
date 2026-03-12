@@ -12,6 +12,7 @@ CB_GL_REQUIRED_FUNCS(CB_DEFINE_PTR)
 CB_GL_SOFTREQ_FUNCS(CB_DEFINE_PTR)
 CB_GL3_OPTIONAL_FUNCS(CB_DEFINE_PTR)
 CB_GL4_OPTIONAL_FUNCS(CB_DEFINE_PTR)
+CB_GL_EXT_FUNCS(CB_DEFINE_PTR)
 #undef CB_DEFINE_PTR
 
 // SDL-based proc address loader for imgl3w
@@ -55,6 +56,14 @@ bool loadGL4Functions() {
     return true;
 }
 
+bool loadGLExtFunctions() {
+    #define CB_LOAD_OPT(name) \
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+    CB_GL_EXT_FUNCS(CB_LOAD_OPT)
+    #undef CB_LOAD_OPT
+    return true;
+}
+
 bool hasGL3FunctionPointers() {
     bool has_vao = (imgl3wProcs.gl.GenVertexArrays != 0)
                 && (imgl3wProcs.gl.BindVertexArray != 0)
@@ -64,7 +73,9 @@ bool hasGL3FunctionPointers() {
 }
 
 bool hasGL4FunctionPointers() {
-    return (SDL_GL_GetProcAddress("glDispatchCompute") != 0);
+    // GL4 features start at 4.0 (tessellation, texture gather).
+    // Compute/SSBO/indirect (4.3) are optional, checked inside GL4Renderer.
+    return (SDL_GL_GetProcAddress("glPatchParameteri") != 0);  // GL 4.0 tessellation
 }
 
 // Not used on CB_NEED_GL_LOAD path, but defined to avoid link errors
@@ -80,6 +91,21 @@ bool loadGLFunctions() {
 bool loadGL2Functions() { return true; }
 bool loadGL3Functions() { return true; }
 bool loadGL4Functions() { return true; }
+
+// Extension-only functions must be loaded via SDL_GL_GetProcAddress even on Linux
+// because they are not link-time symbols (not part of core GL).
+// Variable definitions for ext funcs (on Linux, outside CB_NEED_GL_LOAD block).
+#define CB_DEFINE_EXT_PTR(name) PFNCB_##name cb_##name = nullptr;
+CB_GL_EXT_FUNCS(CB_DEFINE_EXT_PTR)
+#undef CB_DEFINE_EXT_PTR
+
+bool loadGLExtFunctions() {
+    #define CB_LOAD_OPT(name) \
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+    CB_GL_EXT_FUNCS(CB_LOAD_OPT)
+    #undef CB_LOAD_OPT
+    return true;
+}
 
 // Not used on Linux path, but defined to avoid link errors
 bool hasGL3FunctionPointers() { return checkGL3ByVersion(); }
@@ -101,11 +127,13 @@ bool checkGL3ByVersion() {
 }
 
 bool checkGL4ByVersion() {
+    // GL4 features start at 4.0 (tessellation, texture gather).
+    // Compute/SSBO/indirect (4.3) are optional, checked inside GL4Renderer.
     const char* ver = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     if (!ver) return false;
     int major = 0, minor = 0;
     if (sscanf(ver, "%d.%d", &major, &minor) < 1) return false;
-    return (major > 4 || (major == 4 && minor >= 3));
+    return (major >= 4);
 }
 
 bool loadGLFunctions() { return true; }

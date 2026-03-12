@@ -2,7 +2,8 @@
 
 ## Architecture
 
-All tests inherit from the `BenchTest` base class defined in `src/bench.h`:
+All tests inherit from `BenchTest` or one of the typed base classes defined
+in `src/bench/bench.h`:
 
 ```cpp
 class BenchTest {
@@ -21,11 +22,43 @@ public:
 };
 ```
 
+### Typed Base Classes (GL3/GL4/Compute)
+
+Tests that require GL3+, GL4+, or Compute features should inherit from the
+appropriate typed base class instead of `BenchTest`:
+
+| Base Class | Use When | Methods to Override |
+|---|---|---|
+| `BenchTest` | GL2 universal tests | `setup/render/cleanup(Renderer*)` |
+| `GL3BenchTest` | GL3+ features (instancing, MRT, UBO, TF, GS, tex arrays) | `setupGL3/renderGL3/cleanupGL3(Renderer&, GL3Features&)` |
+| `ComputeBenchTest` | Compute shaders + SSBO | `setupCompute/renderCompute/cleanupCompute(Renderer&, ComputeFeatures&)` |
+| `GL4BenchTest` | GL4+ features (indirect draw) | `setupGL4/renderGL4/cleanupGL4(Renderer&, GL4Features&)` |
+
+The typed base classes:
+- Automatically acquire the feature interface via `r->gl3()` / `r->compute()` / `r->gl4()`
+- Assert at runtime if the feature is unavailable (catches cap mismatch bugs)
+- Mark `setup/render/cleanup` as `final` — you override the typed variants instead
+- Provide compile-time validation via `static_assert` in `test_registry.cpp`
+
 The benchmark harness calls these methods in order:
 1. `setup()` — create GPU resources (meshes, textures, shaders)
 2. `render()` — called N times during warmup and measurement
 3. `cleanup()` — destroy GPU resources
 4. `computeScore()` — compute a score from collected frame times
+
+### Feature Interfaces
+
+GL3/GL4/Compute methods live in separate feature interfaces
+(`src/renderer/features.h`), not in the base `Renderer`:
+
+| Interface | Accessed Via | Methods |
+|---|---|---|
+| `GL3Features` | `r->gl3()` | `drawMeshInstanced`, MRT, texture arrays, geometry shaders, UBO, transform feedback |
+| `ComputeFeatures` | `r->compute()` | `createComputeShader`, `dispatchCompute`, SSBO |
+| `GL4Features` | `r->gl4()` | `createIndirectBuffer`, `multiDrawMeshIndirect` |
+
+Base `Renderer` methods (draw, textures, shaders, FBO, timer) are available
+to all tests via the `Renderer&` reference.
 
 ### Test Registry (X-macro)
 
@@ -62,11 +95,17 @@ declare which GL features the test requires. Available flags
 | `Cap_TimerQuery` | 1 << 4 | GL_TIME_ELAPSED queries |
 | `Cap_GL3` | 1 << 5 | Requires OpenGL 3.x context |
 | `Cap_GL4` | 1 << 6 | Requires OpenGL 4.x context |
+| `Cap_GeometryShader` | 1 << 7 | Geometry shaders (GL 3.2+) |
 
 At startup the harness calls `getAvailableCaps()` to probe the current GL
 context. Tests whose `required_caps` are not satisfied are **automatically
 disabled** in the UI and skipped in CLI/headless runs — no manual checking
 needed in your test code.
+
+**Compile-time validation:** `test_registry.cpp` uses `static_assert` to
+verify that the base class matches the caps. For example, a test with
+`Cap_GL3` must inherit `GL3BenchTest`, and a test inheriting
+`ComputeBenchTest` must have `Cap_Compute`.
 
 ## Step-by-Step Guide
 
@@ -118,11 +157,13 @@ static const BenchPreset PRESETS[PRESET_COUNT] = {
 
 ### 3. Implement the test
 
+#### GL2 test (inherits BenchTest)
+
 Create `src/tests/test_mytest.cpp`:
 
 ```cpp
-#include "tests.h"
-#include "mesh_gen.h"
+#include "tests/tests.h"
+#include "geometry/mesh_gen.h"
 
 MyTestClass::MyTestClass(const MyTestParams& params)
     : params_(params), vw_(0), vh_(0), quad_(INVALID_MESH) {}
@@ -136,14 +177,11 @@ const char* MyTestClass::description() const {
 void MyTestClass::setup(Renderer* r, int vw, int vh) {
     vw_ = vw; vh_ = vh;
     quad_ = r->createMesh(MeshGen::quad());
-    // Create other resources...
 }
 
 void MyTestClass::render(Renderer* r) {
     r->setDepthTest(false);
-    r->setBlending(false);
-    r->useShader(Renderer::SHADER_2D_COLOR);
-
+    r->useShader(Renderer::ShaderType::Color2D);
     for (int i = 0; i < params_.complexity; i++) {
         r->setColor(/* ... */);
         r->drawMesh(quad_);
@@ -156,15 +194,70 @@ void MyTestClass::cleanup(Renderer* r) {
 }
 
 double MyTestClass::computeScore(const std::vector<double>& times, int vw, int vh) {
-    if (times.empty()) return 0;
-    double total_ms = 0;
-    for (size_t i = 0; i < times.size(); i++) total_ms += times[i];
-    double avg_ms = total_ms / times.size();
+    double avg_ms = avgFrameMs(times);
     if (avg_ms <= 0.0) return 0;
-
     double ops_per_frame = (double)vw * vh * params_.complexity;
     return ops_per_frame / (avg_ms / 1000.0) / 1e6;
 }
+```
+
+#### GL3 test (inherits GL3BenchTest)
+
+```cpp
+#include "tests/tests.h"
+#include "renderer/features.h"
+#include "geometry/mesh_gen.h"
+
+MyGL3Test::MyGL3Test(const MyGL3Params& params) : params_(params) {}
+const char* MyGL3Test::name() const { return "MyGL3Test"; }
+// ... scoreUnit(), description() ...
+
+void MyGL3Test::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) {
+    mesh_ = r.createMesh(MeshGen::sphere(8, 6));   // base Renderer
+    ubo_ = gl3.createUBO(sizeof(float) * 4);        // GL3 feature
+}
+
+void MyGL3Test::renderGL3(Renderer& r, GL3Features& gl3) {
+    r.useCustomShader(shader_);                      // base Renderer
+    gl3.bindUBO(ubo_, 0);                            // GL3 feature
+    r.drawMesh(mesh_);                               // base Renderer
+}
+
+void MyGL3Test::cleanupGL3(Renderer& r, GL3Features& gl3) {
+    gl3.destroyUBO(ubo_);                            // GL3 feature
+    r.destroyMesh(mesh_);                            // base Renderer
+}
+
+double MyGL3Test::computeScore(const std::vector<double>& t, int vw, int vh) {
+    // ... same as BenchTest ...
+}
+```
+
+Register with GL3 cap:
+```cpp
+X(MyGL3, MyGL3Test, "MyGL3Test", "mygl3", Overhead, "GL3 test", "ops/s", mygl3, Cap_GL3)
+```
+
+#### Compute test (inherits ComputeBenchTest)
+
+```cpp
+void MyCompute::setupCompute(Renderer& r, ComputeFeatures& comp, int, int) {
+    shader_ = comp.createComputeShader(source);      // ComputeFeatures
+    ssbo_ = comp.createSSBO(size);                    // ComputeFeatures
+    u_loc_ = r.getCustomUniformLoc(shader_, "u_n");  // base Renderer
+}
+
+void MyCompute::renderCompute(Renderer& r, ComputeFeatures& comp) {
+    r.useCustomShader(shader_);                       // base Renderer
+    comp.bindSSBO(ssbo_, 0);                          // ComputeFeatures
+    comp.dispatchCompute(groups, 1, 1);               // ComputeFeatures
+    comp.computeMemoryBarrier();                      // ComputeFeatures
+}
+```
+
+Register with compute cap:
+```cpp
+X(MyComp, MyCompute, "MyCompute", "mycomp", Compute, "Compute test", "GFLOP/s", mycomp, Cap_Compute)
 ```
 
 ### 4. Declare the class
@@ -172,20 +265,20 @@ double MyTestClass::computeScore(const std::vector<double>& times, int vw, int v
 In `src/tests/tests.h`:
 
 ```cpp
+// GL2 test:
 class MyTestClass : public BenchTest {
-public:
-    MyTestClass(const MyTestParams& params);
-    const char* name() const override;
-    const char* scoreUnit() const override;
-    const char* description() const override;
-    void setup(Renderer* r, int vw, int vh) override;
-    void render(Renderer* r) override;
-    void cleanup(Renderer* r) override;
-    double computeScore(const std::vector<double>& t, int vw, int vh) override;
-private:
-    MyTestParams params_;
-    int vw_, vh_;
-    MeshHandle quad_;
+    // ... setup/render/cleanup override ...
+};
+
+// GL3 test:
+class MyGL3Test : public GL3BenchTest {
+    // ... setupGL3/renderGL3/cleanupGL3 override ...
+    // computeScore still overrides BenchTest
+};
+
+// Compute test:
+class MyCompute : public ComputeBenchTest {
+    // ... setupCompute/renderCompute/cleanupCompute override ...
 };
 ```
 
@@ -214,6 +307,10 @@ Or a compute shader test (GL 4.3+):
 X(MyTest, MyTestClass, "MyTest", "mytest", Compute, "Compute test", "GFLOP/s", mytest, Cap_Compute)
 ```
 
+**Important:** The base class must match the caps. Compile-time `static_assert`
+will catch mismatches (e.g. `Cap_GL3` with `BenchTest`, or `Cap_None` with
+`GL3BenchTest`).
+
 ### 6. Add to build
 
 In `CMakeLists.txt`, add to `SOURCES`:
@@ -227,23 +324,12 @@ set(SOURCES
 
 ### 7. Optional: Add to composite scoring
 
-If your test belongs to a category, add it in `src/bench.cpp` `computeCompositeScores()`:
-
-```cpp
-// Example: add to Compute category
-{
-    double vals[3] = {0, 0, 0};  // was [2]
-    const BenchResult* r;
-    if ((r = findResult(results, "ShaderALU")) && r->score > 0) vals[0] = r->score;
-    if ((r = findResult(results, "ShaderFMA")) && r->score > 0) vals[1] = r->score;
-    if ((r = findResult(results, "MyTest"))    && r->score > 0) vals[2] = r->score;
-    cs.compute = geomean(vals, 3);
-}
-```
+Category scoring is automatic — it's driven by the `TestCategory` field in
+`test_registry.def`. Just pick the right category.
 
 ### 8. Optional: Add to config save/load
 
-In `src/config.cpp`:
+In `src/platform/config.cpp`:
 
 **saveConfig():**
 ```cpp
@@ -260,19 +346,23 @@ fprintf(f, "complexity=%d\n", preset.mytest.complexity);
 
 ## Renderer API
 
-Tests interact with the GPU through the `Renderer` abstract interface. Key methods:
+Tests interact with the GPU through the `Renderer` abstract interface (base)
+and feature interfaces (GL3/GL4/Compute).
+
+### Base Renderer (available to all tests)
 
 | Method | Description |
 |--------|-------------|
 | `createMesh(MeshData)` | Upload vertex/index data, returns handle |
 | `destroyMesh(handle)` | Free GPU mesh resources |
 | `drawMesh(handle)` | Draw a mesh |
-| `drawMeshInstanced(handle, count)` | Draw mesh with hardware instancing (GL3+) |
 | `createTexture(w, h, ch, pixels)` | Create texture from pixel data |
 | `destroyTexture(handle)` | Free GPU texture |
 | `bindTexture(handle)` | Bind texture for rendering |
-| `useShader(ShaderType)` | Use built-in shader (2D_COLOR, 2D_TEXTURED, 3D, etc.) |
+| `useShader(ShaderType)` | Use built-in shader (Color2D, Textured2D, Scene3D) |
 | `createCustomShader(vs, fs)` | Compile custom GLSL shader |
+| `useCustomShader(handle)` | Use a custom shader |
+| `getCustomUniformLoc(handle, name)` | Get uniform location |
 | `setColor(r, g, b, a)` | Set current draw color |
 | `setModel(Mat4)` | Set model transform matrix |
 | `setUniformMat4(loc, Mat4)` | Set a mat4 uniform by location |
@@ -281,11 +371,39 @@ Tests interact with the GPU through the `Renderer` abstract interface. Key metho
 | `setViewport(x, y, w, h)` | Set GL viewport |
 | `clear(r, g, b, a)` | Clear framebuffer |
 | `resetState()` | Reset GL state to defaults |
-| `createComputeShader(source)` | Compile compute shader (GL4.3+ only) |
-| `dispatchCompute(x, y, z)` | Launch compute work groups (GL4.3+ only) |
-| `createSSBO(binding)` | Create shader storage buffer object (GL4.3+ only) |
-| `destroySSBO()` | Destroy SSBO |
-| `bindSSBO()` | Bind SSBO for use |
+| `createRenderTarget(w, h)` | Create FBO render target |
+| `bindRenderTarget(handle)` | Bind FBO (0 = default) |
+
+### GL3Features (`r->gl3()`)
+
+| Method | Description |
+|--------|-------------|
+| `drawMeshInstanced(h, count)` | Draw with hardware instancing |
+| `createMRTRenderTarget(w, h, n)` | FBO with multiple color attachments |
+| `createTextureArray(w, h, layers, ch, px)` | 2D texture array |
+| `bindTextureArray(handle)` | Bind as GL_TEXTURE_2D_ARRAY |
+| `createShaderVGF(vs, gs, fs)` | Vertex+Geometry+Fragment shader |
+| `createUBO/updateUBO/bindUBO/destroyUBO` | Uniform buffer objects |
+| `setRasterizerDiscard(bool)` | Enable/disable rasterizer |
+| `createTransformFeedbackBuffer/Shader` | Transform feedback |
+| `beginTransformFeedback/endTransformFeedback` | TF capture |
+
+### ComputeFeatures (`r->compute()`)
+
+| Method | Description |
+|--------|-------------|
+| `createComputeShader(source)` | Compile compute shader (GL4.3+) |
+| `dispatchCompute(x, y, z)` | Launch compute work groups |
+| `computeMemoryBarrier()` | Memory barrier for SSBO |
+| `createSSBO/destroySSBO/bindSSBO` | Shader storage buffer objects |
+
+### GL4Features (`r->gl4()`)
+
+| Method | Description |
+|--------|-------------|
+| `createIndirectBuffer(size, data)` | Create indirect draw buffer |
+| `destroyIndirectBuffer(handle)` | Free indirect buffer |
+| `multiDrawMeshIndirect(mesh, buf, count, stride)` | Multi-draw indirect |
 
 ### Mesh generation helpers
 
@@ -319,6 +437,8 @@ r->destroyCustomShader(sh);
 | Test class declaration | `src/tests/tests.h` |
 | Test registration (X-macro) | `src/tests/test_registry.def` |
 | Registry types & enums | `src/tests/test_registry.h` |
+| Feature interfaces | `src/renderer/features.h` |
+| Base renderer interface | `src/renderer/renderer.h` |
 | Preset parameter structs | `src/bench/preset.h` |
 | Preset values | `src/bench/preset.cpp` |
 | Build file | `CMakeLists.txt` |
@@ -332,3 +452,4 @@ r->destroyCustomShader(sh);
 - **Don't call glFinish()** in render() — the harness handles synchronization
 - **Score should scale linearly** with the workload parameter for meaningful comparisons
 - **Set capability flags** in `test_registry.def` if your test needs GL3+/GL4+ features
+- **Match base class to caps** — `GL3BenchTest` for GL3 caps, `ComputeBenchTest` for compute, etc.

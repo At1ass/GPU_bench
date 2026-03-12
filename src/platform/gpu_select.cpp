@@ -5,6 +5,11 @@
 #include <cstdlib>
 #include <algorithm>
 
+#if defined(__FreeBSD__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef _WIN32
 // On Windows, export symbols to hint the driver which GPU to use.
 // These are checked by NVIDIA Optimus and AMD PowerXpress drivers.
@@ -28,9 +33,26 @@ static const char* pciVendorName(unsigned int vendor_id) {
     }
 }
 
-// ---- Linux implementation ----
+// ---- POSIX implementation (Linux / macOS / FreeBSD) ----
 
 #if !defined(_WIN32)
+
+#include <unistd.h>
+
+#if defined(__APPLE__)
+// macOS: GPU enumeration not supported (system manages GPU automatically)
+
+std::vector<GPUDevice> enumerateGPUs() {
+    return std::vector<GPUDevice>();
+}
+
+bool selectGPU(int index) {
+    (void)index;
+    fprintf(stderr, "GPU selection is not supported on macOS.\n");
+    return false;
+}
+
+#else // Linux / FreeBSD
 
 static bool isLikelyIntegrated(unsigned int vendor_id, const char* vendor_name) {
     // Intel GPUs are almost always integrated
@@ -41,7 +63,6 @@ static bool isLikelyIntegrated(unsigned int vendor_id, const char* vendor_name) 
     return false;
 }
 #include <dirent.h>
-#include <unistd.h>
 
 // Look up device name from /usr/share/hwdata/pci.ids (standard on most distros)
 static std::string lookupPciName(unsigned int vendor_id, unsigned int device_id) {
@@ -118,6 +139,8 @@ static unsigned int parseHex(const std::string& s) {
     sscanf(s.c_str(), "%x", &val);
     return val;
 }
+
+#ifdef __linux__
 
 std::vector<GPUDevice> enumerateGPUs() {
     std::vector<GPUDevice> gpus;
@@ -214,6 +237,16 @@ std::vector<GPUDevice> enumerateGPUs() {
     return gpus;
 }
 
+#else // FreeBSD — no sysfs, GPU enumeration not yet implemented
+
+std::vector<GPUDevice> enumerateGPUs() {
+    return std::vector<GPUDevice>();
+}
+
+#endif // __linux__
+
+#ifdef __linux__
+
 bool selectGPU(int index) {
     // Enumerate to find vendor info for the target GPU
     auto gpus = enumerateGPUs();
@@ -290,6 +323,20 @@ bool selectGPU(int index) {
 
     return true;
 }
+
+#elif defined(__FreeBSD__)
+
+bool selectGPU(int index) {
+    // FreeBSD supports DRI_PRIME via Mesa but has no GPU enumeration yet
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d", index);
+    setenv("DRI_PRIME", buf, 1);
+    return true;
+}
+
+#endif // __linux__ / __FreeBSD__
+
+#endif // !__APPLE__ (Linux / FreeBSD)
 
 #else // Windows
 
@@ -485,7 +532,12 @@ bool selectGPU(int index) {
 #endif
 
 void selectGPUAndReexec(int index, int argc, char* argv[]) {
-#ifndef _WIN32
+#if defined(__APPLE__)
+    // macOS: GPU selection not supported, no re-exec needed
+    (void)argc; (void)argv;
+    (void)index;
+    fprintf(stderr, "GPU selection is not supported on macOS.\n");
+#elif !defined(_WIN32)
     (void)argc;
     // Check if we've already re-exec'd (avoid infinite loop)
     const char* marker = getenv("_GPU_BENCH_REEXEC");
@@ -507,9 +559,25 @@ void selectGPUAndReexec(int index, int argc, char* argv[]) {
 
     // Get the actual executable path
     char exe_path[4096];
+    bool got_exe = false;
+
+#if defined(__FreeBSD__)
+    // FreeBSD: use sysctl KERN_PROC_PATHNAME
+    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+    size_t exe_len = sizeof(exe_path);
+    if (sysctl(mib, 4, exe_path, &exe_len, NULL, 0) == 0) {
+        got_exe = true;
+    }
+#else
+    // Linux: /proc/self/exe
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (len > 0) {
         exe_path[len] = '\0';
+        got_exe = true;
+    }
+#endif
+
+    if (got_exe) {
         execv(exe_path, argv);
     }
     // Fallback: try argv[0]

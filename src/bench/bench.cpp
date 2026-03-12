@@ -1,4 +1,6 @@
 #include "bench/bench.h"
+#include "renderer/features.h"
+#include "platform/logger.h"
 #include "tests/test_registry.h"
 #include "bench/preset.h"
 #include <algorithm>
@@ -6,18 +8,83 @@
 #include <cmath>
 #include <cstring>
 
+// GL3BenchTest
+void GL3BenchTest::setup(Renderer* r, int vw, int vh) {
+    gl3_ = r->gl3();
+    if (!gl3_) {
+        Log::err("GL3BenchTest '%s': renderer lacks GL3 — skipping", name());
+        return;
+    }
+    setupGL3(*r, *gl3_, vw, vh);
+}
+void GL3BenchTest::render(Renderer* r) {
+    if (!gl3_) return;
+    renderGL3(*r, *gl3_);
+}
+void GL3BenchTest::cleanup(Renderer* r) {
+    if (!gl3_) return;
+    cleanupGL3(*r, *gl3_);
+    gl3_ = nullptr;
+}
+
+// ComputeBenchTest
+void ComputeBenchTest::setup(Renderer* r, int vw, int vh) {
+    comp_ = r->compute();
+    if (!comp_) {
+        Log::err("ComputeBenchTest '%s': renderer lacks Compute — skipping", name());
+        return;
+    }
+    setupCompute(*r, *comp_, vw, vh);
+}
+void ComputeBenchTest::render(Renderer* r) {
+    if (!comp_) return;
+    renderCompute(*r, *comp_);
+}
+void ComputeBenchTest::cleanup(Renderer* r) {
+    if (!comp_) return;
+    cleanupCompute(*r, *comp_);
+    comp_ = nullptr;
+}
+
+// GL4BenchTest
+void GL4BenchTest::setup(Renderer* r, int vw, int vh) {
+    gl4_ = r->gl4();
+    if (!gl4_) {
+        Log::err("GL4BenchTest '%s': renderer lacks GL4 — skipping", name());
+        return;
+    }
+    setupGL4(*r, *gl4_, vw, vh);
+}
+void GL4BenchTest::render(Renderer* r) {
+    if (!gl4_) return;
+    renderGL4(*r, *gl4_);
+}
+void GL4BenchTest::cleanup(Renderer* r) {
+    if (!gl4_) return;
+    cleanupGL4(*r, *gl4_);
+    gl4_ = nullptr;
+}
+
 // Stability thresholds
 static constexpr double CV_INVALID_THRESHOLD = 0.5;
 
-// GPU tier score thresholds
-static constexpr double TIER_LEGACY_MAX_SCORE = 50.0;
-static constexpr double TIER_LOW_MAX_SCORE    = 500.0;
-static constexpr double TIER_MID_MAX_SCORE    = 5000.0;
+// GPU tier score thresholds (geometric mean of fill Mpix/s × geom Mtris/s)
+// Expected ranges (512x512 probe, 200 fill layers, grid=25):
+//   Legacy (GeForce 6200):   fill ~200, geom ~10   -> ~45
+//   Low    (GeForce 8600):   fill ~2000, geom ~50  -> ~316
+//   Mid    (GTX 560 Ti):     fill ~15000, geom ~200 -> ~1732
+//   High   (GTX 1060):       fill ~40000, geom ~400 -> ~4000
+//   Ultra  (RTX 4070 Ti):    fill ~70000, geom ~700 -> ~7000
+static constexpr double TIER_LEGACY_MAX_SCORE = 100.0;
+static constexpr double TIER_LOW_MAX_SCORE    = 700.0;
+static constexpr double TIER_MID_MAX_SCORE    = 3000.0;
+static constexpr double TIER_HIGH_MAX_SCORE   = 6000.0;
 
 // GPU tier VRAM thresholds (MB)
 static constexpr int TIER_LEGACY_MAX_VRAM = 128;
 static constexpr int TIER_LOW_MAX_VRAM    = 512;
 static constexpr int TIER_MID_MAX_VRAM    = 2048;
+static constexpr int TIER_HIGH_MAX_VRAM   = 6144;
 
 // GPU tier texture size thresholds
 static constexpr int TIER_LEGACY_MAX_TEXSIZE = 2048;
@@ -143,11 +210,13 @@ const char* gpuTierName(GPUTier tier) {
         case GPUTier::Low:    return "low";
         case GPUTier::Mid:    return "mid";
         case GPUTier::High:   return "high";
+        case GPUTier::Ultra:  return "ultra";
         default:              return "unknown";
     }
 }
 
 GPUTier classifyGPUTier(const RenderCaps& caps,
+                        uint32_t available_caps,
                         double probe_fill_mpixs,
                         double probe_geom_ktris) {
     // If we have probe data, use it as primary classifier
@@ -155,27 +224,29 @@ GPUTier classifyGPUTier(const RenderCaps& caps,
         // Combined score: geometric mean of fill and geometry probe
         double combined = sqrt(probe_fill_mpixs * probe_geom_ktris);
         if (combined < TIER_LEGACY_MAX_SCORE) return GPUTier::Legacy;
-        if (combined < TIER_LOW_MAX_SCORE)   return GPUTier::Low;
-        if (combined < TIER_MID_MAX_SCORE)   return GPUTier::Mid;
-        return GPUTier::High;
+        if (combined < TIER_LOW_MAX_SCORE)    return GPUTier::Low;
+        if (combined < TIER_MID_MAX_SCORE)    return GPUTier::Mid;
+        if (combined < TIER_HIGH_MAX_SCORE)   return GPUTier::High;
+        return GPUTier::Ultra;
     }
 
     // Fallback: classify from caps only
-    // GL 2.x without VAO → legacy
-    if (caps.gl_major < 3 && !caps.has_vao)
+    // GL 2.x without VAO -> legacy
+    if (caps.gl_major < 3 && !(available_caps & Cap_VAO))
         return GPUTier::Legacy;
 
     // Use VRAM as rough proxy
     if (caps.estimated_vram_mb > 0) {
         if (caps.estimated_vram_mb < TIER_LEGACY_MAX_VRAM) return GPUTier::Legacy;
-        if (caps.estimated_vram_mb < TIER_LOW_MAX_VRAM)  return GPUTier::Low;
-        if (caps.estimated_vram_mb < TIER_MID_MAX_VRAM)  return GPUTier::Mid;
-        return GPUTier::High;
+        if (caps.estimated_vram_mb < TIER_LOW_MAX_VRAM)    return GPUTier::Low;
+        if (caps.estimated_vram_mb < TIER_MID_MAX_VRAM)    return GPUTier::Mid;
+        if (caps.estimated_vram_mb < TIER_HIGH_MAX_VRAM)   return GPUTier::High;
+        return GPUTier::Ultra;
     }
 
     // Use max texture size as last resort
     if (caps.max_texture_size <= TIER_LEGACY_MAX_TEXSIZE) return GPUTier::Legacy;
-    if (caps.max_texture_size <= TIER_LOW_MAX_TEXSIZE)   return GPUTier::Low;
+    if (caps.max_texture_size <= TIER_LOW_MAX_TEXSIZE)    return GPUTier::Low;
     return GPUTier::Mid;
 }
 
@@ -185,6 +256,7 @@ int tierToPresetIndex(GPUTier tier) {
         case GPUTier::Low:    return static_cast<int>(PresetIndex::Medium);
         case GPUTier::Mid:    return static_cast<int>(PresetIndex::Heavy);
         case GPUTier::High:   return static_cast<int>(PresetIndex::Ultra);
+        case GPUTier::Ultra:  return static_cast<int>(PresetIndex::Extreme);
         default:              return static_cast<int>(PresetIndex::Medium);
     }
 }
@@ -284,6 +356,52 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
         double ratio = fma->score / alu->score;
         if (ratio > ALU_FMA_DIVERGENCE_RATIO) {
             info.detail += ". SFU (sin/cos/pow) is significantly slower than FMA";
+        }
+    }
+
+    // Compare FBOFillrate vs Fillrate → FBO overhead
+    const BenchResult* fill = findResult(results, "Fillrate");
+    const BenchResult* fbo_fill = findResult(results, "FBOFillrate");
+    if (fill && fbo_fill && fill->valid && fbo_fill->valid && fill->score > 0) {
+        double ratio = fbo_fill->score / fill->score;
+        if (ratio < BOTTLENECK_WEAKNESS_RATIO) {
+            char buf2[256];
+            snprintf(buf2, sizeof(buf2), ". FBO overhead: render-to-texture at %.0f%% of direct fill",
+                     ratio * 100.0);
+            info.detail += buf2;
+        }
+    }
+
+    // Compare IndirectDraw vs DrawCallRaw → indirect vs direct
+    const BenchResult* indirect = findResult(results, "IndirectDraw");
+    if (dcr && indirect && dcr->valid && indirect->valid && indirect->score > 0) {
+        double ratio = indirect->score / dcr->score;
+        if (ratio > DRAWCALL_OVERHEAD_RATIO) {
+            char buf2[256];
+            snprintf(buf2, sizeof(buf2), ". Indirect draw %.1fx faster than direct",
+                     ratio);
+            info.detail += buf2;
+        }
+    }
+
+    // Compare ComputeBandwidth vs ComputeFMA → bandwidth vs ALU bound
+    const BenchResult* cbw = findResult(results, "ComputeBW");
+    const BenchResult* cfma = findResult(results, "ComputeFMA");
+    if (cbw && cfma && cbw->valid && cfma->valid) {
+        // Both valid — report which is the bottleneck
+        // (different units, so we note presence rather than ratio)
+        info.detail += ". Compute: BW and ALU data available for analysis";
+    }
+
+    // Compare ComputeSharedMem vs ComputeBandwidth → shared vs global
+    const BenchResult* csmem = findResult(results, "ComputeSMem");
+    if (cbw && csmem && cbw->valid && csmem->valid && cbw->score > 0) {
+        double ratio = csmem->score / cbw->score;
+        if (ratio > 2.0) {
+            char buf2[256];
+            snprintf(buf2, sizeof(buf2), ". Shared memory %.1fx faster than global",
+                     ratio);
+            info.detail += buf2;
         }
     }
 

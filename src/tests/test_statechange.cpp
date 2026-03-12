@@ -5,7 +5,7 @@
 #include <cmath>
 
 // Generate a simple fragment shader variant with unique color tint
-static std::string makeFragShader(int variant) {
+static std::string makeFragShader_120(int variant) {
     char buf[512];
     float r = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 1.1f);
     float g = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 2.3f);
@@ -19,9 +19,34 @@ static std::string makeFragShader(int variant) {
     return std::string(buf);
 }
 
-static const char* STATECHANGE_VS = R"(
+// GLSL 150 core profile variant
+static std::string makeFragShader_150(int variant) {
+    char buf[512];
+    float r = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 1.1f);
+    float g = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 2.3f);
+    float b = 0.5f + 0.3f * sinf(static_cast<float>(variant) * 3.7f);
+    snprintf(buf, sizeof(buf),
+        "#version 150\n"
+        "uniform vec4 u_color;\n"
+        "out vec4 fragColor;\n"
+        "void main() {\n"
+        "    fragColor = u_color * vec4(%.3f, %.3f, %.3f, 1.0);\n"
+        "}\n", r, g, b);
+    return std::string(buf);
+}
+
+static const char* STATECHANGE_VS_120 = R"(
 #version 120
 attribute vec2 a_pos;
+void main() {
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+)";
+
+// GLSL 150 core profile variant
+static const char* STATECHANGE_VS_150 = R"(
+#version 150
+in vec2 a_pos;
 void main() {
     gl_Position = vec4(a_pos, 0.0, 1.0);
 }
@@ -42,10 +67,12 @@ void StateChangeTest::setup(Renderer* r, int vw, int vh) {
     quad_ = r->createMesh(MeshGen::quad());
 
     // Create multiple custom shaders
+    bool core = r->isCoreProfile();
+    const char* vs = core ? STATECHANGE_VS_150 : STATECHANGE_VS_120;
     shaders_.resize(params_.shader_count);
     for (int i = 0; i < params_.shader_count; i++) {
-        std::string fs = makeFragShader(i);
-        shaders_[i] = r->createCustomShader(STATECHANGE_VS, fs.c_str());
+        std::string fs = core ? makeFragShader_150(i) : makeFragShader_120(i);
+        shaders_[i] = r->createCustomShader(vs, fs.c_str());
     }
 
     // Create multiple textures

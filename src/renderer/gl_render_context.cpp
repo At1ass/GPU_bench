@@ -35,13 +35,26 @@ bool GLRenderContext::createGLESContext() {
 }
 
 bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
+    // Try compatibility first (Linux/Windows), then core (macOS requires core for GL 3.2+).
+    // Cascade: GL 4.6 compat → 4.1 core → 3.2 compat → 3.2 core → 2.1
+
     if (backend != RendererBackend::GL2 && backend != RendererBackend::GL3) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
         gl_context_ = SDL_GL_CreateContext(window_);
         if (gl_context_) {
-            Log::info("Created GL 4.3 compatibility context");
+            Log::info("Created GL 4.6 compatibility context");
+            return true;
+        }
+
+        // Core profile fallback (macOS supports up to GL 4.1 core)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        gl_context_ = SDL_GL_CreateContext(window_);
+        if (gl_context_) {
+            Log::info("Created GL 4.1 core context");
             return true;
         }
     }
@@ -53,6 +66,16 @@ bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
         gl_context_ = SDL_GL_CreateContext(window_);
         if (gl_context_) {
             Log::info("Created GL 3.2 compatibility context");
+            return true;
+        }
+
+        // Core profile fallback
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        gl_context_ = SDL_GL_CreateContext(window_);
+        if (gl_context_) {
+            Log::info("Created GL 3.2 core context");
             return true;
         }
     }

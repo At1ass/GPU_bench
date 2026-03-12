@@ -22,6 +22,7 @@ struct UIView {
     const char*        gl_version;     // renderer->getGLVersion()
     const char*        renderer_name;  // renderer->getRendererName()
     const RenderCaps*  caps;
+    uint32_t           available_caps;
     bool               supports_render_targets;
     GPUTier            gpu_tier;
 

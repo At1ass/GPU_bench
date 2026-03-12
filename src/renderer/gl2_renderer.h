@@ -45,7 +45,6 @@ public:
     void setUseTexture(bool use) override;
 
     void drawMesh(MeshHandle h) override;
-    void drawMeshInstanced(MeshHandle h, int instance_count) override;
 
     void uploadTextureData(TextureHandle h, int w, int h_,
                            int channels, const unsigned char* pixels) override;
@@ -72,14 +71,8 @@ public:
     void   timerEnd() override;
     double timerElapsedMs() override;
 
-    ShaderHandle createComputeShader(const char* source) override;
-    void         dispatchCompute(int groups_x, int groups_y, int groups_z) override;
-    void         computeMemoryBarrier() override;
-    BufferHandle createSSBO(int size_bytes) override;
-    void         destroySSBO(BufferHandle h) override;
-    void         bindSSBO(BufferHandle h, int binding) override;
-
     const RenderCaps& getCaps() const override;
+    bool isCoreProfile() const override;
     const char* getGPUVendor() const override;
     const char* getGPURenderer() const override;
     const char* getGLVersion() const override;
@@ -126,6 +119,7 @@ protected:
     RenderCaps caps_;
     std::string gpu_vendor_, gpu_renderer_, gl_version_;
     bool initialized_;
+    bool core_profile_;
 
     // Render targets (FBO)
     struct GLFBO {

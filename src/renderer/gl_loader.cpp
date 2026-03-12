@@ -49,6 +49,9 @@ bool GLLoader::init() {
     // GL4 — optional, load function pointers
     loadGL4Functions();
 
+    // Extension-only functions (ARB_bindless_texture etc)
+    loadGLExtFunctions();
+
     // Cache availability
 #ifdef CB_NEED_GL_LOAD
     // Windows: check actual function pointers

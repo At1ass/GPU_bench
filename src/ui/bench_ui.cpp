@@ -80,10 +80,10 @@ void BenchUI::drawHardwareInfo(const UIView& view) {
         else
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", name);
     };
-    capLabel("VAO", caps.has_vao);
-    ImGui::SameLine(); capLabel("Instancing", caps.has_instancing);
-    ImGui::SameLine(); capLabel("FBO", caps.has_fbo);
-    ImGui::SameLine(); capLabel("TimerQ", caps.has_timer_queries);
+    capLabel("VAO", (view.available_caps & Cap_VAO) != 0);
+    ImGui::SameLine(); capLabel("Instancing", (view.available_caps & Cap_Instancing) != 0);
+    ImGui::SameLine(); capLabel("FBO", (view.available_caps & Cap_FBO) != 0);
+    ImGui::SameLine(); capLabel("TimerQ", (view.available_caps & Cap_TimerQuery) != 0);
 
     // GPU tier
     ImGui::SameLine();
@@ -92,9 +92,10 @@ void BenchUI::drawHardwareInfo(const UIView& view) {
         ImVec4(0.8f, 0.8f, 0.3f, 1.0f),  // low
         ImVec4(0.3f, 0.8f, 0.3f, 1.0f),  // mid
         ImVec4(0.3f, 0.6f, 1.0f, 1.0f),  // high
+        ImVec4(0.8f, 0.3f, 1.0f, 1.0f),  // ultra
     };
     int ti = static_cast<int>(view.gpu_tier);
-    if (ti < 0 || ti > 3) ti = 2;
+    if (ti < 0 || ti > 4) ti = 2;
     ImGui::TextColored(tier_colors[ti], "Tier: %s", gpuTierName(view.gpu_tier));
 
     // Resolution display
@@ -114,8 +115,8 @@ void BenchUI::drawPresetSelector(const UIView& view, UIState& state, UIAction& o
     ImGui::Text("Preset:");
     ImGui::SameLine();
 
-    const char* preset_labels[] = {"Light", "Medium", "Heavy", "Ultra"};
-    const int preset_count = 4;
+    const char* preset_labels[] = {"Light", "Medium", "Heavy", "Ultra", "Extreme"};
+    const int preset_count = 5;
 
     for (int i = 0; i < preset_count; i++) {
         if (i > 0) ImGui::SameLine();
@@ -278,7 +279,7 @@ void BenchUI::drawCustomParams(UIState& state, UIAction& out) {
 
 void BenchUI::drawTestSelector(const UIView& view, UIState& state) {
     ImGui::Text("Tests:");
-    uint32_t avail_caps = getAvailableCaps(*view.caps);
+    uint32_t avail_caps = view.available_caps;
     for (int i = 0; i < NUM_TESTS; i++) {
         if (i > 0 && i % 6 != 0) ImGui::SameLine();
         bool supported = (g_tests[i].required_caps & avail_caps) == g_tests[i].required_caps;

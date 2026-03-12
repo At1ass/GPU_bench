@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0...3.31)
-project(GPU_benchmark VERSION 0.4.0 LANGUAGES C CXX)
+project(GPU_benchmark VERSION 0.5.0 LANGUAGES C CXX)
 
 # C++11: CMake 3.0 doesn't have CMAKE_CXX_STANDARD
 if(CMAKE_VERSION VERSION_LESS "3.1")
@@ -95,6 +95,22 @@ set(SOURCES
     src/tests/test_shader_fma.cpp
     src/tests/test_instanced_draw.cpp
     src/tests/test_compute_fma.cpp
+    src/tests/test_fbo_fillrate.cpp
+    src/tests/test_mrt_fill.cpp
+    src/tests/test_texarray_sample.cpp
+    src/tests/test_geom_shader.cpp
+    src/tests/test_ubo_switch.cpp
+    src/tests/test_transform_feedback.cpp
+    src/tests/test_compute_bw.cpp
+    src/tests/test_indirect_draw.cpp
+    src/tests/test_compute_smem.cpp
+    src/tests/test_ssbo_atomics.cpp
+    src/tests/test_tessellation.cpp
+    src/tests/test_texture_gather.cpp
+    src/tests/test_image_load_store.cpp
+    src/tests/test_compute_prefix.cpp
+    src/tests/test_persistent_map.cpp
+    src/tests/test_bindless_tex.cpp
 
     # UI
     src/ui/bench_ui.cpp
@@ -131,7 +147,11 @@ else()
     target_link_libraries(gpu_benchmark PRIVATE ${OPENGL_LIBRARIES})
 endif()
 
-if(UNIX AND NOT APPLE)
+if(APPLE)
+    target_link_libraries(gpu_benchmark PRIVATE pthread)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    target_link_libraries(gpu_benchmark PRIVATE pthread)
+elseif(UNIX)
     target_link_libraries(gpu_benchmark PRIVATE dl pthread)
 endif()
 

@@ -20,7 +20,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
                        int render_w, int render_h,
                        int duration_sec,
                        BenchCallbacks* cb) {
-    static const char* STRESS_VS =
+    static const char* STRESS_VS_120 =
         "#version 120\n"
         "attribute vec2 a_pos;\n"
         "attribute vec2 a_uv;\n"
@@ -30,7 +30,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
         "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
         "}\n";
 
-    static const char* STRESS_FS =
+    static const char* STRESS_FS_120 =
         "#version 120\n"
         "varying vec2 v_uv;\n"
         "uniform sampler2D u_tex;\n"
@@ -56,11 +56,52 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
         "    gl_FragColor = vec4(fma_acc.rgb * 0.5 + 0.25, 0.8);\n"
         "}\n";
 
+    // GLSL 150 core profile variants
+    static const char* STRESS_VS_150 =
+        "#version 150\n"
+        "in vec2 a_pos;\n"
+        "in vec2 a_uv;\n"
+        "out vec2 v_uv;\n"
+        "void main() {\n"
+        "    v_uv = a_uv;\n"
+        "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
+        "}\n";
+
+    static const char* STRESS_FS_150 =
+        "#version 150\n"
+        "in vec2 v_uv;\n"
+        "uniform sampler2D u_tex;\n"
+        "uniform int u_iterations;\n"
+        "uniform float u_time;\n"
+        "out vec4 fragColor;\n"
+        "void main() {\n"
+        "    vec4 t0 = texture(u_tex, v_uv);\n"
+        "    vec4 t1 = texture(u_tex, v_uv * 2.0 + vec2(u_time * 0.01));\n"
+        "    vec4 t2 = texture(u_tex, v_uv * 4.0 - vec2(u_time * 0.02));\n"
+        "    vec4 t3 = texture(u_tex, v_uv.yx * 3.0 + vec2(u_time * 0.015));\n"
+        "    vec4 acc = t0 * 0.25 + t1 * 0.25 + t2 * 0.25 + t3 * 0.25;\n"
+        "    vec4 fma_acc = acc;\n"
+        "    for (int i = 0; i < u_iterations; i++) {\n"
+        "        fma_acc = fma_acc * acc + fma_acc;\n"
+        "        fma_acc = fma_acc * vec4(0.5) + vec4(0.25);\n"
+        "        acc.x = sin(fma_acc.x * 3.14159);\n"
+        "        acc.y = cos(fma_acc.y * 3.14159);\n"
+        "        acc.z = sqrt(abs(fma_acc.z));\n"
+        "        acc.w = fma_acc.w;\n"
+        "        fma_acc = fma_acc * acc + fma_acc;\n"
+        "        fma_acc = fma_acc * vec4(0.5) + vec4(0.25);\n"
+        "    }\n"
+        "    fragColor = vec4(fma_acc.rgb * 0.5 + 0.25, 0.8);\n"
+        "}\n";
+
+    const char* stress_vs = r->isCoreProfile() ? STRESS_VS_150 : STRESS_VS_120;
+    const char* stress_fs = r->isCoreProfile() ? STRESS_FS_150 : STRESS_FS_120;
+
     ctx->setVSync(false);
     r->resetState();
 
     MeshHandle stress_quad = r->createMesh(MeshGen::quad());
-    ShaderHandle stress_shader = r->createCustomShader(STRESS_VS, STRESS_FS);
+    ShaderHandle stress_shader = r->createCustomShader(stress_vs, stress_fs);
 
     int tex_size = 1024;
     auto noise = genColorNoise(tex_size, 42);

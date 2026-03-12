@@ -7,7 +7,7 @@
 static void printHelp() {
     fprintf(stderr,
         "gpu_benchmark [options]\n"
-        "  --preset <light|medium|heavy|ultra>   Preset (default: medium)\n"
+        "  --preset <light|medium|heavy|ultra|extreme>  Preset (default: medium)\n"
         "  --renderer <gl2|gl3|gl4|gles|auto>     Renderer (default: auto)\n"
         "  --config <path>                       Load config INI\n"
         "  --headless                            No GUI, run tests, print results\n"
@@ -55,10 +55,11 @@ int main(int argc, char* argv[]) {
             gpu_index = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--preset") == 0 && i + 1 < argc) {
             i++;
-            if (strcmp(argv[i], "light") == 0)       cfg.preset_index = static_cast<int>(PresetIndex::Light);
-            else if (strcmp(argv[i], "medium") == 0)  cfg.preset_index = static_cast<int>(PresetIndex::Medium);
-            else if (strcmp(argv[i], "heavy") == 0)   cfg.preset_index = static_cast<int>(PresetIndex::Heavy);
-            else if (strcmp(argv[i], "ultra") == 0)   cfg.preset_index = static_cast<int>(PresetIndex::Ultra);
+            if (strcmp(argv[i], "light") == 0)        cfg.preset_index = static_cast<int>(PresetIndex::Light);
+            else if (strcmp(argv[i], "medium") == 0)   cfg.preset_index = static_cast<int>(PresetIndex::Medium);
+            else if (strcmp(argv[i], "heavy") == 0)    cfg.preset_index = static_cast<int>(PresetIndex::Heavy);
+            else if (strcmp(argv[i], "ultra") == 0)    cfg.preset_index = static_cast<int>(PresetIndex::Ultra);
+            else if (strcmp(argv[i], "extreme") == 0)  cfg.preset_index = static_cast<int>(PresetIndex::Extreme);
             else { fprintf(stderr, "Unknown preset: %s\n", argv[i]); return 1; }
         } else if (strcmp(argv[i], "--renderer") == 0 && i + 1 < argc) {
             i++;

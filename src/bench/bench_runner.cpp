@@ -1,5 +1,6 @@
 #include "bench/bench_runner.h"
 #include "tests/tests.h"
+#include "tests/test_registry.h"
 #include "renderer/renderer.h"
 #include "renderer/render_context.h"
 #include "platform/logger.h"
@@ -7,10 +8,17 @@
 #include <algorithm>
 
 // Probe test parameters
-static const int PROBE_FRAMES      = 40;
-static const int PROBE_RESOLUTION  = 256;
-static const int PROBE_FILL_LAYERS = 50;
+static const int PROBE_MAX_FRAMES  = 60;
+static const int PROBE_MIN_FRAMES  = 20;
+static const double PROBE_TIME_BUDGET = 2.0; // seconds per sub-probe
+static const int PROBE_RESOLUTION  = 512;
+static const int PROBE_FILL_LAYERS = 200;
+static const int PROBE_GEOM_GRID   = 25;
 static const int PROBE_WARMUP      = 5;
+static const double PROBE_WARMUP_BUDGET = 0.5; // seconds for warmup
+
+// Trim fraction for probe measurements (drop top/bottom 15%)
+static const double PROBE_TRIM_FRAC = 0.15;
 
 BenchRunner::BenchRunner()
     : progress_(0), active_(false), bench_rt_(INVALID_RENDER_TARGET) {}
@@ -182,6 +190,15 @@ cleanup:
     ctx->setVSync(true);
 }
 
+// Trim outliers from sorted times: drop PROBE_TRIM_FRAC from each end
+static std::vector<double> trimmedTimes(std::vector<double> times) {
+    std::sort(times.begin(), times.end());
+    int n = static_cast<int>(times.size());
+    int trim = static_cast<int>(n * PROBE_TRIM_FRAC);
+    if (trim * 2 >= n) trim = 0;
+    return std::vector<double>(times.begin() + trim, times.end() - trim);
+}
+
 GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,
                                     int render_w, int render_h,
                                     BenchCallbacks* cb) {
@@ -203,16 +220,21 @@ GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,
         test.setup(r, PROBE_W, PROBE_H);
         r->setViewport(0, 0, PROBE_W, PROBE_H);
 
-        for (int i = 0; i < PROBE_WARMUP; i++) {
+        // Time-budgeted warmup
+        Timer warmup_t;
+        for (int i = 0; i < PROBE_WARMUP && warmup_t.elapsed_sec() < PROBE_WARMUP_BUDGET; i++) {
             r->clear(0.0f, 0.0f, 0.0f, 1.0f);
             test.render(r);
             r->finish();
         }
 
+        // Time-budgeted measurement
         std::vector<double> times;
-        times.reserve(PROBE_FRAMES);
+        times.reserve(PROBE_MAX_FRAMES);
+        Timer budget_t;
         Timer ft;
-        for (int i = 0; i < PROBE_FRAMES; i++) {
+        for (int i = 0; i < PROBE_MAX_FRAMES; i++) {
+            if (i >= PROBE_MIN_FRAMES && budget_t.elapsed_sec() >= PROBE_TIME_BUDGET) break;
             if (cb && !cb->onPoll()) break;
             r->clear(0.0f, 0.0f, 0.0f, 1.0f);
             r->finish();
@@ -221,28 +243,32 @@ GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,
             r->finish();
             times.push_back(ft.elapsed_ms());
         }
-        fill_score = test.computeScore(times, PROBE_W, PROBE_H);
+        auto trimmed = trimmedTimes(times);
+        fill_score = test.computeScore(trimmed, PROBE_W, PROBE_H);
         test.cleanup(r);
     }
 
     // Probe geometry
     {
-        GeometryParams gp; gp.grid_size = 10;
+        GeometryParams gp; gp.grid_size = PROBE_GEOM_GRID;
         GeometryTest test(gp);
         r->resetState();
         test.setup(r, PROBE_W, PROBE_H);
         r->setViewport(0, 0, PROBE_W, PROBE_H);
 
-        for (int i = 0; i < PROBE_WARMUP; i++) {
+        Timer warmup_t;
+        for (int i = 0; i < PROBE_WARMUP && warmup_t.elapsed_sec() < PROBE_WARMUP_BUDGET; i++) {
             r->clear(0.0f, 0.0f, 0.0f, 1.0f);
             test.render(r);
             r->finish();
         }
 
         std::vector<double> times;
-        times.reserve(PROBE_FRAMES);
+        times.reserve(PROBE_MAX_FRAMES);
+        Timer budget_t;
         Timer ft;
-        for (int i = 0; i < PROBE_FRAMES; i++) {
+        for (int i = 0; i < PROBE_MAX_FRAMES; i++) {
+            if (i >= PROBE_MIN_FRAMES && budget_t.elapsed_sec() >= PROBE_TIME_BUDGET) break;
             if (cb && !cb->onPoll()) break;
             r->clear(0.0f, 0.0f, 0.0f, 1.0f);
             r->finish();
@@ -251,15 +277,16 @@ GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,
             r->finish();
             times.push_back(ft.elapsed_ms());
         }
-        geom_score = test.computeScore(times, PROBE_W, PROBE_H);
+        auto trimmed = trimmedTimes(times);
+        geom_score = test.computeScore(trimmed, PROBE_W, PROBE_H);
         test.cleanup(r);
     }
 
     r->resetState();
     ctx->setVSync(true);
 
-    GPUTier tier = classifyGPUTier(r->getCaps(), fill_score, geom_score);
-    Log::info("Quick probe: fill=%.1f Mpix/s, geom=%.1f Ktris/s -> tier=%s",
+    GPUTier tier = classifyGPUTier(r->getCaps(), getAvailableCaps(*r), fill_score, geom_score);
+    Log::info("Quick probe: fill=%.1f Mpix/s, geom=%.1f Mtris/s -> tier=%s",
             fill_score, geom_score, gpuTierName(tier));
     return tier;
 }

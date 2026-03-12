@@ -18,6 +18,7 @@ struct ExportConfig {
 
 void exportText(FILE* out, const std::vector<BenchResult>& results,
                 const HWInfo& hw, const RenderCaps& caps,
+                uint32_t available_caps,
                 const char* gpu_name, const char* gl_version,
                 const char* renderer_name, const char* preset_name,
                 const ExportConfig& ecfg,
@@ -26,12 +27,14 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
 
 void exportCSV(FILE* out, const std::vector<BenchResult>& results,
                const HWInfo& hw, const RenderCaps& caps,
+               uint32_t available_caps,
                const char* gpu_name, const char* gl_version,
                const char* renderer_name, const char* preset_name,
                const ExportConfig& ecfg);
 
 void exportJSON(FILE* out, const std::vector<BenchResult>& results,
                 const HWInfo& hw, const RenderCaps& caps,
+                uint32_t available_caps,
                 const char* gpu_name, const char* gl_version,
                 const char* renderer_name, const char* preset_name,
                 const ExportConfig& ecfg,

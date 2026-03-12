@@ -1,5 +1,6 @@
 #pragma once
 #include "renderer/renderer.h"
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,46 @@ public:
                                 int viewport_w, int viewport_h) = 0;
 };
 
+struct GL3Features;
+struct GL4Features;
+struct ComputeFeatures;
+
+class GL3BenchTest : public BenchTest {
+protected:
+    virtual void setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) = 0;
+    virtual void renderGL3(Renderer& r, GL3Features& gl3) = 0;
+    virtual void cleanupGL3(Renderer& r, GL3Features& gl3) = 0;
+private:
+    GL3Features* gl3_ = nullptr;
+    void setup(Renderer* r, int vw, int vh) final;
+    void render(Renderer* r) final;
+    void cleanup(Renderer* r) final;
+};
+
+class ComputeBenchTest : public BenchTest {
+protected:
+    virtual void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) = 0;
+    virtual void renderCompute(Renderer& r, ComputeFeatures& comp) = 0;
+    virtual void cleanupCompute(Renderer& r, ComputeFeatures& comp) = 0;
+private:
+    ComputeFeatures* comp_ = nullptr;
+    void setup(Renderer* r, int vw, int vh) final;
+    void render(Renderer* r) final;
+    void cleanup(Renderer* r) final;
+};
+
+class GL4BenchTest : public BenchTest {
+protected:
+    virtual void setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) = 0;
+    virtual void renderGL4(Renderer& r, GL4Features& gl4) = 0;
+    virtual void cleanupGL4(Renderer& r, GL4Features& gl4) = 0;
+private:
+    GL4Features* gl4_ = nullptr;
+    void setup(Renderer* r, int vw, int vh) final;
+    void render(Renderer* r) final;
+    void cleanup(Renderer* r) final;
+};
+
 // Computes statistics from raw frame times
 BenchResult computeStats(const std::string& name,
                          const std::string& unit,
@@ -78,16 +119,18 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
 
 // GPU performance tier classification
 enum class GPUTier {
-    Legacy = 0,  // GL 2.x class, very old GPUs
-    Low    = 1,  // Low-end / old discrete or integrated
-    Mid    = 2,  // Mid-range
-    High   = 3   // High-end
+    Legacy = 0,  // GL 2.x class, very old GPUs (GeForce 6/7, Radeon 9xxx)
+    Low    = 1,  // Low-end / old discrete or integrated (GeForce 8/9, HD 4xxx)
+    Mid    = 2,  // Mid-range (GTX 560, HD 7850)
+    High   = 3,  // High-end (GT 1030, GTX 1060, RX 580)
+    Ultra  = 4   // Enthusiast (RTX 3060+, RX 6700+)
 };
 
 const char* gpuTierName(GPUTier tier);
 
 // Classify GPU tier from caps and optional probe scores (0 = no probe data)
 GPUTier classifyGPUTier(const RenderCaps& caps,
+                        uint32_t available_caps,
                         double probe_fill_mpixs = 0,
                         double probe_geom_ktris = 0);
 
