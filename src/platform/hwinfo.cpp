@@ -116,15 +116,44 @@ HWInfo HWInfo::detect() {
     info.cpu_name = trimWhitespace(info.cpu_name);
     if (info.cpu_name.empty()) info.cpu_name = "Unknown CPU";
 
-    // OS info
+    // OS info: try /etc/os-release for distro name, fall back to uname
     struct utsname u;
-    if (uname(&u) == 0) {
-        info.os_name = u.sysname;
-        info.os_version = u.release;
-    } else {
-        info.os_name = "Linux";
-        info.os_version = "unknown";
+    bool have_uname = (uname(&u) == 0);
+    std::string kernel_version = have_uname ? u.release : "unknown";
+
+#if defined(__APPLE__)
+    info.os_name = readFirstLine("sw_vers -productName");
+    info.os_version = readFirstLine("sw_vers -productVersion");
+    if (info.os_name.empty()) info.os_name = "macOS";
+    info.os_version += " (" + kernel_version + ")";
+#elif defined(__FreeBSD__)
+    info.os_name = have_uname ? u.sysname : "FreeBSD";
+    info.os_version = kernel_version;
+#else
+    // Linux: parse /etc/os-release for PRETTY_NAME
+    info.os_name = "";
+    {
+        FileGuard f(fopen("/etc/os-release", "r"));
+        if (f) {
+            char line[256];
+            while (fgets(line, sizeof(line), f.get())) {
+                if (strncmp(line, "PRETTY_NAME=", 12) == 0) {
+                    char* val = line + 12;
+                    // Strip quotes and newline
+                    if (*val == '"') val++;
+                    info.os_name = val;
+                    while (!info.os_name.empty() &&
+                           (info.os_name.back() == '\n' || info.os_name.back() == '\r' || info.os_name.back() == '"'))
+                        info.os_name.pop_back();
+                    break;
+                }
+            }
+        }
     }
+    if (info.os_name.empty())
+        info.os_name = have_uname ? u.sysname : "Linux";
+    info.os_version = kernel_version;
+#endif
     return info;
 }
 

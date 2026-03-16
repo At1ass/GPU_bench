@@ -72,6 +72,9 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
     active_ = true;
     status_ = std::string("Running: ") + test->name();
     progress_ = 0;
+    Log::dbg("BenchRunner: starting test '%s' (%dx%d, timing=%s)",
+             test->name(), cfg.render_w, cfg.render_h,
+             cfg.timing_mode == TimingMode::GPU ? "gpu" : "sync");
 
     ctx->setVSync(false);
 

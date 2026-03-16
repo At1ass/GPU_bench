@@ -59,19 +59,25 @@ UIAction BenchUI::render(RenderContext* ctx, const UIView& view, UIState& state)
 
 void BenchUI::drawHardwareInfo(const UIView& view) {
     const RenderCaps& caps = *view.caps;
+    float w = static_cast<float>(view.window_w);
+    bool wide = (view.window_w >= 720);
 
+    // Row 1: CPU + GPU (two-column if wide, stacked if narrow)
     ImGui::Text("CPU: %s", view.hw_info->cpu_name.c_str());
-    ImGui::SameLine(static_cast<float>(view.window_w) * 0.5f);
+    if (wide) ImGui::SameLine(w * 0.5f);
     ImGui::Text("GPU: %s", view.gpu_renderer);
+
+    // Row 2: OS + GL/VRAM
     ImGui::Text("OS: %s %s", view.hw_info->os_name.c_str(), view.hw_info->os_version.c_str());
-    ImGui::SameLine(static_cast<float>(view.window_w) * 0.5f);
-    ImGui::Text("GL: %s  Renderer: %s", view.gl_version, view.renderer_name);
+    if (wide) ImGui::SameLine(w * 0.5f);
     if (caps.estimated_vram_mb > 0) {
-        ImGui::SameLine();
-        ImGui::Text("  VRAM: %d MB", caps.estimated_vram_mb);
+        ImGui::Text("GL: %s  Renderer: %s  VRAM: %d MB",
+                     view.gl_version, view.renderer_name, caps.estimated_vram_mb);
+    } else {
+        ImGui::Text("GL: %s  Renderer: %s", view.gl_version, view.renderer_name);
     }
 
-    // Capabilities line
+    // Row 3: Caps + Tier
     ImGui::Text("MaxTex: %d  Attribs: %d", caps.max_texture_size, caps.max_vertex_attribs);
     ImGui::SameLine();
     auto capLabel = [](const char* name, bool supported) {
@@ -98,15 +104,12 @@ void BenchUI::drawHardwareInfo(const UIView& view) {
     if (ti < 0 || ti > 4) ti = 2;
     ImGui::TextColored(tier_colors[ti], "Tier: %s", gpuTierName(view.gpu_tier));
 
-    // Resolution display
-    ImGui::Text("Window: %dx%d", view.window_w, view.window_h);
-    ImGui::SameLine();
-    if (view.render_w == view.window_w && view.render_h == view.window_h) {
-        ImGui::Text("  Render: %dx%d (native)", view.render_w, view.render_h);
-    } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f),
-            "  Render: %dx%d", view.render_w, view.render_h);
-    }
+    // Row 4: Resolution
+    ImGui::Text("Window: %dx%d   Render: %dx%d%s",
+                view.window_w, view.window_h,
+                view.render_w, view.render_h,
+                (view.render_w == view.window_w && view.render_h == view.window_h)
+                    ? " (native)" : "");
 }
 
 // --- Preset buttons ---
@@ -280,8 +283,19 @@ void BenchUI::drawCustomParams(UIState& state, UIAction& out) {
 void BenchUI::drawTestSelector(const UIView& view, UIState& state) {
     ImGui::Text("Tests:");
     uint32_t avail_caps = view.available_caps;
+    float region_w = ImGui::GetContentRegionAvail().x;
+
     for (int i = 0; i < NUM_TESTS; i++) {
-        if (i > 0 && i % 6 != 0) ImGui::SameLine();
+        // Flow layout: SameLine if the next checkbox fits, otherwise wrap
+        if (i > 0) {
+            // Check if placing next item on same line would overflow
+            float last_x = ImGui::GetItemRectMax().x;
+            float item_w = ImGui::CalcTextSize(g_tests[i].display_name).x + 30.0f;
+            float spacing = ImGui::GetStyle().ItemSpacing.x;
+            if (last_x + spacing + item_w < region_w + ImGui::GetWindowPos().x)
+                ImGui::SameLine();
+        }
+
         bool supported = (g_tests[i].required_caps & avail_caps) == g_tests[i].required_caps;
         if (!supported) {
             ImGui::BeginDisabled();

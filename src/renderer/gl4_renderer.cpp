@@ -9,6 +9,7 @@ GL4Renderer::GL4Renderer() {}
 
 bool GL4Renderer::init(int w, int h) {
     if (!GL3Renderer::init(w, h)) return false;
+    Log::dbg("GL4Renderer::init: GL3 base init done, detecting GL4 features");
 
     // Baseline from GL spec
     GLProfile baseline = GLProfile::coreProfile(caps_.gl_major, caps_.gl_minor);
@@ -77,6 +78,7 @@ bool GL4Renderer::init(int w, int h) {
 #endif
 
     // Load GL4 function pointers
+    Log::dbg("GL4Renderer::init: loading GL4 function pointers");
     loadGL4Functions();
 
     // Reserve slot 0 as invalid for SSBO handles

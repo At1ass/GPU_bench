@@ -68,6 +68,7 @@ bool App::init(const AppConfig& cfg) {
     if (initialized_) return true;
     config_ = cfg;
     Log::init("gpu_benchmark.log");
+    Log::setLevel(cfg.debug ? Log::Level::Debug : Log::Level::Info);
 
     window_w_ = cfg.width;
     window_h_ = cfg.height;
@@ -83,6 +84,7 @@ bool App::init(const AppConfig& cfg) {
         applyPreset(cfg.preset_index);
     }
 
+    Log::dbg("App::init: creating render context");
     ctx_ = createRenderContext(cfg);
     if (!ctx_ || !ctx_->init(cfg)) {
         Log::err("Failed to initialize render context");
@@ -91,14 +93,18 @@ bool App::init(const AppConfig& cfg) {
 
     // Query actual drawable size (handles tiling WMs and HiDPI scaling)
     SDL_GL_GetDrawableSize(ctx_->window(), &window_w_, &window_h_);
+    Log::dbg("App::init: drawable size %dx%d", window_w_, window_h_);
 
     renderer_ = createRenderer(cfg.backend);
     if (!renderer_ || !renderer_->init(window_w_, window_h_)) {
         Log::err("Renderer init failed");
         return false;
     }
+    Log::dbg("App::init: renderer initialized");
 
     hw_info_ = HWInfo::detect();
+    Log::dbg("App::init: CPU=%s, OS=%s %s",
+             hw_info_.cpu_name.c_str(), hw_info_.os_name.c_str(), hw_info_.os_version.c_str());
 
     // Fallback to sync timing if GPU timer queries unavailable
     if (config_.timing_mode == TimingMode::GPU && !renderer_->hasTimerQueries()) {

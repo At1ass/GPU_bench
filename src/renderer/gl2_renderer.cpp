@@ -318,12 +318,14 @@ void GL2Renderer::detectCaps() {
             GLint kb = 0;
             glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &kb);
             if (kb > 0) caps_.estimated_vram_mb = kb / 1024;
+            Log::dbg("VRAM method 1 (GL_NVX_gpu_memory_info): %d MB", caps_.estimated_vram_mb);
         }
         // Method 2: AMD proprietary / Mesa RadeonSI (sometimes)
         if (caps_.estimated_vram_mb == 0 && strstr(exts_vram, "GL_ATI_meminfo")) {
             GLint info[4] = {0};
             glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, info);
             if (info[0] > 0) caps_.estimated_vram_mb = info[0] / 1024;
+            Log::dbg("VRAM method 2 (GL_ATI_meminfo): %d MB", caps_.estimated_vram_mb);
         }
     }
 
@@ -335,19 +337,21 @@ void GL2Renderer::detectCaps() {
         typedef int (*PFNGLXQUERYRENDERERMESA)(int, unsigned int*);
         PFNGLXQUERYRENDERERMESA queryRenderer =
             reinterpret_cast<PFNGLXQUERYRENDERERMESA>(SDL_GL_GetProcAddress("glXQueryCurrentRendererIntegerMESA"));
+        Log::dbg("VRAM method 3 (GLX_MESA): func=%s", queryRenderer ? "found" : "NULL");
         if (queryRenderer) {
             unsigned int vram_mb = 0;
             if (queryRenderer(GLX_RENDERER_VIDEO_MEMORY_MESA, &vram_mb) && vram_mb > 0) {
                 caps_.estimated_vram_mb = static_cast<int>(vram_mb);
             }
+            Log::dbg("VRAM method 3 (GLX_MESA): %d MB", caps_.estimated_vram_mb);
         }
     }
 #endif // !_WIN32
 
 #ifdef __linux__
     // Method 4: Linux sysfs — scan /sys/class/drm/card*/device/mem_info_vram_total (AMD)
-    // and /sys/class/drm/card*/device/resource (NVIDIA / other PCI devices)
     if (caps_.estimated_vram_mb == 0) {
+        Log::dbg("VRAM method 4 (sysfs): scanning /sys/class/drm/");
         DIR* drm_dir = opendir("/sys/class/drm");
         if (drm_dir) {
             struct dirent* entry;
@@ -364,6 +368,7 @@ void GL2Renderer::detectCaps() {
                     unsigned long long bytes = 0;
                     if (fscanf(f, "%llu", &bytes) == 1 && bytes > 0) {
                         caps_.estimated_vram_mb = static_cast<int>(bytes / (1024ULL * 1024ULL));
+                        Log::dbg("VRAM method 4: %s = %d MB", entry->d_name, caps_.estimated_vram_mb);
                     }
                     fclose(f);
                     if (caps_.estimated_vram_mb > 0) break;
@@ -393,8 +398,11 @@ bool GL2Renderer::init(int w, int h) {
     gpu_vendor_   = vendor   ? vendor   : "Unknown";
     gpu_renderer_ = renderer ? renderer : "Unknown";
     gl_version_   = version  ? version  : "Unknown";
+    Log::dbg("GL2Renderer::init: vendor=%s renderer=%s version=%s",
+             gpu_vendor_.c_str(), gpu_renderer_.c_str(), gl_version_.c_str());
 
     detectCaps();
+    Log::dbg("GL2Renderer::init: detectCaps done");
 
     // Init GPU timer if available
     gpu_timer_.init();
@@ -416,6 +424,8 @@ bool GL2Renderer::init(int w, int h) {
         core_profile_ = (profile == SDL_GL_CONTEXT_PROFILE_CORE);
     }
 
+    Log::dbg("GL2Renderer::init: core_profile=%s, building shaders (GLSL %s)",
+             core_profile_ ? "yes" : "no", core_profile_ ? "1.50" : "1.20");
     if (core_profile_) {
         Log::info("Core profile detected, using GLSL 1.50 shaders");
         if (!buildShader(shader_3d_, VS_3D_150, FS_3D_150)) return false;
@@ -426,6 +436,7 @@ bool GL2Renderer::init(int w, int h) {
         if (!buildShader(shader_2d_color_, VS_2D_120, FS_2D_COLOR_120)) return false;
         if (!buildShader(shader_2d_tex_, VS_2D_TEX_120, FS_2D_TEX_120)) return false;
     }
+    Log::dbg("GL2Renderer::init: shaders built OK");
 
     // Slot 0 for all meshes/textures/custom_shaders is reserved as "invalid"
     meshes_.emplace_back();

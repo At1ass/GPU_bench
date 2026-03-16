@@ -34,14 +34,10 @@ public:
     static void setLevel(Level lvl) { s_level = lvl; }
 
     static void dbg(const char* fmt, ...) {
-#ifdef LOG_DEBUG
         if (s_level > Level::Debug) return;
         va_list ap; va_start(ap, fmt);
         write("[DBG] ", fmt, ap);
         va_end(ap);
-#else
-        (void)fmt;
-#endif
     }
 
     static void info(const char* fmt, ...) {

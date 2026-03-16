@@ -11,6 +11,7 @@ GL3Renderer::GL3Renderer() {}
 
 bool GL3Renderer::init(int w, int h) {
     if (!GL2Renderer::init(w, h)) return false;
+    Log::dbg("GL3Renderer::init: GL2 base init done, detecting GL3 features");
 
     // Baseline from GL spec
     GLProfile baseline = GLProfile::coreProfile(caps_.gl_major, caps_.gl_minor);

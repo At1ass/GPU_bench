@@ -38,6 +38,7 @@ struct AppConfig {
     int demo_tier     = 0;              // 0 = auto, 1-4 = specific tier
     int demo_duration = 15;             // seconds per tier
     int gpu_index     = -1;              // -1 = default, >=0 = select GPU
+    bool debug        = false;           // --debug: enable debug logging
 
     AppConfig() = default;
     AppConfig(const AppConfig&) = default;

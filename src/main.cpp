@@ -193,6 +193,12 @@ static const ArgDef kArgs[] = {
          c.gpu_index = atoi(a); return 0;
      }},
 
+    {"--debug", nullptr, false, "Enable debug logging", nullptr,
+     nullptr, 0, nullptr,
+     +[](const char*, AppConfig& c) -> int {
+         c.debug = true; return 0;
+     }},
+
     {"--list-gpus", nullptr, false, "List available GPUs and exit", nullptr,
      nullptr, 0, nullptr,
      +[](const char*, AppConfig&) -> int {

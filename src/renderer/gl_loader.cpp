@@ -42,6 +42,7 @@ bool GLLoader::init() {
 
     // Parse version before GL3/GL4 checks (needed on Linux path)
     parseVersion();
+    Log::dbg("GLLoader: GL %d.%d, GLES=%s", gl_major_, gl_minor_, is_gles_ ? "yes" : "no");
 
     // GL3 — optional, load function pointers
     loadGL3Functions();
@@ -63,6 +64,7 @@ bool GLLoader::init() {
     gl4_available_ = checkGL4ByVersion();
 #endif
 
+    Log::dbg("GLLoader: GL3=%s, GL4=%s", gl3_available_ ? "yes" : "no", gl4_available_ ? "yes" : "no");
     initialized_ = true;
     return true;
 }
