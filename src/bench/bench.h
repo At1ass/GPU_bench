@@ -22,12 +22,23 @@ struct BenchResult {
     bool   sanity_ok = true;  // true if render output is non-black (sanity check passed)
 
     BenchResult() = default;
+    BenchResult(const BenchResult&) = default;
+    BenchResult& operator=(const BenchResult&) = default;
+    BenchResult(BenchResult&&) noexcept = default;
+    BenchResult& operator=(BenchResult&&) noexcept = default;
 };
 
 // Base class for benchmark tests
 class BenchTest {
 public:
     virtual ~BenchTest() {}
+    BenchTest(const BenchTest&) = delete;
+    BenchTest& operator=(const BenchTest&) = delete;
+    BenchTest(BenchTest&&) = delete;
+    BenchTest& operator=(BenchTest&&) = delete;
+protected:
+    BenchTest() = default;
+public:
     virtual const char* name() const = 0;
     virtual const char* scoreUnit() const = 0;
     virtual const char* description() const = 0;
@@ -112,6 +123,10 @@ struct BottleneckInfo {
     double weakness_ratio = 1.0;   // How much weaker vs average (0..1 = bad..ok)
 
     BottleneckInfo() = default;
+    BottleneckInfo(const BottleneckInfo&) = default;
+    BottleneckInfo& operator=(const BottleneckInfo&) = default;
+    BottleneckInfo(BottleneckInfo&&) noexcept = default;
+    BottleneckInfo& operator=(BottleneckInfo&&) noexcept = default;
 };
 
 BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,

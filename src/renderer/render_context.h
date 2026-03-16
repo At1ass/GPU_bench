@@ -35,6 +35,8 @@ public:
 
     RenderContext(const RenderContext&) = delete;
     RenderContext& operator=(const RenderContext&) = delete;
+    RenderContext(RenderContext&&) = delete;
+    RenderContext& operator=(RenderContext&&) = delete;
 
 protected:
     RenderContext();

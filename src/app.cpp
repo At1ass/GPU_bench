@@ -1,8 +1,10 @@
 #include "app.h"
 #include "geometry/mesh_gen.h"
 #include "renderer/renderer_factory.h"
-#include "platform/config.h"
+#include "bench/preset_io.h"
 #include "bench/results.h"
+#include "bench/stress_runner.h"
+#include "demo/demo_export.h"
 #include "platform/compat.h"
 #include "platform/logger.h"
 #include <cstdio>
@@ -36,8 +38,8 @@ const int App::NUM_RESOLUTIONS = sizeof(App::RESOLUTIONS) / sizeof(App::RESOLUTI
 
 App::App()
     : running_(false),
-      initialized_(false), window_w_(800), window_h_(600),
-      render_w_(800), render_h_(600), selected_resolution_(RES_NATIVE),
+      initialized_(false), window_w_(AppConfig().width), window_h_(AppConfig().height),
+      render_w_(AppConfig().width), render_h_(AppConfig().height), selected_resolution_(ResNative),
       last_frame_time_(0.0),
       selected_preset_index_(static_cast<int>(PresetIndex::Medium)), suggested_preset_(static_cast<int>(PresetIndex::Medium)),
       pending_action_(PendingAction::None),
@@ -49,11 +51,11 @@ App::App()
     current_preset_ = getPreset(static_cast<int>(PresetIndex::Medium));
 }
 
-App::~App() { shutdown(); }
+// ~App: default. shutdown() is called explicitly from main().
 
 
 void App::updateRenderResolution() {
-    if (selected_resolution_ == RES_NATIVE) {
+    if (selected_resolution_ == ResNative) {
         render_w_ = window_w_;
         render_h_ = window_h_;
     } else if (selected_resolution_ >= 0 && selected_resolution_ < NUM_RESOLUTIONS) {
@@ -87,6 +89,9 @@ bool App::init(const AppConfig& cfg) {
         return false;
     }
 
+    // Query actual drawable size (handles tiling WMs and HiDPI scaling)
+    SDL_GL_GetDrawableSize(ctx_->window(), &window_w_, &window_h_);
+
     renderer_ = createRenderer(cfg.backend);
     if (!renderer_ || !renderer_->init(window_w_, window_h_)) {
         Log::err("Renderer init failed");
@@ -111,7 +116,7 @@ bool App::init(const AppConfig& cfg) {
     // Set up render resolution
     if (cfg.render_width > 0 && cfg.render_height > 0) {
         // Find matching resolution or set directly
-        selected_resolution_ = RES_NATIVE;
+        selected_resolution_ = ResNative;
         for (int i = 0; i < NUM_RESOLUTIONS; i++) {
             if (RESOLUTIONS[i].w == cfg.render_width && RESOLUTIONS[i].h == cfg.render_height) {
                 selected_resolution_ = i;
@@ -121,7 +126,7 @@ bool App::init(const AppConfig& cfg) {
         render_w_ = cfg.render_width;
         render_h_ = cfg.render_height;
     } else {
-        selected_resolution_ = RES_NATIVE;
+        selected_resolution_ = ResNative;
         render_w_ = window_w_;
         render_h_ = window_h_;
     }
@@ -224,9 +229,9 @@ void App::processEvents() {
     while (ctx_->pollEvent(&e)) {
         if (e.type == SDL_QUIT) running_ = false;
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
-            window_w_ = e.window.data1;
-            window_h_ = e.window.data2;
-            if (selected_resolution_ == RES_NATIVE) {
+            // Use drawable size for correct viewport on HiDPI and tiling WMs
+            SDL_GL_GetDrawableSize(ctx_->window(), &window_w_, &window_h_);
+            if (selected_resolution_ == ResNative) {
                 render_w_ = window_w_;
                 render_h_ = window_h_;
             }
@@ -237,7 +242,7 @@ void App::processEvents() {
 void App::renderPreviewScene(float dt) {
     if (!preview_ready_) return;
 
-    int panel_h = static_cast<int>(window_h_ * 0.55f);
+    int panel_h = static_cast<int>(static_cast<float>(window_h_) * 0.55f);
     int view_h = window_h_ - panel_h;
     if (view_h <= 0) return;
 
@@ -299,7 +304,7 @@ bool App::onFrame(RenderTargetHandle rt) {
             renderer_->bindRenderTarget(INVALID_RENDER_TARGET);
             renderer_->setViewport(0, 0, window_w_, window_h_);
             renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
-            int panel_h = static_cast<int>(window_h_ * 0.55f);
+            int panel_h = static_cast<int>(static_cast<float>(window_h_) * 0.55f);
             int view_h = window_h_ - panel_h;
             if (view_h > 0)
                 renderer_->blitToScreen(rt, 0, panel_h, window_w_, view_h);
@@ -407,26 +412,18 @@ void App::renderUI() {
     }
 }
 
+void App::exportDemoResults(const DemoResults& results) {
+    const char* path = config_.output_file.empty() ? nullptr : config_.output_file.c_str();
+    if (!writeDemoResults(config_.output_format, path, results, hw_info_,
+                          renderer_->getGPURenderer(), renderer_->getGLVersion(),
+                          renderer_->getRendererName())) {
+        Log::err("Could not open output file: %s", config_.output_file.c_str());
+    }
+}
+
 void App::exportResults() {
     const auto& results = bench_runner_.results();
     if (results.empty()) return;
-
-    FILE* out = stdout;
-    bool close_file = false;
-
-    if (!config_.output_file.empty()) {
-        out = fopen(config_.output_file.c_str(), "w");
-        if (!out) {
-            Log::err("Could not open output file: %s", config_.output_file.c_str());
-            return;
-        }
-        close_file = true;
-    }
-
-    const char* gpu = renderer_->getGPURenderer();
-    const char* gl_ver = renderer_->getGLVersion();
-    const char* rname = renderer_->getRendererName();
-    const char* pname = current_preset_.name;
 
     ExportConfig ecfg;
     ecfg.width = render_w_;
@@ -436,29 +433,78 @@ void App::exportResults() {
     ecfg.vsync = false;
     ecfg.gpu_tier = gpuTierName(gpu_tier_);
 
-    const auto& composite = bench_runner_.compositeScore();
-    const auto& bottleneck_info = bench_runner_.bottleneckInfo();
+    const char* path = config_.output_file.empty() ? nullptr : config_.output_file.c_str();
+    if (!writeBenchResults(config_.output_format, path, results, hw_info_,
+                           renderer_->getCaps(), getAvailableCaps(*renderer_),
+                           renderer_->getGPURenderer(), renderer_->getGLVersion(),
+                           renderer_->getRendererName(), current_preset_.name, ecfg,
+                           &bench_runner_.compositeScore(), &bench_runner_.bottleneckInfo())) {
+        Log::err("Could not open output file: %s", config_.output_file.c_str());
+    }
+}
 
-    uint32_t available_caps = getAvailableCaps(*renderer_);
+void App::runDemo() {
+    DemoConfig dcfg;
+    dcfg.tier_override = config_.demo_tier;
+    dcfg.duration_per_tier = config_.demo_duration;
 
-    switch (config_.output_format) {
-        case OutputFormat::CSV:
-            exportCSV(out, results, hw_info_, renderer_->getCaps(), available_caps, gpu, gl_ver, rname, pname, ecfg);
-            break;
-        case OutputFormat::JSON:
-            exportJSON(out, results, hw_info_, renderer_->getCaps(), available_caps, gpu, gl_ver, rname, pname, ecfg,
-                       &composite, &bottleneck_info);
-            break;
-        default:
-            exportText(out, results, hw_info_, renderer_->getCaps(), available_caps, gpu, gl_ver, rname, pname, ecfg,
-                       &composite, &bottleneck_info);
-            break;
+    // Demo callbacks for UI overlay (only in interactive mode)
+    struct DemoCB : public DemoCallbacks {
+        App* app;
+        DemoUI* ui;
+        const char* gpu_name;
+        bool headless;
+
+        bool onDemoFrame(DemoTier tier, int tier_idx, int total,
+                         float progress, double fps, double frame_ms,
+                         const std::vector<double>& history) override {
+            if (headless) return app->onPoll();
+
+            // Render UI overlay on top of scene (runner handles swapBuffers)
+            app->renderer_->setViewport(0, 0, app->window_w_, app->window_h_);
+            app->renderer_->setDepthTest(false);
+            app->renderer_->unbindState();
+            ui->drawOverlay(app->ctx_.get(), gpu_name, tier, tier_idx, total,
+                           progress, fps, frame_ms, history);
+            app->processEvents();
+            return app->running_;
+        }
+    };
+
+    DemoCB demo_cb;
+    demo_cb.app = this;
+    demo_cb.ui = &demo_ui_;
+    demo_cb.gpu_name = renderer_->getGPURenderer();
+    demo_cb.headless = config_.headless;
+
+    DemoRunner runner;
+    demo_results_ = runner.run(renderer_.get(), ctx_.get(), dcfg,
+                                render_w_, render_h_, this,
+                                config_.headless ? nullptr : &demo_cb);
+
+    // Show results screen (interactive mode)
+    if (!config_.headless && running_) {
+        Timer results_timer;
+        while (running_ && results_timer.elapsed_sec() < 30.0) {
+            processEvents();
+            renderer_->setViewport(0, 0, window_w_, window_h_);
+            renderer_->clear(0.1f, 0.1f, 0.12f, 1.0f);
+            renderer_->setDepthTest(false);
+            renderer_->unbindState();
+            demo_ui_.drawResults(ctx_.get(), demo_results_);
+            ctx_->swapBuffers();
+        }
     }
 
-    if (close_file) fclose(out);
+    exportDemoResults(demo_results_);
 }
 
 void App::runHeadless() {
+    if (config_.demo_mode) {
+        runDemo();
+        return;
+    }
+
     if (!validation_error_.empty()) {
         Log::err("Preset validation failed: %s", validation_error_.c_str());
         return;
@@ -483,6 +529,11 @@ void App::run() {
         return;
     }
 
+    if (config_.demo_mode) {
+        runDemo();
+        return;
+    }
+
     frame_timer_.reset();
     while (running_) {
         double dt = frame_timer_.elapsed_sec();
@@ -492,7 +543,6 @@ void App::run() {
         processEvents();
 
         if (!bench_runner_.isActive()) {
-            renderer_->setViewport(0, 0, window_w_, window_h_);
             renderer_->clear(0.12f, 0.12f, 0.15f, 1.0f);
             renderPreviewScene(static_cast<float>(dt));
             renderer_->unbindState();

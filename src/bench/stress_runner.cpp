@@ -1,5 +1,5 @@
 #include "bench/stress_runner.h"
-#include "bench/bench_runner.h"   // for BenchCallbacks
+#include "bench/poll_callback.h"
 #include "renderer/renderer.h"
 #include "renderer/render_context.h"
 #include "geometry/mesh_gen.h"
@@ -19,7 +19,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
                        int shader_iterations,
                        int render_w, int render_h,
                        int duration_sec,
-                       BenchCallbacks* cb) {
+                       PollCallback* cb) {
     static const char* STRESS_VS_120 =
         "#version 120\n"
         "attribute vec2 a_pos;\n"
@@ -154,7 +154,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
         if (ms >= TARGET_FRAME_MS * STRESS_CALIBRATION_RATIO) break;
 
         int new_passes = (ms > 0.1)
-            ? static_cast<int>(passes * TARGET_FRAME_MS / ms + 0.5) : passes * 4;
+            ? static_cast<int>(lround(passes * TARGET_FRAME_MS / ms)) : passes * 4;
         if (new_passes <= passes) new_passes = passes + 1;
         if (new_passes > STRESS_MAX_PASSES) new_passes = STRESS_MAX_PASSES;
         passes = new_passes;

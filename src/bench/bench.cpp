@@ -10,7 +10,7 @@
 
 // GL3BenchTest
 void GL3BenchTest::setup(Renderer* r, int vw, int vh) {
-    gl3_ = r->gl3();
+    gl3_ = r->features<GL3Features>();
     if (!gl3_) {
         Log::err("GL3BenchTest '%s': renderer lacks GL3 — skipping", name());
         return;
@@ -29,7 +29,7 @@ void GL3BenchTest::cleanup(Renderer* r) {
 
 // ComputeBenchTest
 void ComputeBenchTest::setup(Renderer* r, int vw, int vh) {
-    comp_ = r->compute();
+    comp_ = r->features<ComputeFeatures>();
     if (!comp_) {
         Log::err("ComputeBenchTest '%s': renderer lacks Compute — skipping", name());
         return;
@@ -48,7 +48,7 @@ void ComputeBenchTest::cleanup(Renderer* r) {
 
 // GL4BenchTest
 void GL4BenchTest::setup(Renderer* r, int vw, int vh) {
-    gl4_ = r->gl4();
+    gl4_ = r->features<GL4Features>();
     if (!gl4_) {
         Log::err("GL4BenchTest '%s': renderer lacks GL4 — skipping", name());
         return;

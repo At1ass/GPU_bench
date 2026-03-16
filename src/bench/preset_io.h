@@ -1,6 +1,5 @@
 #pragma once
 #include "bench/preset.h"
-#include <string>
 
 // Save preset to INI file
 bool saveConfig(const char* path, const BenchPreset& preset);

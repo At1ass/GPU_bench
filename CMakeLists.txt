@@ -78,6 +78,7 @@ set(SOURCES
     src/bench/stress_runner.cpp
     src/bench/preset.cpp
     src/bench/results.cpp
+    src/bench/preset_io.cpp
 
     # Tests
     src/tests/test_registry.cpp
@@ -112,12 +113,19 @@ set(SOURCES
     src/tests/test_persistent_map.cpp
     src/tests/test_bindless_tex.cpp
 
+    # Demo
+    src/demo/demo_camera.cpp
+    src/demo/demo_shaders.cpp
+    src/demo/demo_scene.cpp
+    src/demo/demo_runner.cpp
+    src/demo/demo_ui.cpp
+    src/demo/demo_export.cpp
+
     # UI
     src/ui/bench_ui.cpp
 
     # Platform
     src/platform/hwinfo.cpp
-    src/platform/config.cpp
     src/platform/gpu_select.cpp
     src/platform/logger.cpp
 

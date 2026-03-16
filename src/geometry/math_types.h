@@ -92,6 +92,53 @@ struct Mat4 {
         return r;
     }
 
+    static Mat4 rotateX(float angle_deg) {
+        Mat4 r;
+        float rad = angle_deg * 3.14159265f / 180.0f;
+        float c = cosf(rad), s = sinf(rad);
+        r.m[5] = c;  r.m[9] = -s;
+        r.m[6] = s;  r.m[10] = c;
+        return r;
+    }
+
+    static Mat4 ortho(float left, float right, float bottom, float top, float znear, float zfar) {
+        Mat4 r;
+        memset(r.m, 0, sizeof(r.m));
+        r.m[0]  =  2.0f / (right - left);
+        r.m[5]  =  2.0f / (top - bottom);
+        r.m[10] = -2.0f / (zfar - znear);
+        r.m[12] = -(right + left) / (right - left);
+        r.m[13] = -(top + bottom) / (top - bottom);
+        r.m[14] = -(zfar + znear) / (zfar - znear);
+        r.m[15] = 1.0f;
+        return r;
+    }
+
+    static Mat4 rotateZ(float angle_deg) {
+        Mat4 r;
+        float rad = angle_deg * 3.14159265f / 180.0f;
+        float c = cosf(rad), s = sinf(rad);
+        r.m[0] = c;  r.m[4] = -s;
+        r.m[1] = s;  r.m[5] = c;
+        return r;
+    }
+
+    // Transform a point (w=1) by this matrix
+    Vec3 transformPoint(const Vec3& p) const {
+        float x = m[0]*p.x + m[4]*p.y + m[8]*p.z  + m[12];
+        float y = m[1]*p.x + m[5]*p.y + m[9]*p.z  + m[13];
+        float z = m[2]*p.x + m[6]*p.y + m[10]*p.z + m[14];
+        return Vec3(x, y, z);
+    }
+
+    // Transform a normal (w=0, upper-left 3x3 only)
+    Vec3 transformNormal(const Vec3& n) const {
+        float x = m[0]*n.x + m[4]*n.y + m[8]*n.z;
+        float y = m[1]*n.x + m[5]*n.y + m[9]*n.z;
+        float z = m[2]*n.x + m[6]*n.y + m[10]*n.z;
+        return Vec3(x, y, z).normalized();
+    }
+
     Mat4 operator*(const Mat4& o) const {
         Mat4 r;
         memset(r.m, 0, sizeof(r.m));

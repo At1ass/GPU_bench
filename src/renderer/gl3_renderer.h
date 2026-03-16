@@ -5,7 +5,6 @@
 class GL3Renderer : public GL2Renderer, public GL3Features {
 public:
     GL3Renderer();
-    ~GL3Renderer();
 
     bool init(int w, int h) override;
     void shutdown() override;
@@ -18,9 +17,9 @@ public:
     void unbindState() override;
     const char* getRendererName() const override;
 
-    // Feature accessors
-    GL3Features* gl3() override { return this; }
-    const GL3Features* gl3() const override { return this; }
+    // Depth-only render target (shadow maps)
+    RenderTargetHandle createDepthRenderTarget(int w, int h) override;
+    TextureHandle      getDepthTexture(RenderTargetHandle rt) override;
 
     // GL3Features implementation
     void drawMeshInstanced(MeshHandle h, int instance_count) override;
@@ -39,6 +38,9 @@ public:
                                                const char* const* varyings, int varying_count) override;
     void         beginTransformFeedback(BufferHandle tf_buf) override;
     void         endTransformFeedback() override;
+
+protected:
+    void* queryFeature(int id) override;
 
 private:
     struct GLBuffer {

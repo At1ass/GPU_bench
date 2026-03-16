@@ -9,7 +9,7 @@ Launch without arguments for interactive mode:
 ```
 
 The GUI provides:
-- Preset selection (Light / Medium / Heavy / Ultra)
+- Preset selection (Light / Medium / Heavy / Ultra / Extreme)
 - Render resolution selection (native or custom via FBO)
 - Individual test checkboxes
 - Custom parameter editing
@@ -27,6 +27,29 @@ The GUI provides:
 Runs benchmarks without GUI, outputs results to stdout (or `--output-file`). Useful for automated testing, CI pipelines, and remote systems.
 
 On Linux, works without a display server (X11/Wayland) if SDL 2.0.22+ is available (uses SDL offscreen video driver). On Windows, a display connection is always required.
+
+## Demo Mode
+
+3DMark-style visual benchmark with a procedural city scene and camera flythrough through 4 quality tiers (Basic / Enhanced / Quality / Ultra).
+
+```bash
+# Auto-detect supported tiers, run all
+./gpu_benchmark --demo
+
+# Specific tier only
+./gpu_benchmark --demo --demo-tier 3
+
+# Custom duration (seconds per tier)
+./gpu_benchmark --demo --demo-duration 20
+
+# Headless demo with JSON export
+./gpu_benchmark --headless --demo --output json --output-file demo.json
+
+# Demo at specific resolution
+./gpu_benchmark --demo --render-res 1920x1080
+```
+
+The demo runs each tier sequentially, measuring FPS throughout. After all tiers complete, a results screen is shown (interactive mode) or results are exported (headless mode). The demo score is a geometric mean of normalized FPS across tiers, scaled by 10000.
 
 ## CLI Examples
 
@@ -140,18 +163,30 @@ The `--width` and `--height` options set the window size (default: 800x600). Thi
 
 ## Test Names for --test
 
-Use comma-separated lowercase names:
+Use comma-separated CLI names:
 
+**GL2 universal (any GPU):**
 ```
-fillrate, geometry, texturing, scene, drawcall, overdraw,
-texupload, statechange, vertex, shaderalu, shaderfma, drawcallraw,
-instanced_draw, compute_fma
+fillrate, geometry, texturing, scene, drawcall, drawcall_raw,
+overdraw, texupload, statechange, vertex, shader_alu, shader_fma
 ```
 
-**Note:** Tests requiring unsupported GL features are automatically skipped in headless mode and greyed out in GUI. For example, `compute_fma` requires GL 4.3+ and will be skipped on older GPUs.
+**GL3+ (OpenGL 3.0+):**
+```
+instanced_draw, fbo_fillrate, mrt_fill, texarray_sample,
+geom_shader, ubo_switch, transform_feedback
+```
+
+**GL4+ (OpenGL 4.0+):**
+```
+compute_fma, compute_bw, compute_smem, ssbo_atomics, compute_prefix,
+indirect_draw, tess_tp, tex_gather, image_ls, persistent_map, bindless_tex
+```
 
 Or `all` to run everything:
 
 ```bash
 ./gpu_benchmark --headless --test all
 ```
+
+**Note:** Tests requiring unsupported GL features are automatically skipped in headless mode and greyed out in GUI. For example, `compute_fma` requires GL 4.3+ and will be skipped on older GPUs.

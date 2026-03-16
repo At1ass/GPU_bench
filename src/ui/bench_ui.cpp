@@ -158,14 +158,14 @@ void BenchUI::drawPresetSelector(const UIView& view, UIState& state, UIAction& o
 // --- Render resolution combo ---
 
 void BenchUI::drawResolutionSelector(const UIView& view, UIState& state, UIAction& out) {
-    static constexpr int RES_NATIVE = -1;
+    static constexpr int ResNative = -1;
 
     ImGui::Text("Render:");
     ImGui::SameLine();
 
     // Native button
     {
-        bool is_native = (*state.selected_resolution == RES_NATIVE);
+        bool is_native = (*state.selected_resolution == ResNative);
         if (is_native)
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.6f, 0.3f, 1.0f));
 
@@ -173,7 +173,7 @@ void BenchUI::drawResolutionSelector(const UIView& view, UIState& state, UIActio
         snprintf(native_label, sizeof(native_label), "Native (%dx%d)",
                  view.window_w, view.window_h);
         if (ImGui::Button(native_label)) {
-            *state.selected_resolution = RES_NATIVE;
+            *state.selected_resolution = ResNative;
             out.type = UIAction::ResolutionChanged;
         }
         if (is_native)
@@ -191,7 +191,7 @@ void BenchUI::drawResolutionSelector(const UIView& view, UIState& state, UIActio
     else
         snprintf(combo_label, sizeof(combo_label), "Select...");
 
-    const char* preview = (*state.selected_resolution == RES_NATIVE) ? "---" : combo_label;
+    const char* preview = (*state.selected_resolution == ResNative) ? "---" : combo_label;
     if (ImGui::BeginCombo("##res", preview)) {
         for (int i = 0; i < view.num_resolutions; i++) {
             bool is_sel = (*state.selected_resolution == i);

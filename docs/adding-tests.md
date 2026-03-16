@@ -35,7 +35,7 @@ appropriate typed base class instead of `BenchTest`:
 | `GL4BenchTest` | GL4+ features (indirect draw) | `setupGL4/renderGL4/cleanupGL4(Renderer&, GL4Features&)` |
 
 The typed base classes:
-- Automatically acquire the feature interface via `r->gl3()` / `r->compute()` / `r->gl4()`
+- Automatically acquire the feature interface via `r->features<GL3Features>()` / `r->features<ComputeFeatures>()` / `r->features<GL4Features>()`
 - Assert at runtime if the feature is unavailable (catches cap mismatch bugs)
 - Mark `setup/render/cleanup` as `final` — you override the typed variants instead
 - Provide compile-time validation via `static_assert` in `test_registry.cpp`
@@ -53,9 +53,9 @@ GL3/GL4/Compute methods live in separate feature interfaces
 
 | Interface | Accessed Via | Methods |
 |---|---|---|
-| `GL3Features` | `r->gl3()` | `drawMeshInstanced`, MRT, texture arrays, geometry shaders, UBO, transform feedback |
-| `ComputeFeatures` | `r->compute()` | `createComputeShader`, `dispatchCompute`, SSBO |
-| `GL4Features` | `r->gl4()` | `createIndirectBuffer`, `multiDrawMeshIndirect` |
+| `GL3Features` | `r->features<GL3Features>()` | `drawMeshInstanced`, MRT, texture arrays, geometry shaders, UBO, transform feedback |
+| `ComputeFeatures` | `r->features<ComputeFeatures>()` | `createComputeShader`, `dispatchCompute`, SSBO |
+| `GL4Features` | `r->features<GL4Features>()` | `createIndirectBuffer`, `multiDrawMeshIndirect` |
 
 Base `Renderer` methods (draw, textures, shaders, FBO, timer) are available
 to all tests via the `Renderer&` reference.
@@ -96,6 +96,10 @@ declare which GL features the test requires. Available flags
 | `Cap_GL3` | 1 << 5 | Requires OpenGL 3.x context |
 | `Cap_GL4` | 1 << 6 | Requires OpenGL 4.x context |
 | `Cap_GeometryShader` | 1 << 7 | Geometry shaders (GL 3.2+) |
+| `Cap_Tessellation` | 1 << 8 | Tessellation shaders (GL 4.0+) |
+| `Cap_ImageLoadStore` | 1 << 9 | Image load/store (GL 4.2+) |
+| `Cap_BufferStorage` | 1 << 10 | Persistent buffer mapping (GL 4.4+) |
+| `Cap_BindlessTexture` | 1 << 11 | Bindless textures (ARB extension) |
 
 At startup the harness calls `getAvailableCaps()` to probe the current GL
 context. Tests whose `required_caps` are not satisfied are **automatically
@@ -329,12 +333,12 @@ Category scoring is automatic — it's driven by the `TestCategory` field in
 
 ### 8. Optional: Add to config save/load
 
-In `src/platform/config.cpp`:
+In `src/bench/preset_io.cpp`:
 
 **saveConfig():**
 ```cpp
-fprintf(f, "\n[mytest]\n");
-fprintf(f, "complexity=%d\n", preset.mytest.complexity);
+fprintf(f.get(), "\n[mytest]\n");
+fprintf(f.get(), "complexity=%d\n", preset.mytest.complexity);
 ```
 
 **parseLine():**
@@ -374,7 +378,7 @@ and feature interfaces (GL3/GL4/Compute).
 | `createRenderTarget(w, h)` | Create FBO render target |
 | `bindRenderTarget(handle)` | Bind FBO (0 = default) |
 
-### GL3Features (`r->gl3()`)
+### GL3Features (`r->features<GL3Features>()`)
 
 | Method | Description |
 |--------|-------------|
@@ -388,7 +392,7 @@ and feature interfaces (GL3/GL4/Compute).
 | `createTransformFeedbackBuffer/Shader` | Transform feedback |
 | `beginTransformFeedback/endTransformFeedback` | TF capture |
 
-### ComputeFeatures (`r->compute()`)
+### ComputeFeatures (`r->features<ComputeFeatures>()`)
 
 | Method | Description |
 |--------|-------------|
@@ -397,13 +401,21 @@ and feature interfaces (GL3/GL4/Compute).
 | `computeMemoryBarrier()` | Memory barrier for SSBO |
 | `createSSBO/destroySSBO/bindSSBO` | Shader storage buffer objects |
 
-### GL4Features (`r->gl4()`)
+### GL4Features (`r->features<GL4Features>()`)
 
 | Method | Description |
 |--------|-------------|
 | `createIndirectBuffer(size, data)` | Create indirect draw buffer |
 | `destroyIndirectBuffer(handle)` | Free indirect buffer |
 | `multiDrawMeshIndirect(mesh, buf, count, stride)` | Multi-draw indirect |
+| `setPatchVertices(n)` | Set tessellation patch size |
+| `createTessShader(vs, tcs, tes, fs)` | Compile tessellation shader pipeline |
+| `bindImageTexture(unit, tex, access, format)` | Bind texture for image load/store |
+| `imageMemoryBarrier()` | Memory barrier for image operations |
+| `createPersistentBuffer(size, flags)` | Create buffer with persistent mapping |
+| `mapPersistentBuffer(handle)` | Map buffer for persistent CPU access |
+| `getBindlessHandle(tex)` | Get bindless texture handle (ARB) |
+| `makeTextureResident(handle)` / `makeTextureNonResident(handle)` | Manage residency |
 
 ### Mesh generation helpers
 
@@ -441,6 +453,7 @@ r->destroyCustomShader(sh);
 | Base renderer interface | `src/renderer/renderer.h` |
 | Preset parameter structs | `src/bench/preset.h` |
 | Preset values | `src/bench/preset.cpp` |
+| Config save/load | `src/bench/preset_io.cpp` |
 | Build file | `CMakeLists.txt` |
 
 ## Guidelines

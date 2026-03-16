@@ -85,7 +85,7 @@ void main() {
 // ---- Implementation ----
 
 GLESRenderer::GLESRenderer() : gles3_(false) {}
-GLESRenderer::~GLESRenderer() { shutdown(); }
+// ~GLESRenderer: default. shutdown() must be called explicitly before destruction.
 
 bool GLESRenderer::init(int w, int h) {
     if (initialized_) return true;

@@ -30,16 +30,23 @@ static const ShaderHandle       INVALID_SHADER;
 static const RenderTargetHandle INVALID_RENDER_TARGET;
 static const BufferHandle       INVALID_BUFFER;
 
-// Forward declarations for feature interfaces
-struct GL3Features;
-struct GL4Features;
-struct ComputeFeatures;
+// Feature tag: specializations in features.h assign compile-time IDs.
+// Usage: renderer.features<GL3Features>() returns GL3Features* or nullptr.
+template<typename T> struct FeatureTag;
 
 // Abstract renderer interface.
 class Renderer {
 public:
     virtual ~Renderer() {}
+    Renderer(const Renderer&) = delete;
+    Renderer& operator=(const Renderer&) = delete;
+    Renderer(Renderer&&) = delete;
+    Renderer& operator=(Renderer&&) = delete;
 
+protected:
+    Renderer() = default;
+
+public:
     virtual bool init(int w, int h) = 0;
     virtual void shutdown() = 0;
 
@@ -63,6 +70,8 @@ public:
     virtual int          getCustomUniformLoc(ShaderHandle h, const char* name) = 0;
     virtual void         setUniform1i(int loc, int v) = 0;
     virtual void         setUniform1f(int loc, float v) = 0;
+    virtual void         setUniform2f(int loc, float x, float y) = 0;
+    virtual void         setUniform3f(int loc, float x, float y, float z) = 0;
     virtual void         setUniform4f(int loc, float r, float g, float b, float a) = 0;
     virtual void         setUniformMat4(int loc, const Mat4& m) = 0;
 
@@ -70,6 +79,9 @@ public:
     virtual void setProjection(const Mat4& m) = 0;
     virtual void setView(const Mat4& m) = 0;
     virtual void setModel(const Mat4& m) = 0;
+
+    // Bind texture to specific texture unit (for multi-texture / shadow maps)
+    virtual void bindTextureUnit(int unit, TextureHandle tex) = 0;
 
     // Material
     virtual void setColor(float r, float g, float b, float a) = 0;
@@ -90,6 +102,7 @@ public:
     // State
     virtual void setBlending(bool enable) = 0;
     virtual void setDepthTest(bool enable) = 0;
+    virtual void setCullFace(bool enable) = 0;
 
     // GL state reset (call between tests for deterministic state)
     virtual void resetState() = 0;
@@ -114,19 +127,29 @@ public:
     virtual void              blitToScreen(RenderTargetHandle rt,
                                            int dst_x, int dst_y, int dst_w, int dst_h) = 0;
 
+    // Depth-only render target (for shadow maps). Default: unsupported.
+    virtual RenderTargetHandle createDepthRenderTarget(int w, int h) { (void)w; (void)h; return INVALID_RENDER_TARGET; }
+    virtual TextureHandle      getDepthTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
+
+    // Bind a render target's color texture to a texture unit (for post-process chains).
+    virtual void bindRenderTargetTexture(RenderTargetHandle rt, int unit) { (void)rt; (void)unit; }
+
     // GPU timer queries
     virtual bool   hasTimerQueries() const = 0;
     virtual void   timerBegin() = 0;
     virtual void   timerEnd() = 0;
     virtual double timerElapsedMs() = 0;
 
-    // Feature groups (nullptr if not supported by this renderer)
-    virtual GL3Features*     gl3()     { return nullptr; }
-    virtual GL4Features*     gl4()     { return nullptr; }
-    virtual ComputeFeatures* compute() { return nullptr; }
-    virtual const GL3Features*     gl3()     const { return nullptr; }
-    virtual const GL4Features*     gl4()     const { return nullptr; }
-    virtual const ComputeFeatures* compute() const { return nullptr; }
+    // Feature query (LLVM-style): override in subclasses to expose feature interfaces.
+    // Returns typed pointer via static_cast from void* — safe round-trip.
+    template<typename T>
+    T* features() { return static_cast<T*>(queryFeature(FeatureTag<T>::id)); }
+
+    template<typename T>
+    const T* features() const {
+        return static_cast<const T*>(
+            const_cast<Renderer*>(this)->queryFeature(FeatureTag<T>::id));
+    }
 
     // Hardware capabilities
     virtual const RenderCaps& getCaps() const = 0;
@@ -139,6 +162,9 @@ public:
     virtual const char* getGPURenderer() const = 0;
     virtual const char* getGLVersion() const = 0;
     virtual const char* getRendererName() const = 0;
+
+protected:
+    virtual void* queryFeature(int) { return nullptr; }
 };
 
 // Handle type safety

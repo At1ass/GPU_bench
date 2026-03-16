@@ -276,6 +276,26 @@
   #define __gl_GLsync_defined
   #endif
 
+  // Shadow map / depth texture constants
+  #ifndef GL_DEPTH_COMPONENT16
+  #define GL_DEPTH_COMPONENT16            0x81A5
+  #endif
+  #ifndef GL_TEXTURE_COMPARE_MODE
+  #define GL_TEXTURE_COMPARE_MODE         0x884C
+  #endif
+  #ifndef GL_COMPARE_REF_TO_TEXTURE
+  #define GL_COMPARE_REF_TO_TEXTURE       0x884E
+  #endif
+  #ifndef GL_TEXTURE_COMPARE_FUNC
+  #define GL_TEXTURE_COMPARE_FUNC         0x884D
+  #endif
+  #ifndef GL_LEQUAL
+  #define GL_LEQUAL                       0x0203
+  #endif
+  #ifndef GL_NONE
+  #define GL_NONE                         0
+  #endif
+
   // GL constant validation
   static_assert(GL_COLOR_ATTACHMENT1 == GL_COLOR_ATTACHMENT0 + 1, "Sequential");
   static_assert(GL_COLOR_ATTACHMENT2 == GL_COLOR_ATTACHMENT0 + 2, "Sequential");

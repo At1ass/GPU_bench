@@ -122,6 +122,12 @@ BenchPreset getCustomPreset();
 struct PresetValidation {
     bool ok;
     std::string reason;
+
+    PresetValidation() = default;
+    PresetValidation(const PresetValidation&) = default;
+    PresetValidation& operator=(const PresetValidation&) = default;
+    PresetValidation(PresetValidation&&) noexcept = default;
+    PresetValidation& operator=(PresetValidation&&) noexcept = default;
 };
 
 // Validate preset against hardware caps. Returns error if incompatible.

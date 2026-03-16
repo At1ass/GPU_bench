@@ -4,17 +4,10 @@
 class GL4Renderer : public GL3Renderer, public GL4Features, public ComputeFeatures {
 public:
     GL4Renderer();
-    ~GL4Renderer();
 
     bool init(int w, int h) override;
     void shutdown() override;
     const char* getRendererName() const override;
-
-    // Feature accessors
-    GL4Features* gl4() override { return this; }
-    ComputeFeatures* compute() override { return this; }
-    const GL4Features* gl4() const override { return this; }
-    const ComputeFeatures* compute() const override { return this; }
 
     // ComputeFeatures implementation
     ShaderHandle createComputeShader(const char* source) override;
@@ -51,6 +44,9 @@ public:
     void         makeTextureResident(uint64_t handle) override;
     void         makeTextureNonResident(uint64_t handle) override;
     void         setUniformHandle(int loc, uint64_t handle) override;
+
+protected:
+    void* queryFeature(int id) override;
 
 private:
     // SSBO storage

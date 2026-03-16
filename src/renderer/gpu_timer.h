@@ -10,6 +10,8 @@ public:
 
     GPUTimer(const GPUTimer&) = delete;
     GPUTimer& operator=(const GPUTimer&) = delete;
+    GPUTimer(GPUTimer&&) = delete;
+    GPUTimer& operator=(GPUTimer&&) = delete;
 
     // Initialize and check availability. Call after GL context is created.
     void init();

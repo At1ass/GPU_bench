@@ -3,9 +3,25 @@
 #include "renderer/renderer.h"
 #include <type_traits>
 
+// Forward declarations
+struct GL3Features;
+struct GL4Features;
+struct ComputeFeatures;
+
+// FeatureTag specializations — compile-time IDs for queryFeature dispatch
+template<> struct FeatureTag<GL3Features>     { static constexpr int id = 0; };
+template<> struct FeatureTag<GL4Features>     { static constexpr int id = 1; };
+template<> struct FeatureTag<ComputeFeatures> { static constexpr int id = 2; };
+
 struct GL3Features {
     virtual ~GL3Features() = default;
-
+    GL3Features(const GL3Features&) = delete;
+    GL3Features& operator=(const GL3Features&) = delete;
+    GL3Features(GL3Features&&) = delete;
+    GL3Features& operator=(GL3Features&&) = delete;
+protected:
+    GL3Features() = default;
+public:
     // Capability queries (set by GL3Renderer::init)
     bool hasVAO() const             { return has_vao_; }
     bool hasInstancing() const      { return has_instancing_; }
@@ -50,7 +66,13 @@ protected:
 
 struct ComputeFeatures {
     virtual ~ComputeFeatures() = default;
-
+    ComputeFeatures(const ComputeFeatures&) = delete;
+    ComputeFeatures& operator=(const ComputeFeatures&) = delete;
+    ComputeFeatures(ComputeFeatures&&) = delete;
+    ComputeFeatures& operator=(ComputeFeatures&&) = delete;
+protected:
+    ComputeFeatures() = default;
+public:
     bool hasCompute() const { return has_compute_; }
 
     virtual ShaderHandle createComputeShader(const char* source) = 0;
@@ -66,7 +88,13 @@ protected:
 
 struct GL4Features {
     virtual ~GL4Features() = default;
-
+    GL4Features(const GL4Features&) = delete;
+    GL4Features& operator=(const GL4Features&) = delete;
+    GL4Features(GL4Features&&) = delete;
+    GL4Features& operator=(GL4Features&&) = delete;
+protected:
+    GL4Features() = default;
+public:
     bool hasIndirectDraw() const    { return has_indirect_draw_; }
     bool hasTessellation() const    { return has_tessellation_; }
     bool hasTextureGather() const   { return has_texture_gather_; }

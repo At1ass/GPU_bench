@@ -1,5 +1,6 @@
 #pragma once
 #include "bench/bench.h"
+#include "bench/poll_callback.h"
 #include "tests/test_registry.h"
 #include "platform/timer.h"
 #include <vector>
@@ -16,10 +17,16 @@ enum class TimingMode {
 
 // Callback interface for frame presentation during benchmarking.
 // Implemented by the application to handle events, UI, and buffer swaps.
-class BenchCallbacks {
+class BenchCallbacks : public PollCallback {
 public:
     virtual ~BenchCallbacks() {}
-
+    BenchCallbacks(const BenchCallbacks&) = delete;
+    BenchCallbacks& operator=(const BenchCallbacks&) = delete;
+    BenchCallbacks(BenchCallbacks&&) = delete;
+    BenchCallbacks& operator=(BenchCallbacks&&) = delete;
+protected:
+    BenchCallbacks() = default;
+public:
     // Called each frame during warmup/measurement.
     // rt = active render target (INVALID_RENDER_TARGET if rendering to default FB).
     // Returns false to abort the benchmark.
@@ -27,7 +34,7 @@ public:
 
     // Lightweight poll (for probe): process events, check if still running.
     // Returns false to abort.
-    virtual bool onPoll() { return true; }
+    bool onPoll() override { return true; }
 };
 
 // Configuration for a benchmark run

@@ -8,10 +8,6 @@
 class GL2Renderer : public Renderer {
 public:
     GL2Renderer();
-    virtual ~GL2Renderer();
-
-    GL2Renderer(const GL2Renderer&) = delete;
-    GL2Renderer& operator=(const GL2Renderer&) = delete;
 
     bool init(int w, int h) override;
     void shutdown() override;
@@ -32,6 +28,8 @@ public:
     int          getCustomUniformLoc(ShaderHandle h, const char* name) override;
     void         setUniform1i(int loc, int v) override;
     void         setUniform1f(int loc, float v) override;
+    void         setUniform2f(int loc, float x, float y) override;
+    void         setUniform3f(int loc, float x, float y, float z) override;
     void         setUniform4f(int loc, float r, float g, float b, float a) override;
     void         setUniformMat4(int loc, const Mat4& m) override;
 
@@ -42,6 +40,7 @@ public:
     void setColor(float r, float g, float b, float a) override;
     void setLightDir(float x, float y, float z) override;
     void bindTexture(TextureHandle tex) override;
+    void bindTextureUnit(int unit, TextureHandle tex) override;
     void setUseTexture(bool use) override;
 
     void drawMesh(MeshHandle h) override;
@@ -52,6 +51,7 @@ public:
 
     void setBlending(bool enable) override;
     void setDepthTest(bool enable) override;
+    void setCullFace(bool enable) override;
 
     void resetState() override;
     void unbindState() override;
@@ -65,6 +65,7 @@ public:
     void              bindRenderTarget(RenderTargetHandle rt) override;
     void              blitToScreen(RenderTargetHandle rt,
                                    int dst_x, int dst_y, int dst_w, int dst_h) override;
+    void              bindRenderTargetTexture(RenderTargetHandle rt, int unit) override;
 
     bool   hasTimerQueries() const override;
     void   timerBegin() override;
@@ -120,6 +121,7 @@ protected:
     std::string gpu_vendor_, gpu_renderer_, gl_version_;
     bool initialized_;
     bool core_profile_;
+    int viewport_x_, viewport_y_, viewport_w_, viewport_h_;
 
     // Render targets (FBO)
     struct GLFBO {

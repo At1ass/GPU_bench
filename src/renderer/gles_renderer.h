@@ -7,7 +7,6 @@
 class GLESRenderer : public GL2Renderer {
 public:
     GLESRenderer();
-    ~GLESRenderer();
 
     bool init(int w, int h) override;
     TextureHandle createTexture(int w, int h, int channels, const unsigned char* pixels) override;

@@ -4,9 +4,10 @@ Cross-platform OpenGL benchmark for comparing GPU performance across different h
 
 ## Features
 
-- **14 GPU tests** covering fill rate, geometry, texturing, compute, draw call overhead, and more
-- **4 preset levels** (Light / Medium / Heavy / Ultra) for reproducible results
+- **30 GPU tests** covering fill rate, geometry, texturing, compute, draw call overhead, and more
+- **5 preset levels** (Light / Medium / Heavy / Ultra / Extreme) for reproducible results
 - **Four renderers**: GL2 (OpenGL 2.0), GL3 (3.0+), GL4 (4.3+), GLES (2.0/3.0) with capability-based test filtering
+- **Demo mode** — 3DMark-style visual benchmark with procedural city scene, 4 quality tiers, and composite scoring
 - **GPU timer queries** (GL_TIME_ELAPSED) for precise GPU-side timing on GL 3.3+
 - **Composite scoring** with geometric mean by category and bottleneck detection
 - **Auto GPU tier classification** via quick probe at startup
@@ -22,24 +23,72 @@ Cross-platform OpenGL benchmark for comparing GPU performance across different h
 
 ## Tests
 
+### GL2 Universal (12 tests — any OpenGL 2.0+ GPU)
+
 | Test | Unit | What it measures |
 |------|------|------------------|
-| Fillrate | Mpix/s | Raw pixel output rate (opaque fullscreen quads, no blending) |
-| Geometry | Mtris/s | Triangle throughput (dense cube grids) |
-| Texturing | Mtex/s | Texel fetch throughput (large textures, multi-layer) |
+| Fillrate | MPix/s | Raw pixel output rate (opaque fullscreen quads, no blending) |
+| Geometry | Mtri/s | Triangle throughput (dense cube grids) |
+| Texturing | MTex/s | Texel fetch throughput (large textures, multi-layer) |
 | Scene | FPS | Combined rendering: terrain, spheres, cubes, lighting |
-| DrawCall | Kcalls/s | Draw call overhead with per-draw uniform updates |
-| Overdraw | Mpix/s | Alpha blend pixel throughput (blended fullscreen quads) |
+| DrawCall | calls/s | Draw call overhead with per-draw uniform updates |
+| DrawCallRaw | calls/s | Raw driver submission (no uniforms) |
+| Overdraw | MPix/s | Alpha blend pixel throughput (blended fullscreen quads) |
 | TexUpload | MB/s | Texture upload throughput (CPU -> GPU) |
-| StateChange | Kcalls/s | Shader/texture/blend state switching cost |
+| StateChange | ops/s | Shader/texture/blend state switching cost |
 | Vertex | Mverts/s | Raw vertex processing throughput |
-| ShaderALU | Gops | Fragment shader transcendentals (sin/cos/pow/sqrt) |
+| ShaderALU | GFLOP/s | Fragment shader transcendentals (sin/cos/pow/sqrt) |
 | ShaderFMA | GFLOP/s | Fragment shader pure FMA throughput (acc = acc * a + b) |
-| DrawCallRaw | Kcalls/s | Draw call overhead without uniform updates |
-| InstancedDraw | Mtri/s | Instanced rendering throughput via glDrawElementsInstanced (GL3+) |
-| ComputeFMA | GFLOP/s | Compute shader FMA throughput via SSBO (GL4.3+) |
 
-For detailed test descriptions, scoring formulas, and parameters, see [docs/tests.md](docs/tests.md).
+### GL3+ Tests (7 tests — OpenGL 3.0+)
+
+| Test | Unit | What it measures |
+|------|------|------------------|
+| InstancedDraw | Mtri/s | Instanced rendering via glDrawElementsInstanced |
+| FBOFillrate | MPix/s | FBO render-to-texture fillrate |
+| MRTFill | MPix/s | Multiple render target fill throughput |
+| TexArraySample | MTex/s | Texture array sampling rate |
+| GeomShader | Mtri/s | Geometry shader amplification (GL 3.2+) |
+| UBOSwitch | ops/s | UBO binding switch overhead |
+| TransformFeedback | Mverts/s | Transform feedback vertex throughput |
+
+### GL4+ Tests (11 tests — OpenGL 4.0+)
+
+| Test | Unit | What it measures |
+|------|------|------------------|
+| ComputeFMA | GFLOP/s | Compute shader FMA throughput via SSBO (GL 4.3+) |
+| ComputeBW | GB/s | Compute shader memory bandwidth (GL 4.3+) |
+| ComputeSMem | GB/s | Compute shared memory bandwidth (GL 4.3+) |
+| SSBOAtomics | GOps/s | SSBO atomic operation throughput (GL 4.3+) |
+| ComputePrefix | GB/s | Parallel prefix sum / scan (GL 4.3+) |
+| IndirectDraw | calls/s | Multi-draw indirect throughput (GL 4.3+) |
+| TessellationTP | Mtri/s | Tessellation shader throughput (GL 4.0+) |
+| TextureGather | MTex/s | textureGather vs texelFetch (GL 4.0+) |
+| ImageLoadStore | GB/s | Image load/store vs SSBO (GL 4.2+) |
+| PersistentMap | GB/s | Persistent buffer mapping throughput (GL 4.4+) |
+| BindlessTex | ops/s | Bindless texture throughput (ARB extension) |
+
+Tests requiring unsupported features are automatically disabled. For detailed test descriptions, scoring formulas, and parameters, see [docs/tests.md](docs/tests.md).
+
+## Demo Mode
+
+3DMark-style visual benchmark with a procedural "abandoned outpost" scene and Catmull-Rom camera flythrough.
+
+| Tier | GL Required | Shading | Post-FX |
+|------|-------------|---------|---------|
+| Basic | GL 2.1 | Blinn-Phong + fog | None |
+| Enhanced | GL 3.0+ | + shadow maps | Bloom, Reinhard tonemap, vignette |
+| Quality | GL 3.3+ | + PCF shadows, rim light | + chromatic aberration |
+| Ultra | GL 4.3+ | Cook-Torrance PBR | + god rays, ACES tonemap, film grain |
+
+Scene: 53 procedural objects (12 buildings, 15 trees, 12 rocks, 6 lamps, 4 fences, 2 arches, terrain, water). Scoring: geometric mean of normalized FPS across tiers x 10000.
+
+```bash
+./gpu_benchmark --demo                          # Auto-detect tiers
+./gpu_benchmark --demo --demo-tier 3            # Specific tier
+./gpu_benchmark --demo --demo-duration 20       # 20 sec per tier
+./gpu_benchmark --headless --demo --output json  # Headless demo with JSON export
+```
 
 ## Presets
 
@@ -51,8 +100,9 @@ Fixed parameter sets ensure reproducible and comparable results across systems.
 | Medium | Mid-range (default) | 120 frames | 600 frames | 5 sec |
 | Heavy | High-end discrete GPUs | 120 frames | 600 frames | 5 sec |
 | Ultra | Top-tier, high-VRAM cards | 180 frames | 900 frames | 8 sec |
+| Extreme | Flagship GPUs | 240 frames | 1200 frames | 10 sec |
 
-The benchmark auto-classifies your GPU into a tier (legacy/low/mid/high) using a quick probe at startup and suggests the appropriate preset. If the selected preset exceeds hardware capabilities (e.g. texture size too large), validation will show an error.
+The benchmark auto-classifies your GPU into a tier (legacy/low/mid/high/ultra) using a quick probe at startup and suggests the appropriate preset. If the selected preset exceeds hardware capabilities (e.g. texture size too large), validation will show an error.
 
 ## Quick Start
 
@@ -69,6 +119,9 @@ The benchmark auto-classifies your GPU into a tier (legacy/low/mid/high) using a
 # Stress test for 5 minutes
 ./gpu_benchmark --stress 300 --preset ultra
 
+# Demo mode
+./gpu_benchmark --demo
+
 # List available GPUs
 ./gpu_benchmark --list-gpus
 ```
@@ -79,21 +132,24 @@ The benchmark auto-classifies your GPU into a tier (legacy/low/mid/high) using a
 gpu_benchmark [options]
 
 Options:
-  --preset <light|medium|heavy|ultra>   Preset (default: medium)
-  --renderer <gl2|gl3|gl4|gles|auto>             Renderer (default: auto)
-  --config <path>                       Load config INI file
-  --headless                            No GUI, run tests, print results
-  --test <name,...>                      Run specific tests (comma-separated, or "all")
-  --output <text|csv|json>              Output format (default: text)
-  --output-file <path>                  Write results to file
-  --width <n>                           Window width (default: 800)
-  --height <n>                          Window height (default: 600)
-  --render-res <WxH>                    Render resolution (e.g. 1920x1080, default: native)
-  --timing <sync|gpu>                   Timing mode: sync (CPU+glFinish) or gpu (GL_TIME_ELAPSED)
-  --stress <seconds>                    Stress test mode (headless only)
-  --gpu <index>                         Select GPU by index
-  --list-gpus                           List available GPUs and exit
-  --help                                Show help
+  --preset <light|medium|heavy|ultra|extreme>  Preset (default: medium)
+  --renderer <gl2|gl3|gl4|gles|auto>           Renderer (default: auto)
+  --config <path>                              Load config INI file
+  --headless                                   No GUI, run tests, print results
+  --test <name,...>                             Run specific tests (comma-separated, or "all")
+  --output <text|csv|json>                     Output format (default: text)
+  --output-file <path>                         Write results to file
+  --width <n>                                  Window width (default: 800)
+  --height <n>                                 Window height (default: 600)
+  --render-res <WxH>                           Render resolution (e.g. 1920x1080, default: native)
+  --timing <sync|gpu>                          Timing mode: sync (CPU+glFinish) or gpu (GL_TIME_ELAPSED)
+  --stress <seconds>                           Stress test mode (headless only)
+  --demo                                       Visual demo benchmark (3DMark-style)
+  --demo-tier <1-4>                            Run specific demo tier only
+  --demo-duration <seconds>                    Duration per tier (default: 15)
+  --gpu <index>                                Select GPU by index
+  --list-gpus                                  List available GPUs and exit
+  --help, -h                                   Show help
 ```
 
 For detailed usage examples and configuration, see [docs/usage.md](docs/usage.md).
@@ -102,7 +158,7 @@ For detailed usage examples and configuration, see [docs/usage.md](docs/usage.md
 
 The benchmark provides per-test statistics:
 
-- **Score** in test-specific units (Mpix/s, Mtris/s, etc.)
+- **Score** in test-specific units (MPix/s, Mtri/s, etc.)
 - **Timing**: avg, min, max, P1, median, P99
 - **CV%** (coefficient of variation) — stability indicator
 - **Composite score** — geometric mean by category (Fill, Geometry, Compute, Overhead)
@@ -134,7 +190,7 @@ Reports every 10 seconds with degradation tracking relative to baseline.
 ### Quick Build
 
 ```bash
-./scripts/build.sh linux      # Native Linux
+./scripts/build.sh native     # Linux / macOS / FreeBSD
 ./scripts/build.sh mingw64    # Cross-compile Windows 64-bit
 ./scripts/build.sh mingw32    # Cross-compile Windows 32-bit (Win XP)
 ./scripts/build.sh all        # All targets
@@ -174,9 +230,9 @@ The benchmark has a modular test architecture. See [docs/adding-tests.md](docs/a
 
 ## Hardware Detection
 
-| Info | Linux | Windows |
-|------|-------|---------|
-| CPU | `/proc/cpuinfo` | Registry `CentralProcessor\0` |
+| Info | Linux / macOS / FreeBSD | Windows |
+|------|-------------------------|---------|
+| CPU | `/proc/cpuinfo`, `sysctl` | Registry `CentralProcessor\0` |
 | GPU name | `pci.ids` + sysfs | DXGI adapter description |
 | VRAM | NVX/ATI GL extensions, GLX_MESA | DXGI `DedicatedVideoMemory` |
 | OS version | `uname()` | `RtlGetVersion()` |
@@ -191,7 +247,7 @@ GPU_bechmark/
   README.md
   docs/                               # Documentation
   scripts/
-    build.sh                          # Linux / cross-compile build script
+    build.sh                          # Linux / macOS / FreeBSD / cross-compile
     build.bat                         # Windows native build script
   cmake/
     mingw-w64-x86_64.cmake           # MinGW 64-bit toolchain
@@ -207,35 +263,46 @@ GPU_bechmark/
       bench.h / .cpp                  # Statistics, composite score, bottleneck, GPU tier
       bench_runner.h / .cpp           # Test execution loop
       stress_runner.h / .cpp          # Stress test mode
+      poll_callback.h                 # Lightweight polling interface
       preset.h / .cpp                 # Preset definitions, validation
-      results.h / .cpp                # Text/CSV/JSON export
+      preset_io.h / .cpp              # INI config save/load
+      results.h / .cpp                # Text/CSV/JSON export, OutputFormat
     tests/
-      tests.h                         # Base test helpers
+      tests.h                         # Base test classes + helpers
       test_registry.h / .cpp / .def   # X-macro test registry with capability flags
-      test_*.cpp                      # 14 test implementations
+      test_*.cpp                      # 30 test implementations
     renderer/
       renderer.h                      # Abstract renderer interface
-      gl2_renderer.h / .cpp           # OpenGL 2.0 renderer (base)
-      gl3_renderer.h / .cpp           # OpenGL 3.0+ (VAO, instancing)
-      gl4_renderer.h / .cpp           # OpenGL 4.3+ (compute, SSBO)
-      gles_renderer.h / .cpp          # OpenGL ES 2.0/3.0
+      features.h                      # GL3Features, GL4Features, ComputeFeatures
+      renderer_backend.h              # RendererBackend enum
       renderer_factory.h / .cpp       # Auto-detection and creation
+      gl2_renderer.h / .cpp           # OpenGL 2.0 renderer (base)
+      gl3_renderer.h / .cpp           # OpenGL 3.0+ (VAO, instancing, MRT, UBO, GS, TF)
+      gl4_renderer.h / .cpp           # OpenGL 4.3+ (compute, SSBO, indirect, tessellation)
+      gles_renderer.h / .cpp          # OpenGL ES 2.0/3.0
       gl_funcs.h / .cpp               # GL function loading (X-macro)
       gl_loader.h / .cpp              # imgl3w loader
       gpu_timer.h / .cpp              # GPU timer queries
       render_context.h / .cpp         # Window + GL context (abstract)
       gl_render_context.h / .cpp      # SDL2 + GL context (concrete)
+      scoped_handle.h                 # RAII wrapper for GPU resources
     geometry/
       math_types.h                    # Vec2, Vec3, Vec4, Mat4
-      mesh.h                          # Vertex data types
+      mesh.h                          # Vertex data types, type-safe handles
       mesh_gen.h / .cpp               # Procedural mesh generation
+    demo/
+      demo_runner.h / .cpp            # Tier loop, FPS measurement, scoring
+      demo_scene.h / .cpp             # Procedural city scene, multi-pass rendering
+      demo_camera.h / .cpp            # Catmull-Rom camera path
+      demo_shaders.h / .cpp           # GLSL programs (T1-T4 variants)
+      demo_ui.h / .cpp                # ImGui overlay (FPS, progress, results)
+      demo_export.h / .cpp            # Demo results export (text/CSV/JSON)
     platform/
-      config.h / .cpp                 # INI config save/load
       hwinfo.h / .cpp                 # CPU, OS detection
       gpu_select.h / .cpp             # GPU enumeration and selection
       logger.h / .cpp                 # Logging
       timer.h                         # High-resolution timer
-      compat.h                        # Platform compatibility
+      compat.h                        # Platform compatibility, RAII wrappers
 ```
 
 ## Compatibility
@@ -248,9 +315,11 @@ GPU_bechmark/
 
 ### Tested platforms
 
-- **Linux**: Arch Linux (kernel 6.x), Debian 8+ (kernel 3.16+)
-- **Windows**: Windows XP+ (native), Wine 11.x (cross-compiled)
-- **Drivers**: NVIDIA proprietary, Nouveau, Mesa RadeonSI, Intel, llvmpipe, Zink/NVK
+- **Linux**: Arch Linux (kernel 6.x)
+- **macOS**: Apple M1 (ARM, via Metal-backed GL)
+- **FreeBSD**: Supported (Mesa)
+- **Windows**: Windows 11, Wine 11.x (cross-compiled)
+- **Drivers**: NVIDIA proprietary, Mesa RadeonSI
 
 ### Known limitations
 
@@ -259,7 +328,7 @@ GPU_bechmark/
 - **PRIME offloading** (`DRI_PRIME`): buffer sharing between NVIDIA proprietary (display) and Mesa (render) drivers is not supported — the window will be black, but `--headless` works correctly
 - `glTexSubImage2D` on very old drivers may be slow (TexUpload test)
 - ShaderALU/ShaderFMA tests require GLSL 1.20 support
-- Stress test is more effective with `--renderer gl4` (compute shaders via GL 4.3); without GL4, it falls back to fragment-only stress which cannot reach full GPU TDP
+- macOS: GL3 GPU timer queries may be unreliable via Metal translation layer
 
 ## License
 

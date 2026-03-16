@@ -5,6 +5,8 @@
 #include <vector>
 #include <cstdio>
 
+enum class OutputFormat : int { Text = 0, CSV, JSON };
+
 struct ExportConfig {
     int width = 0;
     int height = 0;
@@ -40,3 +42,16 @@ void exportJSON(FILE* out, const std::vector<BenchResult>& results,
                 const ExportConfig& ecfg,
                 const CompositeScore* composite = nullptr,
                 const BottleneckInfo* bottleneck = nullptr);
+
+// Format-dispatching write: opens file (or stdout), calls exportText/CSV/JSON, closes.
+// Returns false on file open error.
+bool writeBenchResults(OutputFormat fmt, const char* output_file,
+                       const std::vector<BenchResult>& results,
+                       const HWInfo& hw, const RenderCaps& caps,
+                       uint32_t available_caps,
+                       const char* gpu_name, const char* gl_version,
+                       const char* renderer_name, const char* preset_name,
+                       const ExportConfig& ecfg,
+                       const CompositeScore* composite = nullptr,
+                       const BottleneckInfo* bottleneck = nullptr);
+

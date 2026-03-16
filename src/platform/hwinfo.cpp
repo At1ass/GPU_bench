@@ -88,17 +88,15 @@ HWInfo HWInfo::detect() {
 #else // Linux / POSIX
 
 static std::string readFirstLine(const char* cmd) {
-    FILE* fp = popen(cmd, "r");
+    PipeGuard fp(popen(cmd, "r"));
     if (!fp) return "";
     char buf[256];
     std::string result;
-    if (fgets(buf, sizeof(buf), fp)) {
+    if (fgets(buf, sizeof(buf), fp.get())) {
         result = buf;
-        // Remove trailing newline
         if (!result.empty() && result.back() == '\n')
             result.pop_back();
     }
-    pclose(fp);
     return result;
 }
 

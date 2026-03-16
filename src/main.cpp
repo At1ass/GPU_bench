@@ -4,135 +4,314 @@
 #include <cstring>
 #include <cstdlib>
 
-static void printHelp() {
-    fprintf(stderr,
-        "gpu_benchmark [options]\n"
-        "  --preset <light|medium|heavy|ultra|extreme>  Preset (default: medium)\n"
-        "  --renderer <gl2|gl3|gl4|gles|auto>     Renderer (default: auto)\n"
-        "  --config <path>                       Load config INI\n"
-        "  --headless                            No GUI, run tests, print results\n"
-        "  --test <name,...>                      Run specific tests (comma-separated, or \"all\")\n"
-        "  --output <text|csv|json>              Output format (default: text)\n"
-        "  --output-file <path>                  Write results to file\n"
-        "  --width <n>                           Viewport width (default: 800)\n"
-        "  --height <n>                          Viewport height (default: 600)\n"
-        "  --timing <sync|gpu>                   Timing mode (default: sync)\n"
-        "  --render-res <WxH>                    Render resolution (e.g. 1920x1080, default: native)\n"
-        "  --stress <seconds>                    Stress test mode (headless only)\n"
-        "  --gpu <index>                         Select GPU by index (see --list-gpus)\n"
-        "  --list-gpus                           List available GPUs and exit\n"
-        "  --help                                Show this help\n"
-    );
+// Forward declaration (printHelp is generated from kArgs[], defined after it)
+static void printHelp();
+
+// --- Enum value tables (defined once, used by both help and parsing) ---
+
+struct NameVal {
+    const char* name;
+    int value;
+};
+
+static const NameVal kPresetVals[] = {
+    {"light",   static_cast<int>(PresetIndex::Light)},
+    {"medium",  static_cast<int>(PresetIndex::Medium)},
+    {"heavy",   static_cast<int>(PresetIndex::Heavy)},
+    {"ultra",   static_cast<int>(PresetIndex::Ultra)},
+    {"extreme", static_cast<int>(PresetIndex::Extreme)}
+};
+
+static const NameVal kRendererVals[] = {
+    {"gl2",  static_cast<int>(RendererBackend::GL2)},
+    {"gl3",  static_cast<int>(RendererBackend::GL3)},
+    {"gl4",  static_cast<int>(RendererBackend::GL4)},
+    {"gles", static_cast<int>(RendererBackend::GLES)},
+    {"auto", static_cast<int>(RendererBackend::Auto)}
+};
+
+static const NameVal kOutputVals[] = {
+    {"text", static_cast<int>(OutputFormat::Text)},
+    {"csv",  static_cast<int>(OutputFormat::CSV)},
+    {"json", static_cast<int>(OutputFormat::JSON)}
+};
+
+static const NameVal kTimingVals[] = {
+    {"sync", static_cast<int>(TimingMode::Sync)},
+    {"gpu",  static_cast<int>(TimingMode::GPU)}
+};
+
+// --- Enum matching helper ---
+
+template<typename T>
+static int matchEnumArg(const char* arg, const NameVal* vals, int count,
+                        T* out, const char* label) {
+    for (int i = 0; i < count; i++) {
+        if (strcmp(arg, vals[i].name) == 0) {
+            *out = static_cast<T>(vals[i].value);
+            return 0;
+        }
+    }
+    fprintf(stderr, "Unknown %s: %s\n", label, arg);
+    return 1;
 }
 
-int main(int argc, char* argv[]) {
-    AppConfig cfg;
-    cfg.width = 800;
-    cfg.height = 600;
-    cfg.preset_index = static_cast<int>(PresetIndex::Medium);
-    cfg.backend = RendererBackend::Auto;
-    cfg.headless = false;
-    cfg.output_format = OutputFormat::Text;
-    cfg.timing_mode = TimingMode::Sync;
-    cfg.output_file = "";
-    cfg.config_path = "";
-    cfg.test_filter = "all";
-    cfg.stress_duration_sec = 0;
-    cfg.render_width = 0;
-    cfg.render_height = 0;
+// --- Argument table definition ---
 
-    int gpu_index = -1; // -1 = no selection (use default)
+using ParseFn = int (*)(const char* arg, AppConfig& cfg);
 
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printHelp();
-            return 0;
-        } else if (strcmp(argv[i], "--list-gpus") == 0) {
-            auto gpus = enumerateGPUs();
-            printGPUList(gpus);
-            return 0;
-        } else if (strcmp(argv[i], "--gpu") == 0 && i + 1 < argc) {
-            gpu_index = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--preset") == 0 && i + 1 < argc) {
-            i++;
-            if (strcmp(argv[i], "light") == 0)        cfg.preset_index = static_cast<int>(PresetIndex::Light);
-            else if (strcmp(argv[i], "medium") == 0)   cfg.preset_index = static_cast<int>(PresetIndex::Medium);
-            else if (strcmp(argv[i], "heavy") == 0)    cfg.preset_index = static_cast<int>(PresetIndex::Heavy);
-            else if (strcmp(argv[i], "ultra") == 0)    cfg.preset_index = static_cast<int>(PresetIndex::Ultra);
-            else if (strcmp(argv[i], "extreme") == 0)  cfg.preset_index = static_cast<int>(PresetIndex::Extreme);
-            else { fprintf(stderr, "Unknown preset: %s\n", argv[i]); return 1; }
-        } else if (strcmp(argv[i], "--renderer") == 0 && i + 1 < argc) {
-            i++;
-            if (strcmp(argv[i], "gl2") == 0)        cfg.backend = RendererBackend::GL2;
-            else if (strcmp(argv[i], "gl3") == 0)   cfg.backend = RendererBackend::GL3;
-            else if (strcmp(argv[i], "gl4") == 0)   cfg.backend = RendererBackend::GL4;
-            else if (strcmp(argv[i], "gles") == 0)  cfg.backend = RendererBackend::GLES;
-            else if (strcmp(argv[i], "auto") == 0)  cfg.backend = RendererBackend::Auto;
-            else { fprintf(stderr, "Unknown renderer: %s\n", argv[i]); return 1; }
-        } else if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
-            cfg.config_path = argv[++i];
-        } else if (strcmp(argv[i], "--headless") == 0) {
-            cfg.headless = true;
-        } else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc) {
-            cfg.test_filter = argv[++i];
-        } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
-            i++;
-            if (strcmp(argv[i], "text") == 0)       cfg.output_format = OutputFormat::Text;
-            else if (strcmp(argv[i], "csv") == 0)   cfg.output_format = OutputFormat::CSV;
-            else if (strcmp(argv[i], "json") == 0)  cfg.output_format = OutputFormat::JSON;
-            else { fprintf(stderr, "Unknown output format: %s\n", argv[i]); return 1; }
-        } else if (strcmp(argv[i], "--output-file") == 0 && i + 1 < argc) {
-            cfg.output_file = argv[++i];
-        } else if (strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
-            cfg.width = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--height") == 0 && i + 1 < argc) {
-            cfg.height = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--timing") == 0 && i + 1 < argc) {
-            i++;
-            if (strcmp(argv[i], "sync") == 0)      cfg.timing_mode = TimingMode::Sync;
-            else if (strcmp(argv[i], "gpu") == 0)  cfg.timing_mode = TimingMode::GPU;
-            else { fprintf(stderr, "Unknown timing mode: %s\n", argv[i]); return 1; }
-        } else if (strcmp(argv[i], "--render-res") == 0 && i + 1 < argc) {
-            i++;
-            int rw = 0, rh = 0;
-            if (sscanf(argv[i], "%dx%d", &rw, &rh) == 2 && rw >= 64 && rh >= 64) {
-                cfg.render_width = rw;
-                cfg.render_height = rh;
+struct ArgDef {
+    const char*    flag;
+    const char*    alias;
+    bool           takes_arg;
+    const char*    help;
+    const char*    meta;       // "<path>", "<n>", nullptr (auto from vals)
+    const NameVal* vals;
+    int            val_count;
+    const char*    def_text;
+    ParseFn        parse;
+};
+
+#define NVALS(a) (static_cast<int>(sizeof(a) / sizeof(a[0])))
+
+static const ArgDef kArgs[] = {
+    {"--preset", nullptr, true, "Preset", nullptr,
+     kPresetVals, NVALS(kPresetVals), "medium",
+     +[](const char* a, AppConfig& c) -> int {
+         return matchEnumArg(a, kPresetVals, NVALS(kPresetVals),
+                             &c.preset_index, "preset");
+     }},
+
+    {"--renderer", nullptr, true, "Renderer", nullptr,
+     kRendererVals, NVALS(kRendererVals), "auto",
+     +[](const char* a, AppConfig& c) -> int {
+         return matchEnumArg(a, kRendererVals, NVALS(kRendererVals),
+                             &c.backend, "renderer");
+     }},
+
+    {"--config", nullptr, true, "Load config INI", "<path>",
+     nullptr, 0, nullptr,
+     +[](const char* a, AppConfig& c) -> int {
+         c.config_path = a; return 0;
+     }},
+
+    {"--headless", nullptr, false, "No GUI, run tests, print results", nullptr,
+     nullptr, 0, nullptr,
+     +[](const char*, AppConfig& c) -> int {
+         c.headless = true; return 0;
+     }},
+
+    {"--test", nullptr, true,
+     "Run specific tests (comma-separated, or \"all\")", "<name,...>",
+     nullptr, 0, nullptr,
+     +[](const char* a, AppConfig& c) -> int {
+         c.test_filter = a; return 0;
+     }},
+
+    {"--output", nullptr, true, "Output format", nullptr,
+     kOutputVals, NVALS(kOutputVals), "text",
+     +[](const char* a, AppConfig& c) -> int {
+         return matchEnumArg(a, kOutputVals, NVALS(kOutputVals),
+                             &c.output_format, "output format");
+     }},
+
+    {"--output-file", nullptr, true, "Write results to file", "<path>",
+     nullptr, 0, nullptr,
+     +[](const char* a, AppConfig& c) -> int {
+         c.output_file = a; return 0;
+     }},
+
+    {"--width", nullptr, true, "Viewport width", "<n>",
+     nullptr, 0, "800",
+     +[](const char* a, AppConfig& c) -> int {
+         c.width = atoi(a); return 0;
+     }},
+
+    {"--height", nullptr, true, "Viewport height", "<n>",
+     nullptr, 0, "600",
+     +[](const char* a, AppConfig& c) -> int {
+         c.height = atoi(a); return 0;
+     }},
+
+    {"--timing", nullptr, true, "Timing mode", nullptr,
+     kTimingVals, NVALS(kTimingVals), "sync",
+     +[](const char* a, AppConfig& c) -> int {
+         return matchEnumArg(a, kTimingVals, NVALS(kTimingVals),
+                             &c.timing_mode, "timing mode");
+     }},
+
+    {"--render-res", nullptr, true,
+     "Render resolution (e.g. 1920x1080)", "<WxH>",
+     nullptr, 0, "native",
+     +[](const char* a, AppConfig& c) -> int {
+         int rw = 0, rh = 0;
+         if (sscanf(a, "%dx%d", &rw, &rh) == 2 && rw >= 64 && rh >= 64) {
+             c.render_width = rw;
+             c.render_height = rh;
+             return 0;
+         }
+         fprintf(stderr, "Invalid render resolution: %s (expected WxH, e.g. 1920x1080)\n", a);
+         return 1;
+     }},
+
+    {"--stress", nullptr, true, "Stress test mode (headless only)", "<seconds>",
+     nullptr, 0, nullptr,
+     +[](const char* a, AppConfig& c) -> int {
+         c.stress_duration_sec = atoi(a);
+         c.headless = true;
+         return 0;
+     }},
+
+    {"--demo", nullptr, false, "Visual demo benchmark (3DMark-style)", nullptr,
+     nullptr, 0, nullptr,
+     +[](const char*, AppConfig& c) -> int {
+         c.demo_mode = true; return 0;
+     }},
+
+    {"--demo-tier", nullptr, true, "Run specific demo tier only", "<1-4>",
+     nullptr, 0, nullptr,
+     +[](const char* a, AppConfig& c) -> int {
+         c.demo_tier = atoi(a);
+         if (c.demo_tier < 1 || c.demo_tier > 4) {
+             fprintf(stderr, "Invalid demo tier: %d (must be 1-4)\n", c.demo_tier);
+             return 1;
+         }
+         return 0;
+     }},
+
+    {"--demo-duration", nullptr, true, "Duration per tier", "<seconds>",
+     nullptr, 0, "15",
+     +[](const char* a, AppConfig& c) -> int {
+         c.demo_duration = atoi(a);
+         if (c.demo_duration < 1) c.demo_duration = 1;
+         return 0;
+     }},
+
+    {"--gpu", nullptr, true, "Select GPU by index (see --list-gpus)", "<index>",
+     nullptr, 0, nullptr,
+     +[](const char* a, AppConfig& c) -> int {
+         c.gpu_index = atoi(a); return 0;
+     }},
+
+    {"--list-gpus", nullptr, false, "List available GPUs and exit", nullptr,
+     nullptr, 0, nullptr,
+     +[](const char*, AppConfig&) -> int {
+         auto gpus = enumerateGPUs();
+         printGPUList(gpus);
+         return -1;
+     }},
+
+    {"--help", "-h", false, "Show this help", nullptr,
+     nullptr, 0, nullptr,
+     +[](const char*, AppConfig&) -> int {
+         printHelp();
+         return -1;
+     }},
+};
+
+#undef NVALS
+
+static const int kNumArgs = static_cast<int>(sizeof(kArgs) / sizeof(kArgs[0]));
+
+// --- Help text generation from kArgs[] ---
+
+static void printHelp() {
+    fprintf(stderr, "gpu_benchmark [options]\n");
+    for (int i = 0; i < kNumArgs; i++) {
+        const ArgDef& a = kArgs[i];
+
+        // Build left column: "  --flag <meta>"
+        char left[64];
+        if (a.takes_arg) {
+            if (a.meta) {
+                snprintf(left, sizeof(left), "  %s %s", a.flag, a.meta);
+            } else if (a.vals && a.val_count > 0) {
+                // Auto-generate <val1|val2|...>
+                char vals_str[128];
+                int pos = 0;
+                vals_str[pos++] = '<';
+                for (int v = 0; v < a.val_count; v++) {
+                    if (v > 0) vals_str[pos++] = '|';
+                    const char* n = a.vals[v].name;
+                    while (*n && pos < 126) vals_str[pos++] = *n++;
+                }
+                vals_str[pos++] = '>';
+                vals_str[pos] = '\0';
+                snprintf(left, sizeof(left), "  %s %s", a.flag, vals_str);
             } else {
-                fprintf(stderr, "Invalid render resolution: %s (expected WxH, e.g. 1920x1080)\n", argv[i]);
-                return 1;
+                snprintf(left, sizeof(left), "  %s", a.flag);
             }
-        } else if (strcmp(argv[i], "--stress") == 0 && i + 1 < argc) {
-            cfg.stress_duration_sec = atoi(argv[++i]);
-            cfg.headless = true;
         } else {
+            snprintf(left, sizeof(left), "  %s", a.flag);
+        }
+
+        // Right column: description + default
+        // Ensure at least one space between columns
+        int left_len = static_cast<int>(strlen(left));
+        int pad = (left_len >= 44) ? 1 : 44 - left_len;
+        if (a.def_text) {
+            fprintf(stderr, "%s%*s%s (default: %s)\n", left, pad, "", a.help, a.def_text);
+        } else {
+            fprintf(stderr, "%s%*s%s\n", left, pad, "", a.help);
+        }
+    }
+}
+
+// --- Argument parsing loop ---
+
+// Parse command line arguments. Returns 0 on success, 1 on error, -1 on early exit (--help, --list-gpus).
+static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
+    for (int i = 1; i < argc; i++) {
+        const ArgDef* found = nullptr;
+        for (int j = 0; j < kNumArgs; j++) {
+            if (strcmp(argv[i], kArgs[j].flag) == 0 ||
+                (kArgs[j].alias && strcmp(argv[i], kArgs[j].alias) == 0)) {
+                found = &kArgs[j];
+                break;
+            }
+        }
+
+        if (!found) {
             fprintf(stderr, "Unknown argument: %s\n", argv[i]);
             printHelp();
             return 1;
         }
+
+        const char* value = nullptr;
+        if (found->takes_arg) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "%s requires an argument\n", argv[i]);
+                return 1;
+            }
+            value = argv[++i];
+        }
+
+        int rc = found->parse(value, cfg);
+        if (rc != 0) return rc;
     }
 
     if (cfg.width < 64) cfg.width = 64;
     if (cfg.height < 64) cfg.height = 64;
 
-    // GPU selection must happen before SDL_Init / GL context creation.
-    if (gpu_index >= 0) {
-        selectGPUAndReexec(gpu_index, argc, argv);
-        const char* dri = getenv("DRI_PRIME");
-        const char* glx = getenv("__GLX_VENDOR_LIBRARY_NAME");
-        fprintf(stderr, "GPU %d selected", gpu_index);
-        if (dri) fprintf(stderr, " (DRI_PRIME=%s)", dri);
-        if (glx) fprintf(stderr, " (GLX=%s)", glx);
-        fprintf(stderr, "\n");
-    }
+    return 0;
+}
 
-    App app;
+int main(int argc, char* argv[]) {
+    AppConfig cfg;
+
+    int rc = parseArgs(argc, argv, cfg);
+    if (rc != 0) return (rc < 0) ? 0 : rc;
+
+    // GPU selection must happen before SDL_Init / GL context creation.
+    if (cfg.gpu_index >= 0)
+        selectGPUAndReexec(cfg.gpu_index, argc, argv);
+
+    App app;  // ~App() calls shutdown() automatically
     if (!app.init(cfg)) {
         fprintf(stderr, "Failed to initialize GPU_benchmark\n");
         return 1;
     }
 
     app.run();
-    app.shutdown();
     return 0;
 }

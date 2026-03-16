@@ -171,3 +171,36 @@ void exportJSON(FILE* out, const std::vector<BenchResult>& results,
     fprintf(out, "  ]\n");
     fprintf(out, "}\n");
 }
+
+bool writeBenchResults(OutputFormat fmt, const char* output_file,
+                       const std::vector<BenchResult>& results,
+                       const HWInfo& hw, const RenderCaps& caps,
+                       uint32_t available_caps,
+                       const char* gpu_name, const char* gl_version,
+                       const char* renderer_name, const char* preset_name,
+                       const ExportConfig& ecfg,
+                       const CompositeScore* composite,
+                       const BottleneckInfo* bottleneck) {
+    FileGuard fg;
+    FILE* out = stdout;
+    if (output_file && output_file[0]) {
+        fg.reset(fopen(output_file, "w"));
+        if (!fg) return false;
+        out = fg.get();
+    }
+
+    switch (fmt) {
+        case OutputFormat::CSV:
+            exportCSV(out, results, hw, caps, available_caps, gpu_name, gl_version, renderer_name, preset_name, ecfg);
+            break;
+        case OutputFormat::JSON:
+            exportJSON(out, results, hw, caps, available_caps, gpu_name, gl_version, renderer_name, preset_name, ecfg,
+                       composite, bottleneck);
+            break;
+        default:
+            exportText(out, results, hw, caps, available_caps, gpu_name, gl_version, renderer_name, preset_name, ecfg,
+                       composite, bottleneck);
+            break;
+    }
+    return true;
+}

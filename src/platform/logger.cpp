@@ -1,4 +1,4 @@
 #include "platform/logger.h"
 
-FILE* Log::s_file = 0;
+FileGuard Log::s_file;
 Log::Level Log::s_level = Log::Level::Debug;

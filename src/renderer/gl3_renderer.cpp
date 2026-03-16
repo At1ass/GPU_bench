@@ -7,7 +7,7 @@
 #include <vector>
 
 GL3Renderer::GL3Renderer() {}
-GL3Renderer::~GL3Renderer() { shutdown(); }
+// ~GL3Renderer: default. shutdown() must be called explicitly before destruction.
 
 bool GL3Renderer::init(int w, int h) {
     if (!GL2Renderer::init(w, h)) return false;
@@ -100,6 +100,12 @@ bool GL3Renderer::init(int w, int h) {
     return true;
 }
 
+void* GL3Renderer::queryFeature(int id) {
+    if (id == FeatureTag<GL3Features>::id)
+        return static_cast<GL3Features*>(this);
+    return GL2Renderer::queryFeature(id);
+}
+
 void GL3Renderer::shutdown() {
     // Clean up UBOs
     for (size_t i = 1; i < ubos_.size(); i++) {
@@ -149,7 +155,7 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     // Use fixed attribute locations matching built-in shaders
     // a_pos = 0, a_normal = 1, a_uv = 2
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, nullptr);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
     glEnableVertexAttribArray(2);
@@ -406,7 +412,10 @@ ShaderHandle GL3Renderer::createShaderVGF(const char* vs_src, const char* gs_src
 // --- UBO ---
 
 BufferHandle GL3Renderer::createUBO(int size_bytes) {
-    if (!has_ubo_) return INVALID_BUFFER;
+    if (!has_ubo_) {
+        Log::err("createUBO: UBO not supported");
+        return INVALID_BUFFER;
+    }
 
     GLBuffer buf;
     glGenBuffers(1, &buf.id);
@@ -458,7 +467,10 @@ void GL3Renderer::setRasterizerDiscard(bool enable) {
 // --- Transform feedback buffers ---
 
 BufferHandle GL3Renderer::createTransformFeedbackBuffer(int size_bytes) {
-    if (!has_transform_feedback_) return INVALID_BUFFER;
+    if (!has_transform_feedback_) {
+        Log::err("createTransformFeedbackBuffer: transform feedback not supported");
+        return INVALID_BUFFER;
+    }
 
     GLBuffer buf;
     glGenBuffers(1, &buf.id);
@@ -548,4 +560,86 @@ void GL3Renderer::endTransformFeedback() {
     assert(tf_active_ && "endTransformFeedback without begin");
     tf_active_ = false;
     glEndTransformFeedback();
+}
+
+// --- Depth-only render target (shadow maps) ---
+
+RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
+    if (!caps_.has_fbo) return INVALID_RENDER_TARGET;
+
+    GLFBO rt;
+    rt.w = w;
+    rt.h = h;
+
+    // Create depth texture
+    GLuint depth_tex;
+    glGenTextures(1, &depth_tex);
+    glBindTexture(GL_TEXTURE_2D, depth_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, w, h, 0,
+                 GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, nullptr);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Create FBO with depth texture only (no color attachment)
+    glGenFramebuffers(1, &rt.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt.fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
+
+    // No color attachment — tell GL
+    GLenum none = GL_NONE;
+    glDrawBuffers(1, &none);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glDeleteFramebuffers(1, &rt.fbo);
+        glDeleteTextures(1, &depth_tex);
+        Log::err("Depth-only FBO not complete: 0x%X", status);
+        return INVALID_RENDER_TARGET;
+    }
+
+    // Store depth texture as color_tex (repurposed), no renderbuffer
+    rt.color_tex = depth_tex;
+    rt.depth_rb = 0;
+    rt.valid = true;
+
+    RenderTargetHandle handle;
+    if (!free_rt_slots_.empty()) {
+        handle = free_rt_slots_.back();
+        free_rt_slots_.pop_back();
+        render_targets_[handle] = rt;
+    } else {
+        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        render_targets_.push_back(rt);
+    }
+    return handle;
+}
+
+TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
+    if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
+    // For depth-only FBOs, we stored the depth texture in color_tex
+    GLuint tex_id = render_targets_[rt].color_tex;
+    if (!tex_id) return INVALID_TEXTURE;
+
+    // Wrap the raw GL texture in a TextureHandle
+    GLTex gt;
+    gt.id = tex_id;
+    gt.valid = true;
+
+    TextureHandle th;
+    if (!free_tex_slots_.empty()) {
+        th = free_tex_slots_.back();
+        free_tex_slots_.pop_back();
+        textures_[th] = gt;
+    } else {
+        th = static_cast<TextureHandle>(textures_.size());
+        textures_.push_back(gt);
+    }
+    return th;
 }

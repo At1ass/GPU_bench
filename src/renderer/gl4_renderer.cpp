@@ -5,7 +5,7 @@
 #include <cstring>
 
 GL4Renderer::GL4Renderer() {}
-GL4Renderer::~GL4Renderer() { shutdown(); }
+// ~GL4Renderer: default. shutdown() must be called explicitly before destruction.
 
 bool GL4Renderer::init(int w, int h) {
     if (!GL3Renderer::init(w, h)) return false;
@@ -71,8 +71,8 @@ bool GL4Renderer::init(int w, int h) {
         if (!has_buffer_storage_ && strstr(exts, "GL_ARB_buffer_storage"))
             has_buffer_storage_ = true;
         if (strstr(exts, "GL_ARB_bindless_texture"))
-            has_bindless_texture_ = (cb_glGetTextureHandleARB != 0)
-                                 && (cb_glMakeTextureHandleResidentARB != 0);
+            has_bindless_texture_ = (cb_glGetTextureHandleARB != nullptr)
+                                 && (cb_glMakeTextureHandleResidentARB != nullptr);
     }
 #endif
 
@@ -101,6 +101,14 @@ bool GL4Renderer::init(int w, int h) {
             has_buffer_storage_ ? "yes" : "no",
             has_bindless_texture_ ? "yes" : "no");
     return true;
+}
+
+void* GL4Renderer::queryFeature(int id) {
+    if (id == FeatureTag<GL4Features>::id)
+        return static_cast<GL4Features*>(this);
+    if (id == FeatureTag<ComputeFeatures>::id)
+        return static_cast<ComputeFeatures*>(this);
+    return GL3Renderer::queryFeature(id);
 }
 
 void GL4Renderer::shutdown() {
@@ -278,9 +286,9 @@ void GL4Renderer::multiDrawMeshIndirect(MeshHandle mesh, BufferHandle indirect,
 
 #ifdef CB_NEED_GL_LOAD
     if (cb_glMultiDrawElementsIndirect)
-        cb_glMultiDrawElementsIndirect(GL_TRIANGLES, gm.index_type, 0, draw_count, stride);
+        cb_glMultiDrawElementsIndirect(GL_TRIANGLES, gm.index_type, nullptr, draw_count, stride);
 #else
-    glMultiDrawElementsIndirect(GL_TRIANGLES, gm.index_type, 0, draw_count, stride);
+    glMultiDrawElementsIndirect(GL_TRIANGLES, gm.index_type, nullptr, draw_count, stride);
 #endif
 
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);

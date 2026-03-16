@@ -162,16 +162,15 @@ void main() {
 // ---- Implementation ----
 
 GL2Renderer::GL2Renderer() : current_shader_(nullptr), initialized_(false),
-    core_profile_(false), blit_quad_(INVALID_MESH), blit_quad_ready_(false),
+    core_profile_(false), viewport_x_(0), viewport_y_(0), viewport_w_(0), viewport_h_(0),
+    blit_quad_(INVALID_MESH), blit_quad_ready_(false),
     has_blit_framebuffer_(false) {
     memset(&shader_3d_, 0, sizeof(shader_3d_));
     memset(&shader_2d_color_, 0, sizeof(shader_2d_color_));
     memset(&shader_2d_tex_, 0, sizeof(shader_2d_tex_));
 }
 
-GL2Renderer::~GL2Renderer() {
-    shutdown();
-}
+// ~GL2Renderer: default. shutdown() must be called explicitly before destruction.
 
 GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
     auto s = glCreateShader(type);
@@ -364,7 +363,7 @@ void GL2Renderer::detectCaps() {
                 if (f) {
                     unsigned long long bytes = 0;
                     if (fscanf(f, "%llu", &bytes) == 1 && bytes > 0) {
-                        caps_.estimated_vram_mb = static_cast<int>(bytes / (1024 * 1024));
+                        caps_.estimated_vram_mb = static_cast<int>(bytes / (1024ULL * 1024ULL));
                     }
                     fclose(f);
                     if (caps_.estimated_vram_mb > 0) break;
@@ -458,6 +457,13 @@ bool GL2Renderer::init(int w, int h) {
 void GL2Renderer::shutdown() {
     if (!initialized_) return;
 
+    // Clean up blit quad before meshes (uses destroyMesh)
+    if (blit_quad_ready_) {
+        destroyMesh(blit_quad_);
+        blit_quad_ = INVALID_MESH;
+        blit_quad_ready_ = false;
+    }
+
     for (size_t i = 1; i < meshes_.size(); i++) {
         if (meshes_[i].valid) {
             glDeleteBuffers(1, &meshes_[i].vbo);
@@ -481,6 +487,17 @@ void GL2Renderer::shutdown() {
     custom_shaders_.clear();
     free_custom_slots_.clear();
 
+    // Clean up render targets (FBOs)
+    for (size_t i = 1; i < render_targets_.size(); i++) {
+        if (render_targets_[i].valid) {
+            if (render_targets_[i].fbo) glDeleteFramebuffers(1, &render_targets_[i].fbo);
+            if (render_targets_[i].color_tex) glDeleteTextures(1, &render_targets_[i].color_tex);
+            if (render_targets_[i].depth_rb) glDeleteRenderbuffers(1, &render_targets_[i].depth_rb);
+        }
+    }
+    render_targets_.clear();
+    free_rt_slots_.clear();
+
     if (shader_3d_.program) { glDeleteProgram(shader_3d_.program); shader_3d_.program = 0; }
     if (shader_2d_color_.program) { glDeleteProgram(shader_2d_color_.program); shader_2d_color_.program = 0; }
     if (shader_2d_tex_.program) { glDeleteProgram(shader_2d_tex_.program); shader_2d_tex_.program = 0; }
@@ -490,6 +507,10 @@ void GL2Renderer::shutdown() {
 }
 
 void GL2Renderer::setViewport(int x, int y, int w, int h) {
+    viewport_x_ = x;
+    viewport_y_ = y;
+    viewport_w_ = w;
+    viewport_h_ = h;
     glViewport(x, y, w, h);
 }
 
@@ -506,7 +527,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
 
     glGenBuffers(1, &gm.vbo);
     glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
-    glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(Vertex),
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(data.vertices.size() * sizeof(Vertex)),
                  data.vertices.data(), GL_STATIC_DRAW);
 
     // Determine if 16-bit indices are sufficient
@@ -523,7 +544,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
 
     if (needs_32bit && caps_.supports_32bit_indices) {
         gm.index_type = GL_UNSIGNED_INT;
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int),
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(data.indices.size() * sizeof(unsigned int)),
                      data.indices.data(), GL_STATIC_DRAW);
     } else if (needs_32bit) {
         Log::err("ERROR: mesh requires 32-bit indices but hardware doesn't support them");
@@ -535,7 +556,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         std::vector<unsigned short> indices16(data.indices.size());
         for (size_t i = 0; i < data.indices.size(); i++)
             indices16[i] = static_cast<unsigned short>(data.indices[i]);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices16.size() * sizeof(unsigned short),
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices16.size() * sizeof(unsigned short)),
                      indices16.data(), GL_STATIC_DRAW);
     }
 
@@ -570,7 +591,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         while (nw > caps_.max_texture_size) nw /= 2;
         while (nh > caps_.max_texture_size) nh /= 2;
 
-        std::vector<unsigned char> scaled(nw * nh * channels);
+        std::vector<unsigned char> scaled(static_cast<size_t>(nw) * nh * channels);
         for (int sy = 0; sy < nh; sy++) {
             for (int sx = 0; sx < nw; sx++) {
                 int src_x = sx * w / nw;
@@ -693,6 +714,24 @@ void GL2Renderer::setUniform1f(int loc, float v) {
     if (loc >= 0) glUniform1f(loc, v);
 }
 
+void GL2Renderer::setUniform2f(int loc, float x, float y) {
+    if (loc >= 0) {
+        #ifdef CB_NEED_GL_LOAD
+        // glUniform2f not in our X-macro list — use glUniform3f with z=0 as workaround
+        // Actually let's just call it via SDL proc
+        typedef void (APIENTRY *PFN_glUniform2f)(GLint, GLfloat, GLfloat);
+        static PFN_glUniform2f fn = (PFN_glUniform2f)SDL_GL_GetProcAddress("glUniform2f");
+        if (fn) fn(loc, x, y);
+        #else
+        glUniform2f(loc, x, y);
+        #endif
+    }
+}
+
+void GL2Renderer::setUniform3f(int loc, float x, float y, float z) {
+    if (loc >= 0) glUniform3f(loc, x, y, z);
+}
+
 void GL2Renderer::setUniform4f(int loc, float r, float g, float b, float a) {
     if (loc >= 0) glUniform4f(loc, r, g, b, a);
 }
@@ -737,6 +776,15 @@ void GL2Renderer::bindTexture(TextureHandle h) {
         glUniform1i(current_shader_->u_tex, 0);
 }
 
+void GL2Renderer::bindTextureUnit(int unit, TextureHandle h) {
+    glActiveTexture(GL_TEXTURE0 + unit);
+    if (isValidTexture(h))
+        glBindTexture(GL_TEXTURE_2D, textures_[h].id);
+    else
+        glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+}
+
 void GL2Renderer::setUseTexture(bool use) {
     if (current_shader_ && current_shader_->u_use_tex >= 0)
         glUniform1f(current_shader_->u_use_tex, use ? 1.0f : 0.0f);
@@ -761,7 +809,7 @@ void GL2Renderer::drawMesh(MeshHandle h) {
 
     if (loc_pos >= 0) {
         glEnableVertexAttribArray(loc_pos);
-        glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(0));
+        glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, nullptr);
     }
     if (loc_normal >= 0) {
         glEnableVertexAttribArray(loc_normal);
@@ -811,8 +859,16 @@ void GL2Renderer::setDepthTest(bool enable) {
         glDisable(GL_DEPTH_TEST);
 }
 
+void GL2Renderer::setCullFace(bool enable) {
+    if (enable)
+        glEnable(GL_CULL_FACE);
+    else
+        glDisable(GL_CULL_FACE);
+}
+
 void GL2Renderer::resetState() {
     glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -822,6 +878,7 @@ void GL2Renderer::resetState() {
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     current_shader_ = nullptr;
+    glViewport(viewport_x_, viewport_y_, viewport_w_, viewport_h_);
 }
 
 // --- Unbind state (for ImGui interop) ---
@@ -867,7 +924,7 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
     glBindTexture(GL_TEXTURE_2D, rt.color_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenRenderbuffers(1, &rt.depth_rb);
@@ -922,6 +979,13 @@ void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
     if (rt < render_targets_.size() && render_targets_[rt].valid) {
         glBindFramebuffer(GL_FRAMEBUFFER, render_targets_[rt].fbo);
     }
+}
+
+void GL2Renderer::bindRenderTargetTexture(RenderTargetHandle rt, int unit) {
+    if (!isValidRenderTarget(rt)) return;
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_2D, render_targets_[rt].color_tex);
+    glActiveTexture(GL_TEXTURE0);
 }
 
 void GL2Renderer::blitToScreen(RenderTargetHandle rt,

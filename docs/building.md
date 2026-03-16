@@ -9,15 +9,17 @@
 
 ## Quick Build (scripts)
 
-### Linux / cross-compile
+### Linux / macOS / FreeBSD / cross-compile
 
 ```bash
-./scripts/build.sh all        # Build all targets (linux + mingw64 + mingw32)
-./scripts/build.sh linux      # Native Linux build
+./scripts/build.sh all        # Build all targets (native + mingw64 + mingw32)
+./scripts/build.sh native     # Native build (auto-detects Linux/macOS/FreeBSD)
 ./scripts/build.sh mingw64    # Cross-compile Windows 64-bit
 ./scripts/build.sh mingw32    # Cross-compile Windows 32-bit (Win XP)
 ./scripts/build.sh clean      # Remove all build directories
 ```
+
+`linux`, `macos`, `freebsd` are accepted as aliases for `native`.
 
 ### Windows (native)
 

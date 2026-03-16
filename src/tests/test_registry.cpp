@@ -101,7 +101,7 @@ uint32_t getAvailableCaps(const Renderer& renderer) {
     if (caps.has_timer_queries) c |= Cap_TimerQuery;
 
     // GL3-level: gated by feature interface (structurally safe)
-    if (const GL3Features* gl3 = renderer.gl3()) {
+    if (const GL3Features* gl3 = renderer.features<GL3Features>()) {
         if (gl3->hasVAO())             c |= Cap_VAO;
         if (gl3->hasInstancing())      c |= Cap_Instancing;
         if (gl3->hasGeometryShader())  c |= Cap_GeometryShader;
@@ -110,14 +110,14 @@ uint32_t getAvailableCaps(const Renderer& renderer) {
     }
 
     // Compute: gated by feature interface
-    if (const ComputeFeatures* comp = renderer.compute()) {
+    if (const ComputeFeatures* comp = renderer.features<ComputeFeatures>()) {
         if (comp->hasCompute()) c |= Cap_Compute;
     }
 
-    // GL4: gated by feature interface
-    if (const GL4Features* gl4 = renderer.gl4()) {
-        if (gl4->hasIndirectDraw())    c |= Cap_GL4;
-        if (gl4->hasTessellation())    c |= Cap_Tessellation;
+    // GL4: tessellation is mandatory in GL 4.0+ — it gates Cap_GL4.
+    // Other GL4 features have their own caps for finer-grained checks.
+    if (const GL4Features* gl4 = renderer.features<GL4Features>()) {
+        if (gl4->hasTessellation())    c |= Cap_GL4 | Cap_Tessellation;
         if (gl4->hasImageLoadStore())  c |= Cap_ImageLoadStore;
         if (gl4->hasBufferStorage())   c |= Cap_BufferStorage;
         if (gl4->hasBindlessTexture()) c |= Cap_BindlessTexture;

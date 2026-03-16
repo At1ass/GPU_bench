@@ -2,53 +2,59 @@
 #include "renderer/renderer.h"
 #include "renderer/render_context.h"
 #include "bench/bench.h"
-#include "tests/tests.h"
 #include "bench/preset.h"
 #include "tests/test_registry.h"
 #include "bench/bench_runner.h"
+#include "bench/results.h"
 #include "ui/bench_ui.h"
-#include "bench/stress_runner.h"
+#include "demo/demo_runner.h"
+#include "demo/demo_ui.h"
 #include "platform/hwinfo.h"
 #include "platform/timer.h"
 #include <SDL.h>
 #include <memory>
 #include <string>
 
-enum class OutputFormat {
-    Text = 0,
-    CSV,
-    JSON
-};
-
+// OutputFormat is defined in bench/results.h
 // TimingMode is defined in bench_runner.h
 
 #include "renderer/renderer_backend.h"
 
 struct AppConfig {
-    int width;
-    int height;
-    int render_width;   // 0 = use window size (native)
-    int render_height;  // 0 = use window size (native)
-    int preset_index;
-    RendererBackend backend;
-    bool headless;
-    OutputFormat output_format;
-    TimingMode timing_mode;
+    int width  = 800;
+    int height = 600;
+    int render_width  = 0;      // 0 = use window size (native)
+    int render_height = 0;      // 0 = use window size (native)
+    int preset_index  = static_cast<int>(PresetIndex::Medium);
+    RendererBackend backend = RendererBackend::Auto;
+    bool headless = false;
+    OutputFormat output_format = OutputFormat::Text;
+    TimingMode timing_mode = TimingMode::Sync;
     std::string output_file;
     std::string config_path;
-    std::string test_filter;  // comma-separated test names or "all"
-    int stress_duration_sec;  // 0 = disabled
+    std::string test_filter = "all";    // comma-separated test names or "all"
+    int stress_duration_sec = 0;        // 0 = disabled
+    bool demo_mode    = false;          // --demo
+    int demo_tier     = 0;              // 0 = auto, 1-4 = specific tier
+    int demo_duration = 15;             // seconds per tier
+    int gpu_index     = -1;              // -1 = default, >=0 = select GPU
+
+    AppConfig() = default;
+    AppConfig(const AppConfig&) = default;
+    AppConfig& operator=(const AppConfig&) = default;
+    AppConfig(AppConfig&&) noexcept = default;
+    AppConfig& operator=(AppConfig&&) noexcept = default;
 };
 
 // NUM_TESTS is defined in test_registry.h
 
 // -1 = native, 0..N = index into RESOLUTIONS[]
-static constexpr int RES_NATIVE = -1;
+static constexpr int ResNative = -1;
 
 class App : public BenchCallbacks {
 public:
     App();
-    ~App();
+    ~App() { shutdown(); }
 
     bool init(const AppConfig& cfg);
     void run();
@@ -65,6 +71,8 @@ private:
     void runSelectedTests();
     void runHeadless();
     void exportResults();
+    void runDemo();
+    void exportDemoResults(const DemoResults& results);
     bool isTestSelected(const char* name) const;
 
     AppConfig       config_;
@@ -115,6 +123,8 @@ private:
     void updateRenderResolution();
 
     GPUTier gpu_tier_;
+    DemoUI demo_ui_;
+    DemoResults demo_results_;
 
     static const ResolutionOption RESOLUTIONS[];
     static const int NUM_RESOLUTIONS;

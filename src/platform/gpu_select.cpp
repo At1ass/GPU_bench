@@ -73,9 +73,9 @@ static std::string lookupPciName(unsigned int vendor_id, unsigned int device_id)
         nullptr
     };
 
-    FILE* f = nullptr;
+    FileGuard f;
     for (int i = 0; pci_ids_paths[i]; i++) {
-        f = fopen(pci_ids_paths[i], "r");
+        f.reset(fopen(pci_ids_paths[i], "r"));
         if (f) break;
     }
     if (!f) return "";
@@ -89,23 +89,18 @@ static std::string lookupPciName(unsigned int vendor_id, unsigned int device_id)
     char line[512];
     std::string result;
 
-    while (fgets(line, sizeof(line), f)) {
+    while (fgets(line, sizeof(line), f.get())) {
         if (line[0] == '#' || line[0] == '\n') continue;
 
         if (!in_vendor) {
-            // Vendor line: starts with 4 hex digits at column 0
             if (strncmp(line, vendor_prefix, 4) == 0 && line[4] == ' ') {
                 in_vendor = true;
             }
         } else {
-            // Inside our vendor block
             if (line[0] != '\t') {
-                // New vendor started — device not found
                 break;
             }
-            // Device line: starts with \tXXXX
             if (strncmp(line, device_prefix, 5) == 0 && (line[5] == ' ' || line[5] == '\t')) {
-                // Extract device name after "\tXXXX  "
                 const char* name_start = line + 5;
                 while (*name_start == ' ' || *name_start == '\t') name_start++;
                 result = name_start;
@@ -116,21 +111,19 @@ static std::string lookupPciName(unsigned int vendor_id, unsigned int device_id)
         }
     }
 
-    fclose(f);
     return result;
 }
 
 static std::string readSysfsFile(const char* path) {
-    FILE* f = fopen(path, "r");
+    FileGuard f(fopen(path, "r"));
     if (!f) return "";
     char buf[256];
     std::string result;
-    if (fgets(buf, sizeof(buf), f)) {
+    if (fgets(buf, sizeof(buf), f.get())) {
         result = buf;
         while (!result.empty() && (result.back() == '\n' || result.back() == '\r'))
             result.pop_back();
     }
-    fclose(f);
     return result;
 }
 
@@ -267,10 +260,9 @@ bool selectGPU(int index) {
     // Determine which env vars to set based on driver situation.
     // Check if NVIDIA proprietary driver is in use by looking for its GLX library.
     bool has_nvidia_proprietary = false;
-    FILE* f = fopen("/proc/driver/nvidia/version", "r");
-    if (f) {
-        has_nvidia_proprietary = true;
-        fclose(f);
+    {
+        FileGuard f(fopen("/proc/driver/nvidia/version", "r"));
+        has_nvidia_proprietary = (f != nullptr);
     }
 
     // Build DRI_PRIME value from PCI slot
@@ -542,7 +534,13 @@ void selectGPUAndReexec(int index, int argc, char* argv[]) {
     // Check if we've already re-exec'd (avoid infinite loop)
     const char* marker = getenv("_GPU_BENCH_REEXEC");
     if (marker && atoi(marker) == index) {
-        // Already re-exec'd for this GPU, proceed normally
+        // Already re-exec'd for this GPU — log active env vars and proceed
+        const char* dri = getenv("DRI_PRIME");
+        const char* glx = getenv("__GLX_VENDOR_LIBRARY_NAME");
+        fprintf(stderr, "GPU %d selected", index);
+        if (dri) fprintf(stderr, " (DRI_PRIME=%s)", dri);
+        if (glx) fprintf(stderr, " (GLX=%s)", glx);
+        fprintf(stderr, "\n");
         return;
     }
 

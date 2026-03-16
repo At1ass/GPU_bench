@@ -66,7 +66,7 @@ void ImageLoadStoreTest::renderCompute(Renderer& r, ComputeFeatures& comp) {
     r.useCustomShader(shader_);
 
     // Bind image texture via GL4Features
-    GL4Features* gl4 = r.gl4();
+    GL4Features* gl4 = r.features<GL4Features>();
     if (gl4) {
         gl4->bindImageTexture(image_tex_, 0, true, false);
     }

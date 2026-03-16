@@ -2,7 +2,7 @@
 
 class Renderer;
 class RenderContext;
-class BenchCallbacks;
+class PollCallback;
 
 // Encapsulates the combined GPU stress test.
 // Stresses all GPU units: shader cores (FMA), SFU (sin/cos), TMU, ROP.
@@ -16,5 +16,5 @@ public:
              int shader_iterations,
              int render_w, int render_h,
              int duration_sec,
-             BenchCallbacks* cb);
+             PollCallback* cb);
 };

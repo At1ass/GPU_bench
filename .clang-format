@@ -1,0 +1,73 @@
+---
+Language: Cpp
+Standard: c++11
+
+# -- Indentation --
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+IndentCaseLabels: true
+AccessModifierOffset: -4
+NamespaceIndentation: None
+IndentPPDirectives: None
+IndentWrappedFunctionNames: false
+
+# -- Braces --
+BreakBeforeBraces: Attach
+
+# -- Column limit --
+# Existing code has lines up to ~130 chars (fprintf format strings, long signatures).
+# 130 avoids gratuitous rewrapping of existing code while enforcing a practical limit.
+ColumnLimit: 130
+
+# -- Pointer / reference alignment --
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+# -- Alignment --
+# Manual column alignment (extra spaces) is used selectively in the codebase.
+# clang-format cannot preserve selective alignment, so we disable auto-alignment
+# to avoid reformatting intentionally aligned blocks.
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: true
+AlignTrailingComments: true
+
+# -- Spaces --
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInAngles: false
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeSquareBrackets: false
+Cpp11BracedListStyle: true
+
+# -- Short forms --
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortEnumsOnASingleLine: true
+
+# -- Constructor initializers --
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerIndentWidth: 4
+PackConstructorInitializers: BinPack
+
+# -- Parameters / arguments --
+BinPackParameters: true
+BinPackArguments: true
+
+# -- Breaking --
+BreakBeforeBinaryOperators: NonAssignment
+AlwaysBreakTemplateDeclarations: Yes
+
+# -- Includes --
+SortIncludes: Never
+IncludeBlocks: Preserve
+
+# -- Comments --
+ReflowComments: false

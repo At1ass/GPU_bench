@@ -1,5 +1,6 @@
 #pragma once
 
+#include "platform/compat.h"
 #include <cstdio>
 #include <cstdarg>
 
@@ -19,7 +20,7 @@ public:
 
     static void init(const char* log_file = nullptr) {
         if (log_file) {
-            s_file = fopen(log_file, "w");
+            s_file.reset(fopen(log_file, "w"));
             if (!s_file)
                 fprintf(stderr, "[LOG] Could not open '%s' for writing\n", log_file);
         }
@@ -27,7 +28,7 @@ public:
     }
 
     static void shutdown() {
-        if (s_file) { fclose(s_file); s_file = nullptr; }
+        s_file.reset();
     }
 
     static void setLevel(Level lvl) { s_level = lvl; }
@@ -64,7 +65,7 @@ public:
     }
 
 private:
-    static FILE* s_file;
+    static FileGuard s_file;
     static Level s_level;
 
     static void write(const char* prefix, const char* fmt, va_list ap) {
@@ -78,13 +79,13 @@ private:
 
         // file
         if (s_file) {
-            fputs(prefix, s_file);
+            fputs(prefix, s_file.get());
             va_list ap3;
             va_copy(ap3, ap);
-            vfprintf(s_file, fmt, ap3);
+            vfprintf(s_file.get(), fmt, ap3);
             va_end(ap3);
-            fputc('\n', s_file);
-            fflush(s_file);
+            fputc('\n', s_file.get());
+            fflush(s_file.get());
         }
     }
 };

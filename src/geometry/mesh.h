@@ -12,6 +12,12 @@ struct Vertex {
 struct MeshData {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
+
+    MeshData() = default;
+    MeshData(const MeshData&) = default;
+    MeshData& operator=(const MeshData&) = default;
+    MeshData(MeshData&&) noexcept = default;
+    MeshData& operator=(MeshData&&) noexcept = default;
 };
 
 // Strongly-typed GPU resource handles.
