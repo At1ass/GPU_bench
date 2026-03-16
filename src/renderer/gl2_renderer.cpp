@@ -332,12 +332,12 @@ void GL2Renderer::detectCaps() {
     // Works on Linux and FreeBSD (anywhere Mesa + GLX is available)
     if (caps_.estimated_vram_mb == 0) {
         #define GLX_RENDERER_VIDEO_MEMORY_MESA 0x8187
-        typedef int (*PFNGLXQUERYRENDERERMESA)(int, int, unsigned int*);
+        typedef int (*PFNGLXQUERYRENDERERMESA)(int, unsigned int*);
         PFNGLXQUERYRENDERERMESA queryRenderer =
             reinterpret_cast<PFNGLXQUERYRENDERERMESA>(SDL_GL_GetProcAddress("glXQueryCurrentRendererIntegerMESA"));
         if (queryRenderer) {
             unsigned int vram_mb = 0;
-            if (queryRenderer(GLX_RENDERER_VIDEO_MEMORY_MESA, 0, &vram_mb) && vram_mb > 0) {
+            if (queryRenderer(GLX_RENDERER_VIDEO_MEMORY_MESA, &vram_mb) && vram_mb > 0) {
                 caps_.estimated_vram_mb = static_cast<int>(vram_mb);
             }
         }
