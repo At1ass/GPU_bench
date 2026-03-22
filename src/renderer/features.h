@@ -1,6 +1,7 @@
 #pragma once
 #include "geometry/mesh.h"
 #include "renderer/renderer.h"
+#include <cstdint>
 #include <type_traits>
 
 // Forward declarations
@@ -111,6 +112,7 @@ public:
     virtual void setPatchVertices(int count) = 0;
     virtual ShaderHandle createTessShader(const char* vs, const char* tcs,
                                           const char* tes, const char* fs) = 0;
+    virtual void drawMeshAsPatches(MeshHandle h) = 0;
 
     // Image load/store
     virtual void bindImageTexture(TextureHandle h, int unit,

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,6 +15,7 @@ usage() {
     echo "  freebsd         Alias for native"
     echo "  mingw64         Cross-compile for Windows 64-bit (MinGW-w64)"
     echo "  mingw32         Cross-compile for Windows 32-bit (MinGW-w64, Win XP)"
+    echo "  portable        Portable static build (SDL2 built-in, no runtime deps)"
     echo "  clean           Remove all build directories"
     echo ""
     echo "Environment:"
@@ -103,10 +104,30 @@ build_mingw32() {
     echo "Done: $build_dir/gpu_benchmark.exe"
 }
 
+build_portable() {
+    local build_dir="$PROJECT_DIR/build_portable"
+    echo "=== Portable static build (${BUILD_TYPE}) ==="
+    echo "SDL2 will be downloaded and built from source."
+    mkdir -p "$build_dir"
+    cd "$build_dir"
+    cmake "$PROJECT_DIR" \
+        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DPORTABLE_BUILD=ON \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    $MAKE_CMD -j"$JOBS"
+
+    echo ""
+    echo "Checking dynamic dependencies:"
+    ldd "$build_dir/gpu_benchmark" 2>/dev/null | grep -v 'linux-vdso\|ld-linux' || true
+    echo ""
+    echo "Done: $build_dir/gpu_benchmark"
+}
+
 clean() {
     echo "Cleaning build directories..."
     rm -rf "$PROJECT_DIR"/build_native "$PROJECT_DIR"/build_linux
     rm -rf "$PROJECT_DIR"/build_mingw64 "$PROJECT_DIR"/build_mingw32
+    rm -rf "$PROJECT_DIR"/build_portable
     echo "Done."
 }
 
@@ -124,6 +145,7 @@ build_all() {
 case "${1:-}" in
     all)                        build_all ;;
     native|linux|macos|freebsd) build_native ;;
+    portable)                   build_portable ;;
     mingw64)                    build_mingw64 ;;
     mingw32)                    build_mingw32 ;;
     clean)                      clean ;;

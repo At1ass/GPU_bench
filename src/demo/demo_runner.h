@@ -1,5 +1,6 @@
 #pragma once
 #include "demo/demo_scene.h"
+#include "demo/demo_resources.h"
 #include <vector>
 #include <string>
 
@@ -58,7 +59,8 @@ public:
     // Called each frame with current state. Returns false to abort.
     virtual bool onDemoFrame(DemoTier current_tier, int tier_index, int total_tiers,
                              float tier_progress, double fps, double frame_ms,
-                             const std::vector<double>& frame_history) = 0;
+                             const std::vector<double>& frame_history,
+                             const TechniqueInfo* tech_info) = 0;
 };
 
 // Runs the demo benchmark: iterates through supported tiers, measures FPS.
@@ -70,6 +72,7 @@ public:
     DemoResults run(Renderer* r, RenderContext* ctx,
                     const DemoConfig& cfg,
                     int render_w, int render_h,
+                    int window_w, int window_h,
                     PollCallback* poll_cb,
                     DemoCallbacks* demo_cb);
 
@@ -77,9 +80,11 @@ private:
     DemoTierResult runTier(Renderer* r, RenderContext* ctx,
                            DemoTier tier, int duration_sec,
                            int render_w, int render_h,
+                           int window_w, int window_h,
                            PollCallback* poll_cb,
                            DemoCallbacks* demo_cb,
-                           int tier_index, int total_tiers);
+                           int tier_index, int total_tiers,
+                           const TierResourceView& resources);
 
     static double targetFPS(DemoTier tier);
 };

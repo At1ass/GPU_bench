@@ -19,19 +19,33 @@ Vec3 CameraPath::catmullRom(const Vec3& p0, const Vec3& p1,
 }
 
 CameraPath::CameraPath() {
-    // Fixed camera path through the "abandoned city" scene.
-    // Scene is roughly 100x100 units centered at origin, terrain Y from -3 to +5.
-    // Route: high start -> sweep right -> low over water -> through buildings -> climb -> finish
-    keypoints_[0] = { Vec3(-40, 25, -40), Vec3(0, 0, 0) };      // high overview
-    keypoints_[1] = { Vec3(-30, 18, -25), Vec3(10, 2, 5) };      // descending
-    keypoints_[2] = { Vec3(-15, 10, -10), Vec3(15, 3, 10) };     // sweeping right
-    keypoints_[3] = { Vec3(  5,  4,  -5), Vec3(20, 1, 15) };     // low approach
-    keypoints_[4] = { Vec3( 15,  1,   5), Vec3(25, 0, 20) };     // low over water (Y~0)
-    keypoints_[5] = { Vec3( 20,  3,  15), Vec3(10, 5, 30) };     // rising from water
-    keypoints_[6] = { Vec3( 10,  8,  25), Vec3(-5, 4, 35) };     // through buildings
-    keypoints_[7] = { Vec3( -5, 12,  30), Vec3(-20, 6, 20) };    // climbing
-    keypoints_[8] = { Vec3(-20, 20,  25), Vec3(-30, 8, 0) };     // high orbit
-    keypoints_[9] = { Vec3(-35, 25, 10),  Vec3(0, 5, 0) };       // final overview
+    // Smooth orbit around a centered OBJ model.
+    // Model fits in [-1,1] cube. Camera radius ~3.5.
+    // All targets look at model center (0,0,0).
+    // Height varies for interesting angles.
+
+    float r = 3.5f;
+
+    // 1. Start: high front-right
+    keypoints_[0] = { Vec3( r*0.7f,  1.8f, -r*0.7f), Vec3(0, 0, 0) };
+    // 2. Descend to eye level, front
+    keypoints_[1] = { Vec3( 0.3f,    0.5f, -r),       Vec3(0, 0, 0) };
+    // 3. Low angle, right side
+    keypoints_[2] = { Vec3( r,       0.2f,  0.0f),    Vec3(0, 0, 0) };
+    // 4. Rise, back-right
+    keypoints_[3] = { Vec3( r*0.7f,  1.2f,  r*0.7f), Vec3(0, 0, 0) };
+    // 5. High back
+    keypoints_[4] = { Vec3( 0.0f,    2.5f,  r),       Vec3(0, 0, 0) };
+    // 6. Descend, back-left
+    keypoints_[5] = { Vec3(-r*0.7f,  0.8f,  r*0.7f), Vec3(0, 0, 0) };
+    // 7. Low left
+    keypoints_[6] = { Vec3(-r,       0.3f,  0.0f),    Vec3(0, 0, 0) };
+    // 8. Rise, front-left
+    keypoints_[7] = { Vec3(-r*0.7f,  1.5f, -r*0.7f), Vec3(0, 0, 0) };
+    // 9. High overhead
+    keypoints_[8] = { Vec3( 0.5f,    3.5f, -0.5f),    Vec3(0, 0, 0) };
+    // 10. Return to start position
+    keypoints_[9] = { Vec3( r*0.7f,  1.8f, -r*0.7f), Vec3(0, 0, 0) };
 }
 
 Vec3 CameraPath::getPosition(float t) const {

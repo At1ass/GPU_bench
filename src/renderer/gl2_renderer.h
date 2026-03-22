@@ -52,6 +52,7 @@ public:
     void setBlending(bool enable) override;
     void setDepthTest(bool enable) override;
     void setCullFace(bool enable) override;
+    void setDepthMask(bool write) override;
 
     void resetState() override;
     void unbindState() override;
@@ -121,6 +122,7 @@ protected:
     std::string gpu_vendor_, gpu_renderer_, gl_version_;
     bool initialized_;
     bool core_profile_;
+    MeshHandle last_drawn_mesh_;  // for skipping redundant vertex attrib setup
     int viewport_x_, viewport_y_, viewport_w_, viewport_h_;
 
     // Render targets (FBO)

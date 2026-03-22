@@ -18,8 +18,40 @@ elseif(MSVC)
     add_compile_options(/W4 /wd4100 /wd4244 /wd4267)
 endif()
 
+# --- Portable static build option ---
+option(PORTABLE_BUILD "Static-link SDL2 and libstdc++ for portable binary" OFF)
+
 # --- Dependencies ---
-find_package(SDL2 REQUIRED)
+if(PORTABLE_BUILD AND NOT WIN32)
+    # Build SDL2 from source as static library
+    include(FetchContent)
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_TEST OFF CACHE BOOL "" FORCE)
+    set(SDL2_DISABLE_SDL2MAIN ON CACHE BOOL "" FORCE)
+
+    # Disable everything we don't need — only video + events + GL
+    set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+    set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+    set(SDL_POWER OFF CACHE BOOL "" FORCE)
+    set(SDL_FILESYSTEM OFF CACHE BOOL "" FORCE)
+    set(SDL_LOCALE OFF CACHE BOOL "" FORCE)
+    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+
+    # Disable unused video backends (keep X11, Wayland, KMSDRM, Offscreen)
+    set(SDL_DIRECTFB OFF CACHE BOOL "" FORCE)
+    set(SDL_VIVANTE OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(sdl2
+        URL https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
+        URL_HASH SHA256=ac356ea55e8b9dd0b2d1fa27da40ef7e238267ccf9324704850d5d47375b48ea
+    )
+    FetchContent_MakeAvailable(sdl2)
+    # Static SDL2 target is SDL2-static
+else()
+    find_package(SDL2 REQUIRED)
+endif()
 find_package(OpenGL REQUIRED)
 
 # ImGui from submodule
@@ -36,8 +68,10 @@ target_include_directories(imgui_lib PUBLIC
     ${IMGUI_DIR}/backends
 )
 
-# Handle both modern (SDL2::SDL2) and legacy (SDL2_LIBRARIES) CMake SDL2
-if(TARGET SDL2::SDL2)
+# Handle SDL2 linking: portable (static from source) vs system (shared)
+if(PORTABLE_BUILD AND TARGET SDL2-static)
+    target_link_libraries(imgui_lib PUBLIC SDL2-static)
+elseif(TARGET SDL2::SDL2)
     target_link_libraries(imgui_lib PUBLIC SDL2::SDL2)
 else()
     target_include_directories(imgui_lib PUBLIC ${SDL2_INCLUDE_DIRS})
@@ -71,6 +105,7 @@ set(SOURCES
 
     # Geometry
     src/geometry/mesh_gen.cpp
+    src/geometry/obj_loader.cpp
 
     # Bench engine
     src/bench/bench.cpp
@@ -115,8 +150,9 @@ set(SOURCES
 
     # Demo
     src/demo/demo_camera.cpp
-    src/demo/demo_shaders.cpp
+    src/demo/shader_loader.cpp
     src/demo/demo_scene.cpp
+    src/demo/demo_tier_config.cpp
     src/demo/demo_runner.cpp
     src/demo/demo_ui.cpp
     src/demo/demo_export.cpp
@@ -128,16 +164,25 @@ set(SOURCES
     src/platform/hwinfo.cpp
     src/platform/gpu_select.cpp
     src/platform/logger.cpp
+    src/platform/data_path.cpp
+    src/platform/stb_image_impl.cpp
+    src/demo/demo_resources.cpp
 
     # ImGui backend
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 add_executable(gpu_benchmark ${SOURCES})
-target_include_directories(gpu_benchmark PRIVATE src)
+target_include_directories(gpu_benchmark PRIVATE src extern)
+
+if(PORTABLE_BUILD AND NOT WIN32)
+    target_compile_definitions(gpu_benchmark PRIVATE CB_STATIC_GL)
+endif()
 
 # --- SDL2 linking ---
-if(TARGET SDL2::SDL2)
+if(PORTABLE_BUILD AND TARGET SDL2-static)
+    target_link_libraries(gpu_benchmark PRIVATE SDL2-static imgui_lib)
+elseif(TARGET SDL2::SDL2)
     if(TARGET SDL2::SDL2main)
         target_link_libraries(gpu_benchmark PRIVATE SDL2::SDL2 SDL2::SDL2main imgui_lib)
     else()
@@ -161,6 +206,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     target_link_libraries(gpu_benchmark PRIVATE pthread)
 elseif(UNIX)
     target_link_libraries(gpu_benchmark PRIVATE dl pthread)
+    if(PORTABLE_BUILD AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_link_libraries(gpu_benchmark PRIVATE -static-libgcc -static-libstdc++)
+    endif()
 endif()
 
 if(WIN32)
@@ -177,3 +225,12 @@ endif()
 
 # --- Install ---
 install(TARGETS gpu_benchmark RUNTIME DESTINATION bin)
+install(DIRECTORY data/ DESTINATION share/gpu_benchmark/data
+        FILES_MATCHING
+        PATTERN "*.glsl"
+        PATTERN "*.vert"
+        PATTERN "*.frag"
+        PATTERN "*.comp"
+        PATTERN "*.tesc"
+        PATTERN "*.tese"
+        PATTERN "*.obj")

@@ -1,42 +1,59 @@
 #pragma once
 #include "renderer/renderer.h"
-#include "renderer/scoped_handle.h"
 #include "demo/demo_camera.h"
+#include "demo/material.h"
+#include "demo/tier_resource_view.h"
 #include <vector>
 
 // Demo tier levels matching GL capability
 enum class DemoTier {
-    Basic    = 1,  // GL 2.1: forward Blinn-Phong, no shadows
-    Enhanced = 2,  // GL 3.0+: shadow map, bloom
-    Quality  = 3,  // GL 3.3+: PCF shadows, SSS, multi-pass bloom
-    Ultra    = 4   // GL 4.3+: PBR, god rays, ACES
+    Basic    = 1,  // GL 2.1: forward Blinn-Phong, basic fog
+    Enhanced = 2,  // GL 3.0+: shadow map, SSAO, bloom
+    Quality  = 3,  // GL 3.3+: PCF, point lights, particles, DoF
+    Ultra    = 4   // GL 4.3+: PBR, compute particles, tessellation, vol fog
 };
 
-// Configuration for a single tier
+// Information about active rendering techniques (for UI overlay)
+struct TechniqueInfo {
+    const char* shading;
+    const char* shadows;
+    const char* lighting;
+    const char* ambient;
+    const char* postfx;
+    const char* particles;
+    const char* extras;
+    int object_count;
+    int estimated_draw_calls;
+};
+
+// Configuration for a single demo tier
 struct DemoTierConfig {
     DemoTier tier;
-    int terrain_resolution;     // vertices per side (48..128)
-    int shadow_map_size;        // 0 = no shadows
-    bool enable_bloom;
-    int bloom_passes;           // 0 = no bloom
-    bool use_pcf;               // T3+: 16-tap Poisson PCF
-    bool use_pbr;               // T4: Cook-Torrance
-    bool use_god_rays;          // T4: radial god rays
+
+    // Fur
+    int fur_shells;              // 16, 24, 48, 64
+    float fur_length;            // world-space fur length
+    float fur_density;           // strands per UV unit
+    float fur_thickness;         // strand radius factor
+
+    // Scene
+    float fog_density;
+
+    // Sky + normals
+    bool enable_sky;
+    bool enable_normal_maps;
+    float normal_map_strength;
+
+    // Scene enrichment
+    int rock_count;
+    int grass_count;
+    int particle_count;
+    bool enable_wind;
 };
 
 DemoTierConfig getTierConfig(DemoTier tier);
+TechniqueInfo getTierTechniqueInfo(DemoTier tier, int object_count);
 int maxSupportedTier(const Renderer& r);
-
-// Material types for city objects
-enum class MaterialType {
-    Terrain,    // dried grass / dirt
-    Building,   // concrete / brick
-    Foliage,    // tree canopy
-    Wood,       // trunks, fences
-    Stone,      // rocks, arches
-    Metal,      // street lamps
-    Water       // puddle
-};
 
 // A placed object in the scene
 struct SceneObject {
@@ -45,71 +62,75 @@ struct SceneObject {
     MaterialType material;
     Vec3 color;
     float specular;
+    Vec3 bounds_center;   // world-space bounding sphere center
+    float bounds_radius;  // world-space bounding sphere radius
+    bool vertex_wind;     // enable wind vertex displacement (grass only)
+    bool two_sided;       // disable backface culling for this object
+
+    SceneObject() : mesh(), transform(), material(MaterialType::Model),
+        color(0,0,0), specular(0), bounds_center(0,0,0), bounds_radius(0),
+        vertex_wind(false), two_sided(false) {}
 };
 
-// Procedural city scene — abandoned outpost with buildings, trees, rocks.
-// Camera follows a Catmull-Rom spline path through the town.
+// Frustum culling planes
+struct FrustumPlanes {
+    float planes[6][4]; // A,B,C,D for each plane
+};
+
+// Demo scene: OBJ model with fur, orbiting camera.
 class DemoScene {
 public:
     DemoScene();
     ~DemoScene();
 
-    // Non-copyable, non-movable (owns GPU resources via Renderer*)
     DemoScene(const DemoScene&) = delete;
     DemoScene& operator=(const DemoScene&) = delete;
     DemoScene(DemoScene&&) = delete;
     DemoScene& operator=(DemoScene&&) = delete;
 
-    bool setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h);
+    bool setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h,
+               const TierResourceView& resources);
     void renderFrame(Renderer* r, float t, float time, int viewport_w, int viewport_h);
     void cleanup(Renderer* r);
 
+    TechniqueInfo getTechniqueInfo() const;
+
 private:
-    Renderer* r_;  // stored during setup for RAII cleanup
+    Renderer* r_;
     DemoTier tier_;
     DemoTierConfig config_;
     CameraPath camera_;
+    TierResourceView res_;
 
-    // Scene objects (terrain, buildings, trees, rocks, lamps, fences, arches, water)
-    // Raw handles — cleaned up in cleanup()/destructor by iterating
-    std::vector<SceneObject> objects_;
-    int water_index_;           // index of water quad (-1 if none)
-    ScopedMesh screen_quad_;
+    // Scene objects
+    std::vector<SceneObject> opaque_objects_;
+    std::vector<SceneObject> cloud_objects_;
+    MeshHandle model_mesh_;        // fur target mesh (for shell rendering)
 
-    // Shaders
-    ScopedShader city_shader_;
-    ScopedShader shadow_shader_;
-    ScopedShader bloom_blur_shader_;
-    ScopedShader bloom_composite_shader_;
+    // Scene building
+    void buildScene(Renderer* r);
+    void placeModel(Renderer* r);
+    void placeGroundPlane(Renderer* r);
+    void placeRocks(Renderer* r);
+    void placeGrass(Renderer* r);
 
-    // City shader uniforms
-    int u_proj_, u_view_, u_model_;
-    int u_light_dir_, u_cam_pos_;
-    int u_fog_color_, u_fog_density_;
-    int u_time_;
-    int u_mat_color_, u_mat_spec_, u_alpha_;
-    int u_light_vp_, u_shadow_map_;
-    int u_roughness_, u_metallic_;
+    // Model transform (set in placeModel, used in renderFurPass)
+    Mat4 model_transform_;
 
-    // Shadow shader uniforms
-    int u_shd_lvp_, u_shd_model_;
+    // Frame context
+    struct FrameContext {
+        Mat4 proj, view;
+        Vec3 cam_pos, sun_dir;
+        FrustumPlanes frustum;
+        float time;
+        int tier_int;
+    };
 
-    // Bloom uniforms
-    int u_bl_tex_, u_bl_dir_, u_bl_threshold_;
-    int u_bc_scene_, u_bc_bloom_, u_bc_intensity_;
-    int u_bc_sun_pos_, u_bc_ray_density_, u_bc_ray_decay_;
-    int u_bc_time_;
-
-    // Render targets
-    ScopedRenderTarget shadow_rt_;
-    TextureHandle shadow_tex_;          // alias into shadow_rt_ depth, NOT owned
-    ScopedRenderTarget scene_rt_;
-    ScopedRenderTarget bloom_rt_a_, bloom_rt_b_;
-
-    void buildCity(Renderer* r);
-    void renderShadowPass(Renderer* r, const Mat4& light_vp);
-    void renderBloom(Renderer* r, float time);
-    Mat4 computeLightVP() const;
+    // Render passes
+    void renderSky(Renderer* r, const FrameContext& fc);
+    void renderOpaquePass(Renderer* r, const FrameContext& fc);
+    void renderFurPass(Renderer* r, const FrameContext& fc);
+    void renderParticlePass(Renderer* r, const FrameContext& fc);
 
     int viewport_w_, viewport_h_;
     bool initialized_;

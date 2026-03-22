@@ -103,6 +103,7 @@ public:
     virtual void setBlending(bool enable) = 0;
     virtual void setDepthTest(bool enable) = 0;
     virtual void setCullFace(bool enable) = 0;
+    virtual void setDepthMask(bool write) = 0;
 
     // GL state reset (call between tests for deterministic state)
     virtual void resetState() = 0;
@@ -133,6 +134,9 @@ public:
 
     // Bind a render target's color texture to a texture unit (for post-process chains).
     virtual void bindRenderTargetTexture(RenderTargetHandle rt, int unit) { (void)rt; (void)unit; }
+
+    // Float texture (RGBA16F) for compute shader output. Default: unsupported.
+    virtual TextureHandle createFloatTexture(int w, int h) { (void)w; (void)h; return INVALID_TEXTURE; }
 
     // GPU timer queries
     virtual bool   hasTimerQueries() const = 0;

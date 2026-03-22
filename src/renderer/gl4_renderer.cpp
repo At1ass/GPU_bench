@@ -359,6 +359,40 @@ ShaderHandle GL4Renderer::createTessShader(const char* vs, const char* tcs,
     return h;
 }
 
+void GL4Renderer::drawMeshAsPatches(MeshHandle h) {
+    if (!isValidMesh(h)) return;
+    const GLMesh& gm = meshes_[h];
+    if (gm.vao) {
+        glBindVertexArray(gm.vao);
+        glDrawElements(GL_PATCHES, gm.index_count, gm.index_type, nullptr);
+        glBindVertexArray(0);
+    }
+}
+
+TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
+    GLTex tex;
+    glGenTextures(1, &tex.id);
+    glBindTexture(GL_TEXTURE_2D, tex.id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    tex.valid = true;
+
+    TextureHandle handle;
+    if (!free_tex_slots_.empty()) {
+        handle = free_tex_slots_.back();
+        free_tex_slots_.pop_back();
+        textures_[handle] = tex;
+    } else {
+        handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
+        textures_.push_back(tex);
+    }
+    return handle;
+}
+
 // --- Image load/store ---
 
 void GL4Renderer::bindImageTexture(TextureHandle h, int unit,

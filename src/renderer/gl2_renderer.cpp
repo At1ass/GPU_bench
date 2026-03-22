@@ -162,7 +162,8 @@ void main() {
 // ---- Implementation ----
 
 GL2Renderer::GL2Renderer() : current_shader_(nullptr), initialized_(false),
-    core_profile_(false), viewport_x_(0), viewport_y_(0), viewport_w_(0), viewport_h_(0),
+    core_profile_(false), last_drawn_mesh_(INVALID_MESH),
+    viewport_x_(0), viewport_y_(0), viewport_w_(0), viewport_h_(0),
     blit_quad_(INVALID_MESH), blit_quad_ready_(false),
     has_blit_framebuffer_(false) {
     memset(&shader_3d_, 0, sizeof(shader_3d_));
@@ -671,6 +672,7 @@ void GL2Renderer::useShader(ShaderType type) {
         case ShaderType::Color2D:    current_shader_ = &shader_2d_color_; break;
         case ShaderType::Textured2D: current_shader_ = &shader_2d_tex_; break;
     }
+    last_drawn_mesh_ = INVALID_MESH; // shader change invalidates attrib state
     glUseProgram(current_shader_->program);
 }
 
@@ -702,6 +704,7 @@ ShaderHandle GL2Renderer::createCustomShader(const char* vs_src, const char* fs_
 void GL2Renderer::useCustomShader(ShaderHandle h) {
     if (!isValidShader(h)) return;
     current_shader_ = nullptr; // no built-in shader active
+    last_drawn_mesh_ = INVALID_MESH; // shader change invalidates attrib state
     glUseProgram(custom_shaders_[h]);
 }
 
@@ -805,40 +808,38 @@ void GL2Renderer::drawMesh(MeshHandle h) {
     if (!isValidMesh(h)) return;
     const GLMesh& gm = meshes_[h];
 
-    glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gm.ibo);
+    // Skip redundant vertex attrib setup when drawing the same mesh repeatedly
+    if (h != last_drawn_mesh_) {
+        glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gm.ibo);
 
-    GLsizei stride = sizeof(Vertex);
+        GLsizei stride = sizeof(Vertex);
 
-    // For custom shaders, use fixed attribute locations 0, 1, 2
-    GLint loc_pos = 0, loc_normal = 1, loc_uv = 2;
-    if (current_shader_) {
-        loc_pos    = current_shader_->a_pos;
-        loc_normal = current_shader_->a_normal;
-        loc_uv     = current_shader_->a_uv;
-    }
+        // For custom shaders, use fixed attribute locations 0, 1, 2
+        GLint loc_pos = 0, loc_normal = 1, loc_uv = 2;
+        if (current_shader_) {
+            loc_pos    = current_shader_->a_pos;
+            loc_normal = current_shader_->a_normal;
+            loc_uv     = current_shader_->a_uv;
+        }
 
-    if (loc_pos >= 0) {
-        glEnableVertexAttribArray(loc_pos);
-        glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, nullptr);
-    }
-    if (loc_normal >= 0) {
-        glEnableVertexAttribArray(loc_normal);
-        glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
-    }
-    if (loc_uv >= 0) {
-        glEnableVertexAttribArray(loc_uv);
-        glVertexAttribPointer(loc_uv, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
+        if (loc_pos >= 0) {
+            glEnableVertexAttribArray(loc_pos);
+            glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, nullptr);
+        }
+        if (loc_normal >= 0) {
+            glEnableVertexAttribArray(loc_normal);
+            glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
+        }
+        if (loc_uv >= 0) {
+            glEnableVertexAttribArray(loc_uv);
+            glVertexAttribPointer(loc_uv, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
+        }
+
+        last_drawn_mesh_ = h;
     }
 
     glDrawElements(GL_TRIANGLES, gm.index_count, gm.index_type, 0);
-
-    if (loc_pos >= 0)    glDisableVertexAttribArray(loc_pos);
-    if (loc_normal >= 0) glDisableVertexAttribArray(loc_normal);
-    if (loc_uv >= 0)     glDisableVertexAttribArray(loc_uv);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels, const unsigned char* pixels) {
@@ -877,6 +878,10 @@ void GL2Renderer::setCullFace(bool enable) {
         glDisable(GL_CULL_FACE);
 }
 
+void GL2Renderer::setDepthMask(bool write) {
+    glDepthMask(write ? GL_TRUE : GL_FALSE);
+}
+
 void GL2Renderer::resetState() {
     glDisable(GL_BLEND);
     glDisable(GL_SCISSOR_TEST);
@@ -889,6 +894,7 @@ void GL2Renderer::resetState() {
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     current_shader_ = nullptr;
+    last_drawn_mesh_ = INVALID_MESH;
     glViewport(viewport_x_, viewport_y_, viewport_w_, viewport_h_);
 }
 
@@ -897,6 +903,7 @@ void GL2Renderer::unbindState() {
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     current_shader_ = nullptr;
+    last_drawn_mesh_ = INVALID_MESH;
 }
 
 // --- Scissor ---

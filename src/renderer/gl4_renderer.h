@@ -27,6 +27,10 @@ public:
     void         setPatchVertices(int count) override;
     ShaderHandle createTessShader(const char* vs, const char* tcs,
                                   const char* tes, const char* fs) override;
+    void         drawMeshAsPatches(MeshHandle h) override;
+
+    // Float texture (RGBA16F)
+    TextureHandle createFloatTexture(int w, int h) override;
 
     // Image load/store
     void         bindImageTexture(TextureHandle h, int unit,

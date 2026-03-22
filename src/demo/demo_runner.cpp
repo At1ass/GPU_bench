@@ -4,6 +4,7 @@
 #include "bench/poll_callback.h"
 #include "platform/logger.h"
 #include "platform/timer.h"
+#include "imgui.h"
 #include <cmath>
 #include <algorithm>
 #include <numeric>
@@ -23,41 +24,90 @@ double DemoRunner::targetFPS(DemoTier tier) {
 DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
                                     DemoTier tier, int duration_sec,
                                     int render_w, int render_h,
+                                    int window_w, int window_h,
                                     PollCallback* poll_cb,
                                     DemoCallbacks* demo_cb,
-                                    int tier_index, int total_tiers) {
+                                    int tier_index, int total_tiers,
+                                    const TierResourceView& resources) {
     DemoTierResult result;
     result.tier = tier;
     result.target_fps = targetFPS(tier);
 
     DemoTierConfig tcfg = getTierConfig(tier);
-    Log::info("Demo: starting tier %d (%d seconds, terrain=%d, shadow=%d, bloom=%d%s%s%s)",
-              static_cast<int>(tier), duration_sec, tcfg.terrain_resolution,
-              tcfg.shadow_map_size, tcfg.bloom_passes,
-              tcfg.use_pcf ? ", PCF" : "",
-              tcfg.use_pbr ? ", PBR" : "",
-              tcfg.use_god_rays ? ", god rays" : "");
+    Log::info("Demo: starting tier %d (%d seconds, fur_shells=%d)",
+              static_cast<int>(tier), duration_sec,
+              tcfg.fur_shells);
 
     DemoScene scene;
-    if (!scene.setup(r, tier, render_w, render_h)) {
+    if (!scene.setup(r, tier, render_w, render_h, resources)) {
         Log::warn("Demo: tier %d setup failed, skipping", static_cast<int>(tier));
         return result;
+    }
+
+    TechniqueInfo tech_info = scene.getTechniqueInfo();
+
+    // Create FBO if render resolution differs from window
+    bool use_fbo = (render_w != window_w || render_h != window_h)
+                   && r->supportsRenderTargets();
+    RenderTargetHandle rt = INVALID_RENDER_TARGET;
+
+    if (use_fbo) {
+        rt = r->createRenderTarget(render_w, render_h);
+        if (rt == INVALID_RENDER_TARGET) {
+            use_fbo = false;
+            Log::warn("Demo: FBO creation failed for %dx%d, falling back to window size",
+                      render_w, render_h);
+            render_w = window_w;
+            render_h = window_h;
+        } else {
+            Log::info("Demo: rendering to FBO %dx%d", render_w, render_h);
+        }
     }
 
     ctx->setVSync(false);
     r->resetState();
 
-    // Warmup: 1 second
+    // Warmup: show loading screen, prime GPU with a few hidden scene renders
     {
+        bool headless_warmup = ctx->isHeadless();
         Timer warmup_timer;
         while (warmup_timer.elapsed_sec() < 1.0) {
             if (poll_cb && !poll_cb->onPoll()) {
                 scene.cleanup(r);
+                if (use_fbo) r->destroyRenderTarget(rt);
                 return result;
             }
+
+            // Render scene to FBO/backbuffer (primes GPU caches) but don't show it
+            if (use_fbo) r->bindRenderTarget(rt);
             r->setViewport(0, 0, render_w, render_h);
-            float t = static_cast<float>(warmup_timer.elapsed_sec() / (duration_sec + 1.0));
+            float t = 0.0f;  // Static camera during warmup (GPU priming only)
             scene.renderFrame(r, t, static_cast<float>(warmup_timer.elapsed_sec()), render_w, render_h);
+
+            // Show loading screen instead of the scene
+            if (!headless_warmup) {
+                if (use_fbo) r->bindRenderTarget(INVALID_RENDER_TARGET);
+                r->setViewport(0, 0, window_w, window_h);
+                r->clear(0.08f, 0.08f, 0.10f, 1.0f);
+
+                ctx->imguiNewFrame();
+                ImVec2 screen(static_cast<float>(window_w), static_cast<float>(window_h));
+                char msg[64];
+                snprintf(msg, sizeof(msg), "Preparing tier %d...", static_cast<int>(tier));
+                ImVec2 text_size = ImGui::CalcTextSize(msg);
+                ImGui::SetNextWindowPos(ImVec2((screen.x - text_size.x) * 0.5f,
+                                               (screen.y - text_size.y) * 0.5f));
+                ImGui::SetNextWindowSize(ImVec2(0, 0));
+                ImGui::Begin("##warmup", nullptr,
+                             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground |
+                             ImGuiWindowFlags_AlwaysAutoResize);
+                ImGui::TextColored(ImVec4(0.7f, 0.8f, 1.0f, 1.0f), "%s", msg);
+                ImGui::End();
+                ctx->imguiRender();
+                r->unbindState();
+            }
+
             ctx->swapBuffers();
         }
     }
@@ -66,13 +116,10 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     r->finish();
 
     // Measurement loop
-    // Interactive: game-style pipeline — no glFinish, swapBuffers is the only sync
-    // Headless: single glFinish per frame (no swap chain for back-pressure)
     bool headless = ctx->isHeadless();
     std::vector<double> frame_times;
     frame_times.reserve(duration_sec * 120);
 
-    // Ring buffer for UI graph
     std::vector<double> frame_history;
     frame_history.reserve(120);
 
@@ -84,7 +131,6 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     while (total_timer.elapsed_sec() < duration_sec) {
         if (poll_cb && !poll_cb->onPoll()) break;
 
-        // Frame time = wall clock between present/sync points
         double ms = frame_t.elapsed_ms();
         frame_t = Timer();
 
@@ -97,6 +143,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         prev_ms = ms;
         prev_fps = (ms > 0) ? 1000.0 / ms : 0;
 
+        if (use_fbo) r->bindRenderTarget(rt);
         r->setViewport(0, 0, render_w, render_h);
 
         float t = static_cast<float>(total_timer.elapsed_sec() / duration_sec);
@@ -104,16 +151,24 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
         scene.renderFrame(r, t, time, render_w, render_h);
 
-        // Demo overlay (1-frame delay — standard for games)
+        // Blit to screen before overlay
+        if (use_fbo) {
+            r->bindRenderTarget(INVALID_RENDER_TARGET);
+            r->setViewport(0, 0, window_w, window_h);
+            r->blitToScreen(rt, 0, 0, window_w, window_h);
+        }
+
+        // Demo overlay (drawn to screen, not FBO)
         float tier_progress = static_cast<float>(total_timer.elapsed_sec() / duration_sec);
         if (demo_cb) {
             if (!demo_cb->onDemoFrame(tier, tier_index, total_tiers,
-                                       tier_progress, prev_fps, prev_ms, frame_history)) {
+                                       tier_progress, prev_fps, prev_ms, frame_history,
+                                       &tech_info)) {
                 break;
             }
         }
 
-        // Sync: swapBuffers (interactive) or glFinish (headless)
+        // Sync
         r->unbindState();
         if (headless) {
             r->finish();
@@ -127,6 +182,10 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     }
 
     scene.cleanup(r);
+    if (use_fbo) {
+        r->destroyRenderTarget(rt);
+        Log::dbg("Demo: destroyed FBO");
+    }
     ctx->setVSync(true);
 
     // Compute stats
@@ -141,10 +200,8 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     result.avg_ms = sum / sorted.size();
     result.avg_fps = (result.avg_ms > 0) ? 1000.0 / result.avg_ms : 0;
 
-    // Min FPS = from max frame time
     result.min_fps = (sorted.back() > 0) ? 1000.0 / sorted.back() : 0;
 
-    // Percentile FPS (from frame time percentiles)
     auto percentile = [&](double p) -> double {
         double idx = p * (sorted.size() - 1);
         int lo = static_cast<int>(floor(idx));
@@ -156,8 +213,8 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
     double p99_ms = percentile(0.99);
     double p1_ms = percentile(0.01);
-    result.p99_fps = (p99_ms > 0) ? 1000.0 / p99_ms : 0; // 1% lows
-    result.p1_fps = (p1_ms > 0) ? 1000.0 / p1_ms : 0;    // 99% (near-best)
+    result.p99_fps = (p99_ms > 0) ? 1000.0 / p99_ms : 0;
+    result.p1_fps = (p1_ms > 0) ? 1000.0 / p1_ms : 0;
 
     result.normalized_score = result.avg_fps / result.target_fps;
     result.valid = true;
@@ -172,6 +229,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
                              const DemoConfig& cfg,
                              int render_w, int render_h,
+                             int window_w, int window_h,
                              PollCallback* poll_cb,
                              DemoCallbacks* demo_cb) {
     DemoResults results;
@@ -182,7 +240,6 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
     int max_tier = maxSupportedTier(*r);
     Log::info("Demo mode: max supported tier = %d", max_tier);
 
-    // Determine which tiers to run
     std::vector<DemoTier> tiers_to_run;
     if (cfg.tier_override > 0 && cfg.tier_override <= 4) {
         if (cfg.tier_override <= max_tier) {
@@ -192,7 +249,6 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
             tiers_to_run.push_back(static_cast<DemoTier>(max_tier));
         }
     } else {
-        // Run all supported tiers
         for (int t = 1; t <= max_tier; t++) {
             tiers_to_run.push_back(static_cast<DemoTier>(t));
         }
@@ -200,18 +256,53 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
 
     int total_tiers = static_cast<int>(tiers_to_run.size());
 
+    // Show loading screen before preparation
+    if (!ctx->isHeadless()) {
+        r->resetState();
+        r->setViewport(0, 0, window_w, window_h);
+        r->clear(0.08f, 0.08f, 0.10f, 1.0f);
+        ctx->imguiNewFrame();
+
+        ImVec2 screen(static_cast<float>(window_w), static_cast<float>(window_h));
+        const char* msg = "Initializing resources...";
+        ImVec2 text_size = ImGui::CalcTextSize(msg);
+        ImGui::SetNextWindowPos(ImVec2((screen.x - text_size.x) * 0.5f,
+                                       (screen.y - text_size.y) * 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(0, 0));
+        ImGui::Begin("##loading", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground |
+                     ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::TextColored(ImVec4(0.7f, 0.8f, 1.0f, 1.0f), "%s", msg);
+        ImGui::End();
+
+        ctx->imguiRender();
+        r->unbindState();
+        ctx->swapBuffers();
+    }
+
+    // Preparation stage: load all shared resources once
+    DemoResources resources;
+    if (!resources.prepare(r, max_tier)) {
+        Log::err("Demo: resource preparation failed");
+        return results;
+    }
+
     for (int i = 0; i < total_tiers; i++) {
         if (poll_cb && !poll_cb->onPoll()) break;
 
+        TierResourceView view = resources.viewForTier(tiers_to_run[i]);
         DemoTierResult tr = runTier(r, ctx, tiers_to_run[i], cfg.duration_per_tier,
-                                     render_w, render_h, poll_cb, demo_cb,
-                                     i, total_tiers);
+                                     render_w, render_h, window_w, window_h,
+                                     poll_cb, demo_cb,
+                                     i, total_tiers, view);
         if (tr.valid) {
             results.tiers.push_back(tr);
         }
     }
 
-    // Compute demo score: geometric mean of normalized scores × 10000
+    resources.destroy();
+
     if (!results.tiers.empty()) {
         double product = 1.0;
         int count = 0;

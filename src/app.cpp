@@ -463,7 +463,8 @@ void App::runDemo() {
 
         bool onDemoFrame(DemoTier tier, int tier_idx, int total,
                          float progress, double fps, double frame_ms,
-                         const std::vector<double>& history) override {
+                         const std::vector<double>& history,
+                         const TechniqueInfo* tech_info) override {
             if (headless) return app->onPoll();
 
             // Render UI overlay on top of scene (runner handles swapBuffers)
@@ -471,7 +472,7 @@ void App::runDemo() {
             app->renderer_->setDepthTest(false);
             app->renderer_->unbindState();
             ui->drawOverlay(app->ctx_.get(), gpu_name, tier, tier_idx, total,
-                           progress, fps, frame_ms, history);
+                           progress, fps, frame_ms, history, tech_info);
             app->processEvents();
             return app->running_;
         }
@@ -485,7 +486,9 @@ void App::runDemo() {
 
     DemoRunner runner;
     demo_results_ = runner.run(renderer_.get(), ctx_.get(), dcfg,
-                                render_w_, render_h_, this,
+                                render_w_, render_h_,
+                                window_w_, window_h_,
+                                this,
                                 config_.headless ? nullptr : &demo_cb);
 
     // Show results screen (interactive mode)
