@@ -130,6 +130,7 @@ protected:
         GLuint fbo = 0;
         GLuint color_tex = 0;
         GLuint depth_rb = 0;
+        GLuint depth_tex = 0;   // sampleable depth texture (0 = uses renderbuffer)
         int w = 0;
         int h = 0;
         bool valid = false;

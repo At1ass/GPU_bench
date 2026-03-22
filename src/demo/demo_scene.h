@@ -49,6 +49,23 @@ struct DemoTierConfig {
     int grass_count;
     int particle_count;
     bool enable_wind;
+
+    // Instanced grass (T2+)
+    int instanced_grass_count;  // T2+: number of instanced grass blades (0 = use batched)
+    float grass_area_size;      // area to scatter grass
+
+    // Shadow mapping (T2+)
+    bool enable_shadows;
+    int shadow_map_size;
+
+    // Bloom post-processing (T2+)
+    bool enable_bloom;
+    float bloom_strength;
+
+    // SSAO (T2+)
+    bool enable_ssao;
+    float ssao_radius;
+    float ssao_intensity;
 };
 
 DemoTierConfig getTierConfig(DemoTier tier);
@@ -120,17 +137,33 @@ private:
     // Frame context
     struct FrameContext {
         Mat4 proj, view;
+        Mat4 light_vp;
         Vec3 cam_pos, sun_dir;
         FrustumPlanes frustum;
         float time;
         int tier_int;
+        bool has_shadows;
+        bool has_bloom;
+        bool has_ssao;
     };
 
     // Render passes
+    void computeLightMatrix(FrameContext& fc);
+    void renderShadowPass(Renderer* r, const FrameContext& fc);
     void renderSky(Renderer* r, const FrameContext& fc);
     void renderOpaquePass(Renderer* r, const FrameContext& fc);
+    void renderGrassInstanced(Renderer* r, const FrameContext& fc);
     void renderFurPass(Renderer* r, const FrameContext& fc);
     void renderParticlePass(Renderer* r, const FrameContext& fc);
+
+    // T2+ SSAO
+    void renderSSAOPass(Renderer* r, const FrameContext& fc);
+    void renderSSAOBlur(Renderer* r, const FrameContext& fc);
+
+    // T2+ bloom post-processing
+    void renderSceneToFBO(Renderer* r, const FrameContext& fc);
+    void renderBloomPasses(Renderer* r, const FrameContext& fc);
+    void renderComposite(Renderer* r, const FrameContext& fc);
 
     int viewport_w_, viewport_h_;
     bool initialized_;

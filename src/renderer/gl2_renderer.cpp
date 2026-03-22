@@ -985,6 +985,7 @@ void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
     if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
     if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);
     if (fbo.depth_rb)  glDeleteRenderbuffers(1, &fbo.depth_rb);
+    if (fbo.depth_tex) glDeleteTextures(1, &fbo.depth_tex);
     fbo = GLFBO();
     free_rt_slots_.push_back(rt);
 }

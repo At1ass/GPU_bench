@@ -580,8 +580,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    // No compare mode: shaders read raw depth via sampler2D + texture()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, w, h, 0,
                  GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -620,6 +619,89 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
         render_targets_.push_back(rt);
     }
     return handle;
+}
+
+// --- Render target with sampleable depth texture (for SSAO) ---
+
+RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
+    if (!caps_.has_fbo) return INVALID_RENDER_TARGET;
+
+    GLFBO rt;
+    rt.w = w;
+    rt.h = h;
+
+    glGenFramebuffers(1, &rt.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt.fbo);
+
+    // Color texture (same as regular createRenderTarget)
+    glGenTextures(1, &rt.color_tex);
+    glBindTexture(GL_TEXTURE_2D, rt.color_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt.color_tex, 0);
+
+    // Depth texture (sampleable, instead of renderbuffer)
+    glGenTextures(1, &rt.depth_tex);
+    glBindTexture(GL_TEXTURE_2D, rt.depth_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0,
+                 GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rt.depth_tex, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    rt.depth_rb = 0; // no renderbuffer
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glDeleteFramebuffers(1, &rt.fbo);
+        glDeleteTextures(1, &rt.color_tex);
+        glDeleteTextures(1, &rt.depth_tex);
+        Log::err("FBO with depth tex not complete: 0x%X", status);
+        return INVALID_RENDER_TARGET;
+    }
+
+    rt.valid = true;
+
+    RenderTargetHandle handle;
+    if (!free_rt_slots_.empty()) {
+        handle = free_rt_slots_.back();
+        free_rt_slots_.pop_back();
+        render_targets_[handle] = rt;
+    } else {
+        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        render_targets_.push_back(rt);
+    }
+    return handle;
+}
+
+TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
+    if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
+    GLuint tex_id = render_targets_[rt].depth_tex;
+    if (!tex_id) return INVALID_TEXTURE;
+
+    // Wrap raw GL texture in a TextureHandle
+    GLTex gt;
+    gt.id = tex_id;
+    gt.valid = true;
+
+    TextureHandle th;
+    if (!free_tex_slots_.empty()) {
+        th = free_tex_slots_.back();
+        free_tex_slots_.pop_back();
+        textures_[th] = gt;
+    } else {
+        th = static_cast<TextureHandle>(textures_.size());
+        textures_.push_back(gt);
+    }
+    return th;
 }
 
 TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {

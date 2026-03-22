@@ -18,6 +18,9 @@ DemoResources::DemoResources()
     , grass_mesh_()
     , particle_mesh_()
     , model_bounding_radius_(0.0f)
+    , shadow_depth_tex_()
+    , shadow_map_size_(0)
+    , bloom_strength_(0.0f)
 {
 }
 
@@ -71,12 +74,12 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
                   10, static_cast<int>(rocks.vertices.size()));
     }
 
-    // Scattered grass
+    // Scattered grass (batched for T1, same blade shape as instanced version)
     {
-        MeshData grass = MeshGen::scatteredGrass(30, 8.0f, 0.15f, 0.06f, 251u);
+        MeshData grass = MeshGen::scatteredGrass(600, 20.0f, 0.30f, 0.10f, 251u);
         grass_mesh_ = scene_meshes_.add(grass);
-        Log::info("Resources: generated %d grass tufts (%d verts)",
-                  30, static_cast<int>(grass.vertices.size()));
+        Log::info("Resources: generated %d grass blades (%d verts)",
+                  600, static_cast<int>(grass.vertices.size()));
     }
 
     // Billboard particles
@@ -85,6 +88,14 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         particle_mesh_ = scene_meshes_.add(particles);
         Log::info("Resources: generated %d particle quads (%d verts)",
                   200, static_cast<int>(particles.vertices.size()));
+    }
+
+    // Grass blade template (for T2+ instancing)
+    {
+        MeshData blade = MeshGen::grassBlade();
+        grass_blade_mesh_ = scene_meshes_.add(blade);
+        Log::info("Resources: generated grass blade template (%d verts)",
+                  static_cast<int>(blade.vertices.size()));
     }
 
     return true;
@@ -189,12 +200,321 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         return true;
     }
 
-    // Tiers 2-4: shaders don't exist yet
+    if (tier == 2) {
+        // Island T2 shader (with shadow mapping)
+        {
+            std::string vs_str, fs_str;
+            if (r->isCoreProfile()) {
+                vs_str = ShaderLoader::load("gl3/island_t2_150.vert");
+                fs_str = ShaderLoader::load("gl3/island_t2_150.frag");
+            } else {
+                vs_str = ShaderLoader::load("gl3/island_t2.vert");
+                fs_str = ShaderLoader::load("gl3/island_t2.frag");
+            }
+            if (!island_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
+                Log::err("Resources: failed to create island shader (tier %d)", tier);
+                return false;
+            }
+        }
+
+        // Fur T2 shader (with shadow mapping)
+        {
+            std::string vs_str, fs_str;
+            if (r->isCoreProfile()) {
+                vs_str = ShaderLoader::load("gl3/fur_t2_150.vert");
+                fs_str = ShaderLoader::load("gl3/fur_t2_150.frag");
+            } else {
+                vs_str = ShaderLoader::load("gl3/fur_t2.vert");
+                fs_str = ShaderLoader::load("gl3/fur_t2.frag");
+            }
+            if (!fur_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
+                Log::err("Resources: failed to create fur shader (tier %d)", tier);
+                return false;
+            }
+        }
+
+        // Grass T2 instanced shader
+        {
+            std::string vs_str, fs_str;
+            if (r->isCoreProfile()) {
+                vs_str = ShaderLoader::load("gl3/grass_t2_150.vert");
+                fs_str = ShaderLoader::load("gl3/grass_t2_150.frag");
+            } else {
+                vs_str = ShaderLoader::load("gl3/grass_t2.vert");
+                fs_str = ShaderLoader::load("gl3/grass_t2.frag");
+            }
+            if (!grass_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+                Log::warn("Resources: failed to create grass T2 shader (non-critical)");
+            }
+        }
+
+        return true;
+    }
+
+    // Tiers 3-4: shaders don't exist yet
     Log::warn("Resources: tier %d shaders not implemented yet, reusing tier 1", tier);
     return false;
 }
 
-bool DemoResources::prepare(Renderer* r, int max_tier) {
+bool DemoResources::createShadowResources(Renderer* r) {
+    // Shadow depth shader
+    {
+        std::string vs_str, fs_str;
+        if (r->isCoreProfile()) {
+            vs_str = ShaderLoader::load("gl3/shadow_depth_150.vert");
+            fs_str = ShaderLoader::load("gl3/shadow_depth_150.frag");
+        } else {
+            vs_str = ShaderLoader::load("gl3/shadow_depth.vert");
+            fs_str = ShaderLoader::load("gl3/shadow_depth.frag");
+        }
+        if (!shadow_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+            Log::warn("Resources: failed to create shadow depth shader");
+            return false;
+        }
+    }
+
+    // Shadow depth render target (1024x1024)
+    shadow_map_size_ = 1024;
+    RenderTargetHandle srt = r->createDepthRenderTarget(shadow_map_size_, shadow_map_size_);
+    if (srt == INVALID_RENDER_TARGET) {
+        Log::warn("Resources: failed to create shadow depth FBO");
+        shadow_shader_.reset();
+        shadow_map_size_ = 0;
+        return false;
+    }
+    shadow_rt_.assign(r, srt);
+    shadow_depth_tex_ = r->getDepthTexture(srt);
+
+    Log::info("Resources: shadow map %dx%d created", shadow_map_size_, shadow_map_size_);
+    return true;
+}
+
+bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h) {
+    // Bloom extract shader
+    {
+        std::string vs_str, fs_str;
+        if (r->isCoreProfile()) {
+            vs_str = ShaderLoader::load("gl3/bloom_extract_150.vert");
+            fs_str = ShaderLoader::load("gl3/bloom_extract_150.frag");
+        } else {
+            vs_str = ShaderLoader::load("gl3/bloom_extract.vert");
+            fs_str = ShaderLoader::load("gl3/bloom_extract.frag");
+        }
+        if (!bloom_extract_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+            Log::warn("Resources: failed to create bloom extract shader");
+            return false;
+        }
+    }
+
+    // Bloom blur shader
+    {
+        std::string vs_str, fs_str;
+        if (r->isCoreProfile()) {
+            vs_str = ShaderLoader::load("gl3/bloom_blur_150.vert");
+            fs_str = ShaderLoader::load("gl3/bloom_blur_150.frag");
+        } else {
+            vs_str = ShaderLoader::load("gl3/bloom_blur.vert");
+            fs_str = ShaderLoader::load("gl3/bloom_blur.frag");
+        }
+        if (!bloom_blur_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+            Log::warn("Resources: failed to create bloom blur shader");
+            bloom_extract_shader_.reset();
+            return false;
+        }
+    }
+
+    // Bloom composite shader
+    {
+        std::string vs_str, fs_str;
+        if (r->isCoreProfile()) {
+            vs_str = ShaderLoader::load("gl3/bloom_composite_150.vert");
+            fs_str = ShaderLoader::load("gl3/bloom_composite_150.frag");
+        } else {
+            vs_str = ShaderLoader::load("gl3/bloom_composite.vert");
+            fs_str = ShaderLoader::load("gl3/bloom_composite.frag");
+        }
+        if (!bloom_composite_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+            Log::warn("Resources: failed to create bloom composite shader");
+            bloom_extract_shader_.reset();
+            bloom_blur_shader_.reset();
+            return false;
+        }
+    }
+
+    // Fullscreen quad mesh
+    {
+        MeshData qd = MeshGen::quad();
+        MeshHandle qh = r->createMesh(qd);
+        if (qh == MeshHandle()) {
+            Log::warn("Resources: failed to create fullscreen quad mesh");
+            bloom_extract_shader_.reset();
+            bloom_blur_shader_.reset();
+            bloom_composite_shader_.reset();
+            return false;
+        }
+        fullscreen_quad_.assign(r, qh);
+    }
+
+    // Scene FBO (full resolution, color + sampleable depth for SSAO)
+    {
+        RenderTargetHandle srt = r->createRenderTargetWithDepth(render_w, render_h);
+        if (srt == INVALID_RENDER_TARGET) {
+            Log::warn("Resources: failed to create scene FBO for bloom");
+            bloom_extract_shader_.reset();
+            bloom_blur_shader_.reset();
+            bloom_composite_shader_.reset();
+            fullscreen_quad_.reset();
+            return false;
+        }
+        scene_rt_.assign(r, srt);
+    }
+
+    // Bright extract FBO (half resolution, color only)
+    int bw = render_w / 2;
+    int bh = render_h / 2;
+    if (bw < 1) bw = 1;
+    if (bh < 1) bh = 1;
+
+    {
+        RenderTargetHandle brt = r->createRenderTarget(bw, bh);
+        if (brt == INVALID_RENDER_TARGET) {
+            Log::warn("Resources: failed to create bright FBO for bloom");
+            bloom_extract_shader_.reset();
+            bloom_blur_shader_.reset();
+            bloom_composite_shader_.reset();
+            fullscreen_quad_.reset();
+            scene_rt_.reset();
+            return false;
+        }
+        bright_rt_.assign(r, brt);
+    }
+
+    // Blur FBO (half resolution, color only)
+    {
+        RenderTargetHandle blrt = r->createRenderTarget(bw, bh);
+        if (blrt == INVALID_RENDER_TARGET) {
+            Log::warn("Resources: failed to create blur FBO for bloom");
+            bloom_extract_shader_.reset();
+            bloom_blur_shader_.reset();
+            bloom_composite_shader_.reset();
+            fullscreen_quad_.reset();
+            scene_rt_.reset();
+            bright_rt_.reset();
+            return false;
+        }
+        blur_rt_.assign(r, blrt);
+    }
+
+    bloom_strength_ = 0.3f;
+
+    Log::info("Resources: bloom FBOs created (scene %dx%d, bloom %dx%d)",
+              render_w, render_h, bw, bh);
+    return true;
+}
+
+bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h) {
+    // SSAO shader
+    {
+        std::string vs_str, fs_str;
+        if (r->isCoreProfile()) {
+            vs_str = ShaderLoader::load("gl3/ssao_150.vert");
+            fs_str = ShaderLoader::load("gl3/ssao_150.frag");
+        } else {
+            vs_str = ShaderLoader::load("gl3/ssao.vert");
+            fs_str = ShaderLoader::load("gl3/ssao.frag");
+        }
+        if (!ssao_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+            Log::warn("Resources: failed to create SSAO shader");
+            return false;
+        }
+    }
+
+    // SSAO blur shader
+    {
+        std::string vs_str, fs_str;
+        if (r->isCoreProfile()) {
+            vs_str = ShaderLoader::load("gl3/ssao_blur_150.vert");
+            fs_str = ShaderLoader::load("gl3/ssao_blur_150.frag");
+        } else {
+            vs_str = ShaderLoader::load("gl3/ssao_blur.vert");
+            fs_str = ShaderLoader::load("gl3/ssao_blur.frag");
+        }
+        if (!ssao_blur_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+            Log::warn("Resources: failed to create SSAO blur shader");
+            ssao_shader_.reset();
+            return false;
+        }
+    }
+
+    // SSAO FBO (half resolution for performance)
+    int sw = render_w / 2;
+    int sh = render_h / 2;
+    if (sw < 1) sw = 1;
+    if (sh < 1) sh = 1;
+
+    {
+        RenderTargetHandle srt = r->createRenderTarget(sw, sh);
+        if (srt == INVALID_RENDER_TARGET) {
+            Log::warn("Resources: failed to create SSAO FBO");
+            ssao_shader_.reset();
+            ssao_blur_shader_.reset();
+            return false;
+        }
+        ssao_rt_.assign(r, srt);
+    }
+
+    {
+        RenderTargetHandle brt = r->createRenderTarget(sw, sh);
+        if (brt == INVALID_RENDER_TARGET) {
+            Log::warn("Resources: failed to create SSAO blur FBO");
+            ssao_shader_.reset();
+            ssao_blur_shader_.reset();
+            ssao_rt_.reset();
+            return false;
+        }
+        ssao_blur_rt_.assign(r, brt);
+    }
+
+    // 4x4 noise texture for kernel rotation
+    {
+        unsigned char noise[4 * 4 * 3];
+        unsigned int seed = 42;
+        for (int i = 0; i < 4 * 4; i++) {
+            seed = seed * 1103515245u + 12345u;
+            noise[i * 3 + 0] = static_cast<unsigned char>((seed >> 16) & 0xFF);
+            seed = seed * 1103515245u + 12345u;
+            noise[i * 3 + 1] = static_cast<unsigned char>((seed >> 16) & 0xFF);
+            noise[i * 3 + 2] = 0; // Z component not needed
+        }
+        TextureHandle nt = r->createTexture(4, 4, 3, noise);
+        if (nt == INVALID_TEXTURE) {
+            Log::warn("Resources: failed to create SSAO noise texture");
+            ssao_shader_.reset();
+            ssao_blur_shader_.reset();
+            ssao_rt_.reset();
+            ssao_blur_rt_.reset();
+            return false;
+        }
+        ssao_noise_tex_.assign(r, nt);
+    }
+
+    // Get depth texture from scene FBO
+    scene_depth_tex_ = r->getRTDepthTexture(scene_rt_.get());
+    if (scene_depth_tex_ == INVALID_TEXTURE) {
+        Log::warn("Resources: scene FBO has no sampleable depth texture, SSAO disabled");
+        ssao_shader_.reset();
+        ssao_blur_shader_.reset();
+        ssao_rt_.reset();
+        ssao_blur_rt_.reset();
+        ssao_noise_tex_.reset();
+        return false;
+    }
+
+    Log::info("Resources: SSAO created (FBO %dx%d)", sw, sh);
+    return true;
+}
+
+bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_h) {
     if (prepared_) return true;
     renderer_ = r;
 
@@ -220,6 +540,21 @@ bool DemoResources::prepare(Renderer* r, int max_tier) {
     // Compile higher tier shaders (non-critical: fall back to tier 1)
     for (int t = 2; t <= max_tier && t <= MAX_TIERS; t++) {
         compileTierShaders(r, t);
+    }
+
+    // Create shadow resources for T2+ (non-critical: T2 falls back to unshadowed)
+    if (max_tier >= 2) {
+        createShadowResources(r);
+    }
+
+    // Create bloom resources for T2+ (non-critical: T2 falls back to no bloom)
+    if (max_tier >= 2 && render_w > 0 && render_h > 0) {
+        createBloomResources(r, render_w, render_h);
+    }
+
+    // Create SSAO resources for T2+ (non-critical, requires bloom's scene FBO with depth tex)
+    if (max_tier >= 2 && scene_rt_ && render_w > 0 && render_h > 0) {
+        createSSAOResources(r, render_w, render_h);
     }
 
     prepared_ = true;
@@ -258,6 +593,43 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
         view.fur_shader = &fur_shaders_[0];
     }
 
+    // T2+ shadow mapping resources
+    if (idx >= 1 && shadow_shader_ && shadow_rt_) {
+        view.shadow_shader = &shadow_shader_;
+        view.shadow_rt = shadow_rt_.get();
+        view.shadow_depth_tex = shadow_depth_tex_;
+        view.shadow_map_size = shadow_map_size_;
+    }
+
+    // T2+ bloom post-processing resources
+    if (idx >= 1 && bloom_extract_shader_ && bloom_blur_shader_
+        && bloom_composite_shader_ && scene_rt_ && bright_rt_ && blur_rt_) {
+        view.bloom_extract_shader = &bloom_extract_shader_;
+        view.bloom_blur_shader = &bloom_blur_shader_;
+        view.bloom_composite_shader = &bloom_composite_shader_;
+        view.fullscreen_quad = fullscreen_quad_.get();
+        view.scene_rt = scene_rt_.get();
+        view.bright_rt = bright_rt_.get();
+        view.blur_rt = blur_rt_.get();
+        view.bloom_strength = bloom_strength_;
+    }
+
+    // T2+ instanced grass resources
+    if (idx >= 1 && grass_shader_) {
+        view.grass_shader = &grass_shader_;
+        view.grass_blade_mesh = grass_blade_mesh_;
+    }
+
+    // T2+ SSAO resources
+    if (idx >= 1 && ssao_shader_ && ssao_blur_shader_ && ssao_rt_ && ssao_blur_rt_) {
+        view.ssao_shader = &ssao_shader_;
+        view.ssao_blur_shader = &ssao_blur_shader_;
+        view.ssao_rt = ssao_rt_.get();
+        view.ssao_blur_rt = ssao_blur_rt_.get();
+        view.ssao_noise_tex = ssao_noise_tex_.get();
+        view.scene_depth_tex = scene_depth_tex_;
+    }
+
     return view;
 }
 
@@ -275,6 +647,33 @@ void DemoResources::destroy() {
         fur_shaders_[i].reset();
     }
     particle_shader_.reset();
+
+    // Shadow resources
+    shadow_shader_.reset();
+    shadow_rt_.reset();
+    shadow_depth_tex_ = TextureHandle();
+    shadow_map_size_ = 0;
+
+    // Bloom resources
+    bloom_extract_shader_.reset();
+    bloom_blur_shader_.reset();
+    bloom_composite_shader_.reset();
+    fullscreen_quad_.reset();
+    scene_rt_.reset();
+    bright_rt_.reset();
+    blur_rt_.reset();
+    bloom_strength_ = 0.0f;
+
+    // Grass resources
+    grass_shader_.reset();
+
+    // SSAO resources
+    ssao_shader_.reset();
+    ssao_blur_shader_.reset();
+    ssao_rt_.reset();
+    ssao_blur_rt_.reset();
+    ssao_noise_tex_.reset();
+    scene_depth_tex_ = TextureHandle();
 
     prepared_ = false;
     renderer_ = nullptr;

@@ -283,7 +283,7 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
 
     // Preparation stage: load all shared resources once
     DemoResources resources;
-    if (!resources.prepare(r, max_tier)) {
+    if (!resources.prepare(r, max_tier, render_w, render_h)) {
         Log::err("Demo: resource preparation failed");
         return results;
     }

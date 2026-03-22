@@ -60,4 +60,9 @@ namespace MeshGen {
     // Each particle is a quad (4 verts, 6 indices).
     // Seed positions stored in the normal attribute.
     MeshData particleQuads(int count, float area_size, float height_range, unsigned int seed);
+
+    // Single grass blade template for instanced rendering.
+    // A tapered quad: wide at base (y=0), pointed at tip (y=1).
+    // Centered at origin, unit height. Instance shader scales and places.
+    MeshData grassBlade();
 }

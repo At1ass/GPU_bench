@@ -18,7 +18,7 @@ public:
     DemoResources(DemoResources&&) = delete;
     DemoResources& operator=(DemoResources&&) = delete;
 
-    bool prepare(Renderer* r, int max_tier);
+    bool prepare(Renderer* r, int max_tier, int render_w, int render_h);
     TierResourceView viewForTier(DemoTier tier);
     void destroy();
 
@@ -51,8 +51,39 @@ private:
     // Particle shader (shared, T1+)
     ShaderProgram particle_shader_;
 
+    // T2+ shadow mapping
+    ShaderProgram shadow_shader_;
+    ScopedRenderTarget shadow_rt_;
+    TextureHandle shadow_depth_tex_;
+    int shadow_map_size_;
+
+    // T2+ bloom post-processing
+    ShaderProgram bloom_extract_shader_;
+    ShaderProgram bloom_blur_shader_;
+    ShaderProgram bloom_composite_shader_;
+    ScopedMesh fullscreen_quad_;
+    ScopedRenderTarget scene_rt_;
+    ScopedRenderTarget bright_rt_;
+    ScopedRenderTarget blur_rt_;
+    float bloom_strength_;
+
+    // T2+ instanced grass
+    ShaderProgram grass_shader_;
+    MeshHandle grass_blade_mesh_;
+
+    // T2+ SSAO
+    ShaderProgram ssao_shader_;
+    ShaderProgram ssao_blur_shader_;
+    ScopedRenderTarget ssao_rt_;
+    ScopedRenderTarget ssao_blur_rt_;
+    ScopedTexture ssao_noise_tex_;
+    TextureHandle scene_depth_tex_;  // obtained from scene_rt_ via getRTDepthTexture
+
     bool loadSharedMeshes(Renderer* r);
     bool loadSharedTextures(Renderer* r);
     bool compileSkyShader(Renderer* r);
     bool compileTierShaders(Renderer* r, int tier);
+    bool createShadowResources(Renderer* r);
+    bool createBloomResources(Renderer* r, int render_w, int render_h);
+    bool createSSAOResources(Renderer* r, int render_w, int render_h);
 };

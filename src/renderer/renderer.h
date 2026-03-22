@@ -132,6 +132,10 @@ public:
     virtual RenderTargetHandle createDepthRenderTarget(int w, int h) { (void)w; (void)h; return INVALID_RENDER_TARGET; }
     virtual TextureHandle      getDepthTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
 
+    // Render target with sampleable depth texture (for SSAO etc). Default: falls back to regular RT.
+    virtual RenderTargetHandle createRenderTargetWithDepth(int w, int h) { return createRenderTarget(w, h); }
+    virtual TextureHandle      getRTDepthTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
+
     // Bind a render target's color texture to a texture unit (for post-process chains).
     virtual void bindRenderTargetTexture(RenderTargetHandle rt, int unit) { (void)rt; (void)unit; }
 

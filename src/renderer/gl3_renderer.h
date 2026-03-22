@@ -21,6 +21,10 @@ public:
     RenderTargetHandle createDepthRenderTarget(int w, int h) override;
     TextureHandle      getDepthTexture(RenderTargetHandle rt) override;
 
+    // Render target with sampleable depth texture (for SSAO)
+    RenderTargetHandle createRenderTargetWithDepth(int w, int h) override;
+    TextureHandle      getRTDepthTexture(RenderTargetHandle rt) override;
+
     // GL3Features implementation
     void drawMeshInstanced(MeshHandle h, int instance_count) override;
     RenderTargetHandle createMRTRenderTarget(int w, int h, int num_attachments) override;

@@ -1,5 +1,6 @@
 #include "demo/demo_scene.h"
 #include "demo/shader_loader.h"
+#include "renderer/features.h"
 #include "geometry/mesh_gen.h"
 #include "platform/logger.h"
 #include <cmath>
@@ -172,6 +173,9 @@ void DemoScene::placeRocks(Renderer* r) {
 
 void DemoScene::placeGrass(Renderer* r) {
     (void)r;
+    // T2+ uses instanced grass rendering instead
+    if (config_.instanced_grass_count > 0) return;
+
     if (res_.grass_mesh == MeshHandle()) return;
 
     SceneObject grass;
@@ -238,6 +242,48 @@ TechniqueInfo DemoScene::getTechniqueInfo() const {
 }
 
 // ============================================================
+// computeLightMatrix: orthographic projection from sun direction
+// ============================================================
+
+void DemoScene::computeLightMatrix(FrameContext& fc) {
+    Vec3 light_pos = fc.sun_dir * 15.0f;
+    Vec3 up(0.0f, 0.0f, 1.0f);
+    if (fabsf(Vec3::dot(fc.sun_dir, up)) > 0.99f)
+        up = Vec3(1.0f, 0.0f, 0.0f);
+    Mat4 light_view = Mat4::lookAt(light_pos, Vec3(0, 0, 0), up);
+    Mat4 light_proj = Mat4::ortho(-6.0f, 6.0f, -6.0f, 6.0f, 0.1f, 30.0f);
+    fc.light_vp = light_proj * light_view;
+}
+
+// ============================================================
+// renderShadowPass: depth-only from sun perspective
+// ============================================================
+
+void DemoScene::renderShadowPass(Renderer* r, const FrameContext& fc) {
+    if (!res_.shadow_shader || res_.shadow_rt == INVALID_RENDER_TARGET) return;
+
+    r->bindRenderTarget(res_.shadow_rt);
+    r->setViewport(0, 0, res_.shadow_map_size, res_.shadow_map_size);
+    r->clear(1.0f, 1.0f, 1.0f, 1.0f);
+    r->setDepthTest(true);
+    r->setDepthMask(true);
+    r->setCullFace(true);
+
+    res_.shadow_shader->use();
+    res_.shadow_shader->setMat4("u_light_vp", fc.light_vp);
+
+    // Render all opaque objects into shadow map
+    // (model base mesh is already in opaque_objects_, so fur also casts shadow)
+    for (size_t i = 0; i < opaque_objects_.size(); i++) {
+        const SceneObject& obj = opaque_objects_[i];
+        res_.shadow_shader->setMat4("u_model", obj.transform);
+        r->drawMesh(obj.mesh);
+    }
+
+    r->bindRenderTarget(INVALID_RENDER_TARGET);
+}
+
+// ============================================================
 // renderSky
 // ============================================================
 
@@ -290,6 +336,16 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
     res_.island_shader->set2f("u_viewport_size",
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
+    // Shadow uniforms (T2+)
+    if (fc.has_shadows) {
+        res_.island_shader->setMat4("u_light_vp", fc.light_vp);
+        r->bindTextureUnit(3, res_.shadow_depth_tex);
+        res_.island_shader->set1i("u_shadow_map", 3);
+        res_.island_shader->set1f("u_has_shadow", 1.0f);
+    } else {
+        res_.island_shader->set1f("u_has_shadow", 0.0f);
+    }
+
     for (size_t i = 0; i < opaque_objects_.size(); i++) {
         const SceneObject& obj = opaque_objects_[i];
         if (!sphereInFrustum(fc.frustum, obj.bounds_center, obj.bounds_radius))
@@ -306,6 +362,59 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
         r->drawMesh(obj.mesh);
         if (obj.two_sided) r->setCullFace(true);
     }
+}
+
+// ============================================================
+// renderGrassInstanced: T2+ instanced grass blades
+// ============================================================
+
+void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
+    if (!res_.grass_shader || res_.grass_blade_mesh == MeshHandle()) return;
+    if (config_.instanced_grass_count <= 0) return;
+
+    GL3Features* g3 = r->features<GL3Features>();
+    if (!g3 || !g3->hasInstancing()) return;
+
+    res_.grass_shader->use();
+    res_.grass_shader->setMat4("u_proj", fc.proj);
+    res_.grass_shader->setMat4("u_view", fc.view);
+    res_.grass_shader->setMat4("u_model", Mat4());
+    res_.grass_shader->set3f("u_light_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
+    res_.grass_shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
+    res_.grass_shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
+    res_.grass_shader->set1f("u_fog_density", config_.fog_density);
+    res_.grass_shader->set1f("u_time", fc.time);
+    res_.grass_shader->set1i("u_grass_count", config_.instanced_grass_count);
+    res_.grass_shader->set1f("u_area_size", config_.grass_area_size);
+
+    // Wind (same as fur)
+    if (config_.enable_wind) {
+        float wind_x = sinf(fc.time * 0.7f) * 1.8f;
+        float wind_z = cosf(fc.time * 0.5f) * 1.2f;
+        res_.grass_shader->set3f("u_wind_dir", wind_x, 0.0f, wind_z);
+    } else {
+        res_.grass_shader->set3f("u_wind_dir", 0.0f, 0.0f, 0.0f);
+    }
+
+    // Shadow
+    if (fc.has_shadows) {
+        res_.grass_shader->setMat4("u_light_vp", fc.light_vp);
+        r->bindTextureUnit(3, res_.shadow_depth_tex);
+        res_.grass_shader->set1i("u_shadow_map", 3);
+        res_.grass_shader->set1f("u_has_shadow", 1.0f);
+    } else {
+        res_.grass_shader->set1f("u_has_shadow", 0.0f);
+    }
+
+    r->setDepthTest(true);
+    r->setDepthMask(true);
+    r->setBlending(true);   // for tip alpha fade
+    r->setCullFace(false);  // grass visible from both sides
+
+    g3->drawMeshInstanced(res_.grass_blade_mesh, config_.instanced_grass_count);
+
+    r->setBlending(false);
+    r->setCullFace(true);
 }
 
 // ============================================================
@@ -336,6 +445,16 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
     res_.fur_shader->set2f("u_viewport_size",
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
+    // Shadow uniforms (T2+)
+    if (fc.has_shadows) {
+        res_.fur_shader->setMat4("u_light_vp", fc.light_vp);
+        r->bindTextureUnit(3, res_.shadow_depth_tex);
+        res_.fur_shader->set1i("u_shadow_map", 3);
+        res_.fur_shader->set1f("u_has_shadow", 1.0f);
+    } else {
+        res_.fur_shader->set1f("u_has_shadow", 0.0f);
+    }
+
     // Fur strand texture: unit 0
     r->bindTextureUnit(0, res_.fur_tex);
     res_.fur_shader->set1i("u_fur_tex", 0);
@@ -363,10 +482,22 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
     // Shell 0 is the base mesh (already rendered in opaque pass) -- skip it.
     // Shells 1..N-1 are the fur layers, rendered inner to outer.
     int num_shells = config_.fur_shells;
-    for (int i = 1; i < num_shells; i++) {
-        float shell_index = static_cast<float>(i) / static_cast<float>(num_shells - 1);
-        res_.fur_shader->set1f("u_shell_index", shell_index);
-        r->drawMesh(model_mesh_);
+
+    // Check for instancing support (T2+ with GL3Features)
+    GL3Features* g3 = r->features<GL3Features>();
+    bool use_instancing = (tier_ >= DemoTier::Enhanced) && g3 && g3->hasInstancing();
+
+    if (use_instancing) {
+        res_.fur_shader->set1i("u_use_instancing", 1);
+        res_.fur_shader->set1i("u_fur_shells", num_shells);
+        g3->drawMeshInstanced(model_mesh_, num_shells - 1);
+    } else {
+        res_.fur_shader->set1i("u_use_instancing", 0);
+        for (int i = 1; i < num_shells; i++) {
+            float shell_index = static_cast<float>(i) / static_cast<float>(num_shells - 1);
+            res_.fur_shader->set1f("u_shell_index", shell_index);
+            r->drawMesh(model_mesh_);
+        }
     }
 
     r->setBlending(false);
@@ -413,6 +544,14 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     fc.tier_int = static_cast<int>(tier_);
     fc.time = time;
     fc.sun_dir = normalizeSafe(SUN_DIR_RAW);
+    fc.has_shadows = config_.enable_shadows && res_.shadow_shader != nullptr
+                     && res_.shadow_rt != INVALID_RENDER_TARGET;
+    fc.has_bloom = config_.enable_bloom
+                   && res_.bloom_extract_shader != nullptr
+                   && res_.scene_rt != INVALID_RENDER_TARGET;
+    fc.has_ssao = config_.enable_ssao
+                  && res_.ssao_shader != nullptr
+                  && res_.ssao_rt != INVALID_RENDER_TARGET;
 
     // Camera: Catmull-Rom spline path
     fc.cam_pos = camera_.getPosition(t);
@@ -424,20 +563,202 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     Mat4 vp = fc.proj * fc.view;
     fc.frustum = extractFrustum(vp);
 
-    r->setViewport(0, 0, viewport_w, viewport_h);
-    r->clear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f);
-    r->setDepthTest(true);
-    r->setCullFace(true);
+    if (fc.has_bloom) {
+        // T2+ pipeline: shadow -> scene FBO -> bloom -> composite
+        if (fc.has_shadows) {
+            computeLightMatrix(fc);
+            renderShadowPass(r, fc);
+        }
+        renderSceneToFBO(r, fc);
+        if (fc.has_ssao) {
+            renderSSAOPass(r, fc);
+            renderSSAOBlur(r, fc);
+        }
+        renderBloomPasses(r, fc);
+        renderComposite(r, fc);
+    } else {
+        // T1 pipeline (unchanged)
+        if (fc.has_shadows) {
+            computeLightMatrix(fc);
+            renderShadowPass(r, fc);
+        }
 
-    // Sky + opaque geometry + fur + particles
-    renderSky(r, fc);
-    renderOpaquePass(r, fc);
-    renderFurPass(r, fc);
-    renderParticlePass(r, fc);
+        r->setViewport(0, 0, viewport_w, viewport_h);
+        r->clear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f);
+        r->setDepthTest(true);
+        r->setCullFace(true);
+
+        renderSky(r, fc);
+        renderOpaquePass(r, fc);
+        renderGrassInstanced(r, fc);
+        renderFurPass(r, fc);
+        renderParticlePass(r, fc);
+    }
 
     // Restore state
     r->setDepthTest(true);
     r->setCullFace(true);
     r->setBlending(false);
     r->setColorMask(true, true, true, true);
+}
+
+// ============================================================
+// renderSceneToFBO: render full scene into scene_rt for bloom
+// ============================================================
+
+void DemoScene::renderSceneToFBO(Renderer* r, const FrameContext& fc) {
+    r->bindRenderTarget(res_.scene_rt);
+    r->setViewport(0, 0, viewport_w_, viewport_h_);
+    r->clear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f);
+    r->setDepthTest(true);
+    r->setCullFace(true);
+
+    renderSky(r, fc);
+    renderOpaquePass(r, fc);
+    renderGrassInstanced(r, fc);
+    renderFurPass(r, fc);
+    renderParticlePass(r, fc);
+
+    r->bindRenderTarget(INVALID_RENDER_TARGET);
+}
+
+// ============================================================
+// renderSSAOPass: compute ambient occlusion from scene depth
+// ============================================================
+
+void DemoScene::renderSSAOPass(Renderer* r, const FrameContext& fc) {
+    r->bindRenderTarget(res_.ssao_rt);
+    r->setViewport(0, 0, viewport_w_ / 2, viewport_h_ / 2);
+    r->clear(1.0f, 1.0f, 1.0f, 1.0f);  // white = no occlusion
+    r->setDepthTest(false);
+    r->setCullFace(false);
+
+    res_.ssao_shader->use();
+
+    // Bind depth texture from scene FBO
+    r->bindTextureUnit(0, res_.scene_depth_tex);
+    res_.ssao_shader->set1i("u_depth_tex", 0);
+
+    // Bind noise texture
+    r->bindTextureUnit(1, res_.ssao_noise_tex);
+    res_.ssao_shader->set1i("u_noise_tex", 1);
+
+    // Projection parameters (perspective: fov=60, near=0.1, far=50)
+    float fov_rad = 60.0f * 3.14159265f / 180.0f;
+    float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
+    res_.ssao_shader->set2f("u_screen_size",
+                            static_cast<float>(viewport_w_),
+                            static_cast<float>(viewport_h_));
+    res_.ssao_shader->set1f("u_near", 0.1f);
+    res_.ssao_shader->set1f("u_far", 50.0f);
+    res_.ssao_shader->set1f("u_aspect", aspect);
+    res_.ssao_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
+    res_.ssao_shader->set1f("u_radius", config_.ssao_radius);
+    res_.ssao_shader->set1f("u_bias", 0.025f);
+    res_.ssao_shader->set1f("u_intensity", config_.ssao_intensity);
+
+    r->drawMesh(res_.fullscreen_quad);
+
+    r->bindRenderTarget(INVALID_RENDER_TARGET);
+}
+
+// ============================================================
+// renderSSAOBlur: blur SSAO to smooth noise artifacts
+// ============================================================
+
+void DemoScene::renderSSAOBlur(Renderer* r, const FrameContext& fc) {
+    (void)fc;
+    r->bindRenderTarget(res_.ssao_blur_rt);
+    r->setViewport(0, 0, viewport_w_ / 2, viewport_h_ / 2);
+    r->setDepthTest(false);
+    r->setCullFace(false);
+
+    res_.ssao_blur_shader->use();
+
+    r->bindRenderTargetTexture(res_.ssao_rt, 0);
+    res_.ssao_blur_shader->set1i("u_ssao_tex", 0);
+    res_.ssao_blur_shader->set2f("u_texel_size",
+                                 2.0f / static_cast<float>(viewport_w_),
+                                 2.0f / static_cast<float>(viewport_h_));
+
+    r->drawMesh(res_.fullscreen_quad);
+
+    r->bindRenderTarget(INVALID_RENDER_TARGET);
+}
+
+// ============================================================
+// renderBloomPasses: extract bright, blur H, blur V (ping-pong)
+// ============================================================
+
+void DemoScene::renderBloomPasses(Renderer* r, const FrameContext& fc) {
+    (void)fc;
+    int bw = viewport_w_ / 2;
+    int bh = viewport_h_ / 2;
+    if (bw < 1) bw = 1;
+    if (bh < 1) bh = 1;
+
+    r->setDepthTest(false);
+    r->setBlending(false);
+    r->setCullFace(false);
+
+    // Extract bright pixels
+    r->bindRenderTarget(res_.bright_rt);
+    r->setViewport(0, 0, bw, bh);
+    res_.bloom_extract_shader->use();
+    r->bindRenderTargetTexture(res_.scene_rt, 0);
+    res_.bloom_extract_shader->set1i("u_scene_tex", 0);
+    res_.bloom_extract_shader->set1f("u_threshold", 0.8f);
+    r->drawMesh(res_.fullscreen_quad);
+
+    // Horizontal blur -> blur_rt
+    r->bindRenderTarget(res_.blur_rt);
+    res_.bloom_blur_shader->use();
+    r->bindRenderTargetTexture(res_.bright_rt, 0);
+    res_.bloom_blur_shader->set1i("u_tex", 0);
+    res_.bloom_blur_shader->set1f("u_horizontal", 1.0f);
+    res_.bloom_blur_shader->set2f("u_texel_size", 1.0f / static_cast<float>(bw),
+                                                   1.0f / static_cast<float>(bh));
+    r->drawMesh(res_.fullscreen_quad);
+
+    // Vertical blur -> bright_rt (ping-pong back)
+    r->bindRenderTarget(res_.bright_rt);
+    r->bindRenderTargetTexture(res_.blur_rt, 0);
+    res_.bloom_blur_shader->set1f("u_horizontal", 0.0f);
+    r->drawMesh(res_.fullscreen_quad);
+
+    r->bindRenderTarget(INVALID_RENDER_TARGET);
+    r->setCullFace(true);
+}
+
+// ============================================================
+// renderComposite: combine scene + bloom + vignette + color grade
+// ============================================================
+
+void DemoScene::renderComposite(Renderer* r, const FrameContext& fc) {
+    r->setViewport(0, 0, viewport_w_, viewport_h_);
+    r->setDepthTest(false);
+    r->setCullFace(false);
+
+    res_.bloom_composite_shader->use();
+    r->bindRenderTargetTexture(res_.scene_rt, 0);
+    res_.bloom_composite_shader->set1i("u_scene_tex", 0);
+    r->bindRenderTargetTexture(res_.bright_rt, 1);
+    res_.bloom_composite_shader->set1i("u_bloom_tex", 1);
+    res_.bloom_composite_shader->set1f("u_bloom_strength", res_.bloom_strength);
+    res_.bloom_composite_shader->set2f("u_viewport_size",
+        static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
+
+    // SSAO: bind blurred AO texture
+    if (fc.has_ssao) {
+        r->bindRenderTargetTexture(res_.ssao_blur_rt, 2);
+        res_.bloom_composite_shader->set1i("u_ssao_tex", 2);
+        res_.bloom_composite_shader->set1f("u_has_ssao", 1.0f);
+    } else {
+        res_.bloom_composite_shader->set1f("u_has_ssao", 0.0f);
+    }
+
+    r->drawMesh(res_.fullscreen_quad);
+
+    r->setDepthTest(true);
+    r->setCullFace(true);
 }

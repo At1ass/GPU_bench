@@ -559,8 +559,8 @@ MeshData MeshGen::scatteredGrass(int count, float area_size, float blade_height,
 
     float ground_y = -1.0f;
 
-    for (int tuft = 0; tuft < count; tuft++) {
-        // Random position, avoid center
+    for (int i = 0; i < count; i++) {
+        // Random position, avoid center (bunny area)
         float px, pz, dist2;
         do {
             px = (rng.next() - 0.5f) * area_size;
@@ -568,60 +568,56 @@ MeshData MeshGen::scatteredGrass(int count, float area_size, float blade_height,
             dist2 = px * px + pz * pz;
         } while (dist2 < 0.49f);
 
-        // Random variation per tuft
-        float bh = blade_height * (0.7f + 0.6f * rng.next());
+        // Fade out near center
+        float dist = sqrtf(dist2);
+        float vis = dist < 0.6f ? 0.0f : (dist < 1.2f ? (dist - 0.6f) / 0.6f : 1.0f);
+
+        // Random variation per blade
+        float bh = blade_height * (0.8f + 0.5f * rng.next()) * vis;
         float bw = blade_width * (0.8f + 0.4f * rng.next());
+        if (bh < 0.001f) continue;
 
-        // 3 crossed blades rotated 60 degrees apart
-        for (int q = 0; q < 3; q++) {
-            float angle = static_cast<float>(q) * PI / 3.0f + rng.next() * 0.5f;
-            float cs = cosf(angle);
-            float sn = sinf(angle);
+        // Random rotation
+        float angle = rng.next() * PI * 2.0f;
+        float cs = cosf(angle);
+        float sn = sinf(angle);
 
-            float dx = cs * bw * 0.5f;
-            float dz = sn * bw * 0.5f;
+        // Slight curve offset for mid and tip
+        float curve_z = 0.05f * bh;
 
-            // Tapered blade: wide at base, pointed at tip
-            float tip_taper = 0.1f; // tip is 10% of base width
+        // 5 vertices: bottom-left, bottom-right, mid-left, mid-right, tip
+        // Same shape as grassBlade() template
+        unsigned int base = static_cast<unsigned int>(result.vertices.size());
+        Vec3 blade_normal(0.0f, 1.0f, 0.0f);
 
-            unsigned int base = static_cast<unsigned int>(result.vertices.size());
+        // Local positions (before rotation)
+        float hw = bw * 0.5f;      // half-width at base
+        float mw = hw * 0.6f;      // half-width at mid
 
-            Vertex v0, v1, v2, v3;
-            // Normal perpendicular to blade face
-            Vec3 blade_normal = Vec3(-sn, 0.0f, cs).normalized();
+        struct LP { float x, y, z; float u, v; };
+        LP locals[5] = {
+            { -hw, 0.0f,       0.0f,              0.0f, 0.0f },  // bottom-left
+            {  hw, 0.0f,       0.0f,              1.0f, 0.0f },  // bottom-right
+            { -mw, bh * 0.5f, curve_z,            0.2f, 0.5f },  // mid-left
+            {  mw, bh * 0.5f, curve_z,            0.8f, 0.5f },  // mid-right
+            { 0.0f, bh,       curve_z * 1.6f,     0.5f, 1.0f },  // tip
+        };
 
-            // Bottom-left (full width)
-            v0.pos = Vec3(px - dx, ground_y, pz - dz);
-            v0.normal = blade_normal;
-            v0.uv = Vec2(0.0f, 0.0f);
-
-            // Bottom-right (full width)
-            v1.pos = Vec3(px + dx, ground_y, pz + dz);
-            v1.normal = blade_normal;
-            v1.uv = Vec2(1.0f, 0.0f);
-
-            // Top-right (tapered)
-            v2.pos = Vec3(px + dx * tip_taper, ground_y + bh, pz + dz * tip_taper);
-            v2.normal = blade_normal;
-            v2.uv = Vec2(1.0f, 1.0f);
-
-            // Top-left (tapered)
-            v3.pos = Vec3(px - dx * tip_taper, ground_y + bh, pz - dz * tip_taper);
-            v3.normal = blade_normal;
-            v3.uv = Vec2(0.0f, 1.0f);
-
-            result.vertices.push_back(v0);
-            result.vertices.push_back(v1);
-            result.vertices.push_back(v2);
-            result.vertices.push_back(v3);
-
-            result.indices.push_back(base + 0);
-            result.indices.push_back(base + 1);
-            result.indices.push_back(base + 2);
-            result.indices.push_back(base + 0);
-            result.indices.push_back(base + 2);
-            result.indices.push_back(base + 3);
+        for (int j = 0; j < 5; j++) {
+            Vertex v;
+            // Rotate around Y
+            float rx = locals[j].x * cs - locals[j].z * sn;
+            float rz = locals[j].x * sn + locals[j].z * cs;
+            v.pos = Vec3(px + rx, ground_y + locals[j].y, pz + rz);
+            v.normal = blade_normal;
+            v.uv = Vec2(locals[j].u, locals[j].v);
+            result.vertices.push_back(v);
         }
+
+        // 3 triangles: bottom quad (2) + top triangle (1)
+        result.indices.push_back(base + 0); result.indices.push_back(base + 1); result.indices.push_back(base + 3);
+        result.indices.push_back(base + 0); result.indices.push_back(base + 3); result.indices.push_back(base + 2);
+        result.indices.push_back(base + 2); result.indices.push_back(base + 3); result.indices.push_back(base + 4);
     }
 
     return result;
@@ -870,4 +866,46 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
 
     m.vertices.swap(new_verts);
     m.indices.swap(new_indices);
+}
+
+// ============================================================
+// Grass blade template (for instanced rendering)
+// ============================================================
+
+MeshData MeshGen::grassBlade() {
+    MeshData m;
+    // Tapered blade: 3 segments for slight curve
+    // Bottom (y=0): full width
+    // Middle (y=0.5): slightly narrower, offset for curve
+    // Top (y=1.0): point
+
+    float w = 0.5f; // half-width at base (instance shader scales this)
+
+    Vertex v;
+    v.normal = Vec3(0, 0, 1); // facing Z (instance shader rotates)
+
+    // Bottom-left
+    v.pos = Vec3(-w, 0, 0); v.uv = Vec2(0, 0);
+    m.vertices.push_back(v);
+    // Bottom-right
+    v.pos = Vec3(w, 0, 0); v.uv = Vec2(1, 0);
+    m.vertices.push_back(v);
+    // Mid-left
+    v.pos = Vec3(-w * 0.6f, 0.5f, 0.05f); v.uv = Vec2(0.2f, 0.5f);
+    m.vertices.push_back(v);
+    // Mid-right
+    v.pos = Vec3(w * 0.6f, 0.5f, 0.05f); v.uv = Vec2(0.8f, 0.5f);
+    m.vertices.push_back(v);
+    // Top (point)
+    v.pos = Vec3(0, 1.0f, 0.08f); v.uv = Vec2(0.5f, 1.0f);
+    m.vertices.push_back(v);
+
+    // Two quads + one triangle = 3 triangles
+    // Bottom quad
+    m.indices.push_back(0); m.indices.push_back(1); m.indices.push_back(3);
+    m.indices.push_back(0); m.indices.push_back(3); m.indices.push_back(2);
+    // Top triangle
+    m.indices.push_back(2); m.indices.push_back(3); m.indices.push_back(4);
+
+    return m;
 }
