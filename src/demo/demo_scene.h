@@ -72,6 +72,32 @@ struct DemoTierConfig {
 
     // Normal map texture (T3+)
     bool enable_normal_map_texture;
+
+    // T4 features
+    bool enable_pbr;
+    bool enable_tessellation;
+    int tess_level;
+    bool enable_compute_particles;
+    int compute_particle_count;
+    bool enable_volumetric_fog;
+    bool enable_hdr;
+
+    // T4 Ultra enhancements
+    bool enable_pcss;
+    bool enable_gtao;
+    bool enable_compute_bloom;
+    bool enable_auto_exposure;
+    bool enable_ssr;
+    bool enable_dof;
+    bool enable_sss;
+    float sss_strength;
+    float chromatic_strength;
+    float grain_strength;
+    float dof_focal_distance;
+    float dof_strength;
+    float light_size;            // PCSS light size
+    int fog_steps;               // volumetric fog raymarch steps
+    float displacement_strength; // tessellation displacement
 };
 
 DemoTierConfig getTierConfig(DemoTier tier);
@@ -89,10 +115,13 @@ struct SceneObject {
     float bounds_radius;  // world-space bounding sphere radius
     bool vertex_wind;     // enable wind vertex displacement (grass only)
     bool two_sided;       // disable backface culling for this object
+    float metallic;       // PBR metallic override (-1 = use default)
+    float roughness;      // PBR roughness override (-1 = use default)
+    bool is_water;        // water material with ripples + Fresnel
 
     SceneObject() : mesh(), transform(), material(MaterialType::Model),
         color(0,0,0), specular(0), bounds_center(0,0,0), bounds_radius(0),
-        vertex_wind(false), two_sided(false) {}
+        vertex_wind(false), two_sided(false), metallic(-1.0f), roughness(-1.0f), is_water(false) {}
 };
 
 // Frustum culling planes
@@ -113,7 +142,8 @@ public:
 
     bool setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h,
                const TierResourceView& resources);
-    void renderFrame(Renderer* r, float t, float time, int viewport_w, int viewport_h);
+    void renderFrame(Renderer* r, float t, float time, int viewport_w, int viewport_h,
+                     RenderTargetHandle dest_rt = INVALID_RENDER_TARGET);
     void cleanup(Renderer* r);
 
     TechniqueInfo getTechniqueInfo() const;
@@ -151,6 +181,11 @@ private:
         bool has_shadows;
         bool has_bloom;
         bool has_ssao;
+        bool has_pbr;
+        bool has_tessellation;
+        bool has_compute_particles;
+        bool has_volumetric_fog;
+        bool has_hdr;
     };
 
     // Render passes
@@ -169,6 +204,25 @@ private:
     // Point light uniform helper
     void setPointLightUniforms(ShaderProgram* shader, const FrameContext& fc);
 
+    // T4 render passes
+    void renderComputeParticles(Renderer* r, const FrameContext& fc);
+    void renderTessellatedModel(Renderer* r, const FrameContext& fc);
+    void renderComputeParticlesDraw(Renderer* r, const FrameContext& fc);
+    void renderVolumetricFog(Renderer* r, const FrameContext& fc);
+    void renderHDRComposite(Renderer* r, const FrameContext& fc);
+
+    // T4 Ultra compute passes
+    void renderGTAOPass(Renderer* r, const FrameContext& fc);
+    void renderGTAOBlur(Renderer* r, const FrameContext& fc);
+    void renderBloomCompute(Renderer* r, const FrameContext& fc);
+    void computeAutoExposure(Renderer* r, const FrameContext& fc);
+    void renderSSR(Renderer* r, const FrameContext& fc);
+    void renderWaterPass(Renderer* r, const FrameContext& fc);
+    void renderDoF(Renderer* r, const FrameContext& fc);
+
+    // Puddle placement
+    void placePuddles(Renderer* r);
+
     // T2+ bloom post-processing
     void renderSceneToFBO(Renderer* r, const FrameContext& fc);
     void renderBloomPasses(Renderer* r, const FrameContext& fc);
@@ -176,4 +230,9 @@ private:
 
     int viewport_w_, viewport_h_;
     bool initialized_;
+    float prev_exposure_;
+
+    // Destination render target: the RT that was active when renderFrame was called.
+    // Post-processing composite passes render TO this RT instead of the default framebuffer.
+    RenderTargetHandle dest_rt_;
 };

@@ -1,0 +1,97 @@
+#version 430
+layout(local_size_x = 16, local_size_y = 16) in;
+
+uniform sampler2D u_scene_tex;  // HDR scene color
+uniform sampler2D u_depth_tex;  // Scene depth
+
+layout(rgba32f, binding = 0) writeonly uniform image2D u_dof_out;
+
+uniform vec2 u_screen_size;
+uniform float u_near;
+uniform float u_far;
+uniform float u_focal_distance;
+uniform float u_focal_range;    // range of sharp focus
+uniform float u_max_blur;       // maximum CoC in pixels
+uniform float u_dof_strength;
+
+float linearizeDepth(float d) {
+    return u_near * u_far / (u_far - d * (u_far - u_near));
+}
+
+// Circle of Confusion from depth
+float computeCoC(float depth) {
+    float dist_from_focus = abs(depth - u_focal_distance);
+    float coc = smoothstep(0.0, u_focal_range, dist_from_focus) * u_max_blur;
+    return coc;
+}
+
+// Poisson disk samples for gather blur
+const vec2 poissonDisk[12] = vec2[12](
+    vec2(-0.326, -0.406), vec2(-0.840,  0.074), vec2(-0.696,  0.457),
+    vec2(-0.203,  0.621), vec2( 0.962, -0.195), vec2( 0.473, -0.480),
+    vec2( 0.519,  0.767), vec2( 0.185, -0.893), vec2( 0.507,  0.064),
+    vec2(-0.321,  0.932), vec2(-0.720, -0.614), vec2( 0.939,  0.411)
+);
+
+void main() {
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 screen_size = ivec2(u_screen_size);
+
+    if (gid.x >= screen_size.x || gid.y >= screen_size.y) return;
+
+    vec2 uv = (vec2(gid) + 0.5) / u_screen_size;
+    vec2 texel = 1.0 / u_screen_size;
+
+    vec3 center_color = texture(u_scene_tex, uv).rgb;
+    float center_depth = linearizeDepth(texture(u_depth_tex, uv).r);
+    float center_coc = computeCoC(center_depth);
+
+    if (center_coc < 0.5 || u_dof_strength < 0.01) {
+        // No blur needed, pixel is in focus (alpha=0 = sharp)
+        imageStore(u_dof_out, gid, vec4(center_color, 0.0));
+        return;
+    }
+
+    // Gather-based blur with CoC-dependent radius
+    vec3 color_sum = center_color;
+    float weight_sum = 1.0;
+
+    // Per-pixel rotation to reduce patterning
+    float angle = fract(dot(vec2(gid), vec2(0.75487766, 0.56984029))) * 6.2832;
+    float ca = cos(angle);
+    float sa = sin(angle);
+
+    for (int i = 0; i < 12; i++) {
+        vec2 offset = poissonDisk[i];
+        // Rotate
+        vec2 rot_offset = vec2(
+            offset.x * ca - offset.y * sa,
+            offset.x * sa + offset.y * ca
+        );
+
+        vec2 sample_uv = uv + rot_offset * center_coc * texel * u_dof_strength;
+
+        if (sample_uv.x < 0.0 || sample_uv.x > 1.0 || sample_uv.y < 0.0 || sample_uv.y > 1.0)
+            continue;
+
+        vec3 sample_color = texture(u_scene_tex, sample_uv).rgb;
+        float sample_depth = linearizeDepth(texture(u_depth_tex, sample_uv).r);
+        float sample_coc = computeCoC(sample_depth);
+
+        // Weight: prefer samples that are also out of focus
+        // Prevent sharp foreground from bleeding into blurred background
+        float w = 1.0;
+        if (sample_depth < center_depth) {
+            // Sample is in front: only contribute if it's also blurry
+            w = smoothstep(0.0, center_coc, sample_coc);
+        }
+
+        color_sum += sample_color * w;
+        weight_sum += w;
+    }
+
+    vec3 result = color_sum / weight_sum;
+    // Alpha = blur amount: 0 = in-focus, 1 = fully blurred
+    float blur_amount = clamp(center_coc / u_max_blur, 0.0, 1.0);
+    imageStore(u_dof_out, gid, vec4(result, blur_amount));
+}

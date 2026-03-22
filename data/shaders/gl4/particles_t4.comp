@@ -1,0 +1,141 @@
+#version 430
+layout(local_size_x = 256) in;
+
+struct Particle {
+    vec4 pos;   // xyz = position, w = lifetime
+    vec4 vel;   // xyz = velocity, w = max_lifetime
+    vec4 color; // rgba
+};
+
+layout(std430, binding = 0) buffer ParticleBuffer {
+    Particle particles[];
+};
+
+uniform float u_time;
+uniform float u_dt;
+uniform vec3 u_emitter_pos;
+
+// Simple hash from invocation ID for pseudo-random numbers
+uint hash_uint(uint x) {
+    x ^= x >> 16;
+    x *= 0x45d9f3bu;
+    x ^= x >> 16;
+    x *= 0x45d9f3bu;
+    x ^= x >> 16;
+    return x;
+}
+
+float rand_from_id(uint id, uint seed) {
+    return float(hash_uint(id * 1973u + seed * 9277u + uint(u_time * 1000.0) * 26699u)) / 4294967295.0;
+}
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= particles.length()) return;
+
+    Particle p = particles[idx];
+
+    float lifetime = p.pos.w;
+    float max_life = p.vel.w;
+
+    // Update lifetime
+    lifetime -= u_dt;
+
+    if (lifetime <= 0.0) {
+        // Respawn dead particle at random position around emitter
+        float r0 = rand_from_id(idx, 0u);
+        float r1 = rand_from_id(idx, 1u);
+        float r2 = rand_from_id(idx, 2u);
+        float r3 = rand_from_id(idx, 3u);
+        float r4 = rand_from_id(idx, 4u);
+        float r5 = rand_from_id(idx, 5u);
+
+        // Random position on a sphere around emitter
+        float theta = r0 * 6.2832;
+        float phi = acos(2.0 * r1 - 1.0);
+        float radius = 0.5 + r2 * 1.5;
+        vec3 offset = vec3(
+            sin(phi) * cos(theta),
+            sin(phi) * sin(theta),
+            cos(phi)
+        ) * radius;
+
+        p.pos.xyz = u_emitter_pos + offset;
+
+        // Gentle upward drift (firefly-like)
+        p.vel.xyz = vec3(
+            (r3 - 0.5) * 0.4,
+            0.3 + r4 * 0.6,
+            (r5 - 0.5) * 0.4
+        );
+
+        // Random max lifetime
+        max_life = 3.0 + r0 * 4.0;
+        lifetime = max_life;
+        p.vel.w = max_life;
+
+        // Color: warm embers (orange to yellow) - HDR bright for bloom pickup
+        float color_rand = r3;
+        p.color = vec4(
+            0.9 + color_rand * 0.1,
+            0.4 + color_rand * 0.4,
+            0.1 + color_rand * 0.1,
+            1.0
+        );
+    } else {
+        // Physics simulation
+        vec3 pos = p.pos.xyz;
+        vec3 vel = p.vel.xyz;
+
+        // Gravity
+        vel.y -= 1.2 * u_dt;
+
+        // Wind (oscillating)
+        float wind_x = sin(u_time * 0.7 + pos.y * 0.5) * 0.4;
+        float wind_z = cos(u_time * 0.5 + pos.x * 0.3) * 0.3;
+        vel.x += wind_x * u_dt;
+        vel.z += wind_z * u_dt;
+
+        // Figure-eight orbit around bunny
+        float orbit_time = u_time * 0.8 + float(idx) * 0.003;
+        vec3 target;
+        target.x = sin(orbit_time) * 2.0;
+        target.y = sin(orbit_time * 2.0) * 0.5 + 0.5;
+        target.z = sin(orbit_time) * cos(orbit_time) * 2.0; // lemniscate
+        target += u_emitter_pos;
+
+        vec3 to_target = target - pos;
+        float dist = length(to_target);
+        if (dist > 0.01) {
+            vel += normalize(to_target) * min(dist, 2.0) * u_dt * 3.0;
+        }
+
+        // Damping
+        vel *= 1.0 - 0.3 * u_dt;
+
+        // Integrate position
+        pos += vel * u_dt;
+
+        p.pos.xyz = pos;
+        p.vel.xyz = vel;
+
+        // Fade alpha over lifetime
+        float life_ratio = lifetime / max_life;
+        float base_alpha = smoothstep(0.0, 0.3, life_ratio) * smoothstep(1.0, 0.7, life_ratio);
+
+        // Flicker: modulate alpha with per-particle sin wave
+        float flicker_freq = 6.0 + float(hash_uint(idx * 37u) % 100u) * 0.1;
+        float flicker = 0.7 + 0.3 * sin(u_time * flicker_freq + float(idx) * 1.618);
+        p.color.a = base_alpha * flicker;
+
+        // Color: HDR intensity dims over life, reddens (absolute set, no compounding)
+        float hdr_boost = 2.0; // enough to exceed bloom threshold
+        float color_var = fract(float(idx) * 0.37);
+        p.color.r = (0.9 + 0.1 * color_var) * hdr_boost * life_ratio;
+        p.color.g = (0.4 + 0.4 * color_var) * hdr_boost * life_ratio * (0.5 + 0.5 * life_ratio);
+        p.color.b = (0.1 + 0.1 * color_var) * hdr_boost * life_ratio * life_ratio;
+    }
+
+    p.pos.w = lifetime;
+    particles[idx] = p;
+}

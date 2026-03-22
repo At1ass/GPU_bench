@@ -142,6 +142,10 @@ public:
     // Float texture (RGBA16F) for compute shader output. Default: unsupported.
     virtual TextureHandle createFloatTexture(int w, int h) { (void)w; (void)h; return INVALID_TEXTURE; }
 
+    // Float render target (RGBA16F FBO for HDR). Default: falls back to regular RT.
+    virtual RenderTargetHandle createFloatRenderTarget(int w, int h) { return createRenderTarget(w, h); }
+    virtual RenderTargetHandle createFloatRenderTargetWithDepth(int w, int h) { return createRenderTargetWithDepth(w, h); }
+
     // GPU timer queries
     virtual bool   hasTimerQueries() const = 0;
     virtual void   timerBegin() = 0;

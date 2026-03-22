@@ -1,0 +1,129 @@
+#version 430
+layout(triangles, equal_spacing, ccw) in;
+
+in vec3 tc_pos[];
+in vec3 tc_normal[];
+in vec2 tc_uv[];
+
+out vec3 v_world_pos;
+out vec3 v_normal;
+out vec2 v_uv;
+out vec4 v_light_pos;
+
+uniform mat4 u_proj;
+uniform mat4 u_view;
+uniform mat4 u_model;
+uniform mat4 u_light_vp;
+uniform float u_time;
+uniform float u_displacement_strength;
+
+// Simple hash for displacement noise (self-contained, no includes needed)
+float pn_hash(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.zyx + 31.32);
+    return fract((p.x + p.y) * p.z);
+}
+
+float pn_noise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f); // hermite smoothstep
+
+    float a = pn_hash(i);
+    float b = pn_hash(i + vec3(1, 0, 0));
+    float c = pn_hash(i + vec3(0, 1, 0));
+    float d = pn_hash(i + vec3(1, 1, 0));
+    float e = pn_hash(i + vec3(0, 0, 1));
+    float f1 = pn_hash(i + vec3(1, 0, 1));
+    float g = pn_hash(i + vec3(0, 1, 1));
+    float h = pn_hash(i + vec3(1, 1, 1));
+
+    return mix(mix(mix(a, b, f.x), mix(c, d, f.x), f.y),
+               mix(mix(e, f1, f.x), mix(g, h, f.x), f.y), f.z);
+}
+
+float pn_fbm(vec3 p) {
+    float val = 0.0;
+    float amp = 0.5;
+    for (int i = 0; i < 4; i++) {
+        val += amp * pn_noise(p);
+        p *= 2.03;
+        amp *= 0.5;
+    }
+    return val;
+}
+
+// PN-Triangles: compute cubic Bezier control point for smooth interpolation
+// Given positions P[i] and normals N[i], compute b_{ij} control point
+vec3 pnProject(vec3 p, vec3 refP, vec3 refN) {
+    return p - dot(p - refP, refN) * refN;
+}
+
+void main() {
+    float u = gl_TessCoord.x;
+    float v = gl_TessCoord.y;
+    float w = gl_TessCoord.z;
+
+    vec3 p0 = tc_pos[0];
+    vec3 p1 = tc_pos[1];
+    vec3 p2 = tc_pos[2];
+    vec3 n0 = normalize(tc_normal[0]);
+    vec3 n1 = normalize(tc_normal[1]);
+    vec3 n2 = normalize(tc_normal[2]);
+    vec2 uv0 = tc_uv[0];
+    vec2 uv1 = tc_uv[1];
+    vec2 uv2 = tc_uv[2];
+
+    // PN-Triangles: compute control points for curved surface
+    // Edge control points (projected onto tangent planes)
+    vec3 b210 = pnProject(p0 + (p1 - p0) / 3.0, p0, n0);
+    vec3 b120 = pnProject(p1 + (p0 - p1) / 3.0, p1, n1);
+    vec3 b021 = pnProject(p1 + (p2 - p1) / 3.0, p1, n1);
+    vec3 b012 = pnProject(p2 + (p1 - p2) / 3.0, p2, n2);
+    vec3 b102 = pnProject(p2 + (p0 - p2) / 3.0, p2, n2);
+    vec3 b201 = pnProject(p0 + (p2 - p0) / 3.0, p0, n0);
+
+    // Corner control points (original vertices)
+    vec3 b300 = p0;
+    vec3 b030 = p1;
+    vec3 b003 = p2;
+
+    // Center control point
+    vec3 E = (b210 + b120 + b021 + b012 + b102 + b201) / 6.0;
+    vec3 V_center = (p0 + p1 + p2) / 3.0;
+    vec3 b111 = E + (E - V_center) * 0.5;
+
+    // Evaluate cubic Bezier triangle
+    float u2 = u * u;
+    float v2 = v * v;
+    float w2 = w * w;
+    float u3 = u2 * u;
+    float v3 = v2 * v;
+    float w3 = w2 * w;
+
+    vec3 pos = b300 * w3 + b030 * u3 + b003 * v3
+             + b210 * 3.0 * w2 * u + b120 * 3.0 * w * u2
+             + b201 * 3.0 * w2 * v + b021 * 3.0 * u2 * v
+             + b102 * 3.0 * w * v2 + b012 * 3.0 * u * v2
+             + b111 * 6.0 * w * u * v;
+
+    // Interpolate normal (quadratic PN normal for smooth shading)
+    vec3 normal = normalize(n0 * w + n1 * u + n2 * v);
+
+    // Interpolate UV
+    vec2 uv = uv0 * w + uv1 * u + uv2 * v;
+
+    // Noise-based displacement along normal for organic detail
+    float disp_noise = pn_fbm(pos * 5.0 + u_time * 0.1) * 2.0 - 1.0;
+    float disp = disp_noise * u_displacement_strength;
+    pos += normal * disp;
+
+    // Transform to world space
+    vec4 world = u_model * vec4(pos, 1.0);
+    v_world_pos = world.xyz;
+    v_normal = normalize(mat3(u_model) * normal);
+    v_uv = uv;
+    v_light_pos = u_light_vp * world;
+
+    gl_Position = u_proj * u_view * world;
+}

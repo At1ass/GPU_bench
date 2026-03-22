@@ -15,8 +15,8 @@ vec3 terrainColor(vec3 pos, vec3 normal, vec2 uv) {
     float n2 = noise(pos.xz * 0.1 + 42.0);
     float warp = noise(pos.xz * 0.05 + vec2(n2 * 3.0));
 
-    // Bright lush grass (reference: vivid green tops)
-    vec3 grass = vec3(0.35, 0.55, 0.18) * (0.85 + 0.3 * n1);
+    // Natural grass
+    vec3 grass = vec3(0.30, 0.45, 0.15) * (0.85 + 0.25 * n1);
     // Rich dirt/earth
     vec3 dirt = vec3(0.40, 0.28, 0.14) * (0.8 + 0.3 * noise(pos.xz * 2.0));
     // Dark cliff rock with Worley cracks (reference: dark undersides)
@@ -52,7 +52,7 @@ vec3 terrainColor(vec3 pos, vec3 normal, vec2 uv) {
 
 vec3 surfaceColor(vec3 pos, vec3 normal, vec2 uv, vec3 mat_color, float proc_tex) {
     if (proc_tex > 0.5) {
-        return terrainColor(pos, normal, uv) * mat_color * 2.0;
+        return terrainColor(pos, normal, uv) * mat_color * 1.5;
     }
     // Flat material: add subtle noise for surface detail
     float n = noise(pos.xz * 4.0) * 0.06 - 0.03;

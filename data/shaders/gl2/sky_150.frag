@@ -79,10 +79,14 @@ void main() {
         skyColor = mix(skyColor, cloudColor, cloud * 0.85);
     }
 
+    // Sun disc + glow + corona
     float sunAngle = acos(clamp(cosTheta, -1.0, 1.0));
-    float sunDisc = smoothstep(0.015, 0.005, sunAngle);
-    float sunGlow = exp(-sunAngle * 8.0) * 0.5;
-    skyColor += vec3(1.0, 0.95, 0.8) * (sunDisc + sunGlow);
+    float sunDisc = smoothstep(0.035, 0.012, sunAngle);
+    float sunGlow = exp(-sunAngle * 5.0) * 0.8;
+    float sunCorona = exp(-sunAngle * 2.5) * 0.3;
+    skyColor += vec3(1.0, 0.95, 0.8) * sunDisc * 3.0;
+    skyColor += vec3(1.0, 0.9, 0.7) * sunGlow;
+    skyColor += vec3(1.0, 0.85, 0.6) * sunCorona;
 
     skyColor *= smoothstep(-0.05, 0.1, altitude);
 

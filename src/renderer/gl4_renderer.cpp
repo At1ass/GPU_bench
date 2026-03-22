@@ -3,6 +3,7 @@
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 GL4Renderer::GL4Renderer() {}
 // ~GL4Renderer: default. shutdown() must be called explicitly before destruction.
@@ -195,11 +196,13 @@ void GL4Renderer::dispatchCompute(int groups_x, int groups_y, int groups_z) {
 }
 
 void GL4Renderer::computeMemoryBarrier() {
+    // GL4.3: ensure SSBO writes AND image writes are visible to subsequent operations.
+    // SHADER_STORAGE for SSBO, TEXTURE_FETCH for compute→fragment texture() reads.
 #ifdef CB_NEED_GL_LOAD
     if (cb_glMemoryBarrier)
-        cb_glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        cb_glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 #else
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 #endif
 }
 
@@ -240,6 +243,127 @@ void GL4Renderer::bindSSBO(BufferHandle h, int binding) {
 #else
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, ssbos_[h].id);
 #endif
+}
+
+void GL4Renderer::updateSSBO(BufferHandle h, const void* data, int size_bytes) {
+    if (h == INVALID_BUFFER || h >= ssbos_.size() || !ssbos_[h].valid) return;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h].id);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, size_bytes, data);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+// --- Float render targets (HDR) ---
+
+RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
+    if (!caps_.has_fbo) return INVALID_RENDER_TARGET;
+
+    GLFBO rt;
+    rt.w = w;
+    rt.h = h;
+
+    glGenFramebuffers(1, &rt.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt.fbo);
+
+    // RGBA16F color texture
+    glGenTextures(1, &rt.color_tex);
+    glBindTexture(GL_TEXTURE_2D, rt.color_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt.color_tex, 0);
+
+    // Depth renderbuffer
+    glGenRenderbuffers(1, &rt.depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, rt.depth_rb);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rt.depth_rb);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glDeleteFramebuffers(1, &rt.fbo);
+        glDeleteTextures(1, &rt.color_tex);
+        glDeleteRenderbuffers(1, &rt.depth_rb);
+        Log::err("Float FBO not complete: 0x%X", status);
+        return INVALID_RENDER_TARGET;
+    }
+
+    rt.valid = true;
+
+    RenderTargetHandle handle;
+    if (!free_rt_slots_.empty()) {
+        handle = free_rt_slots_.back();
+        free_rt_slots_.pop_back();
+        render_targets_[handle] = rt;
+    } else {
+        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        render_targets_.push_back(rt);
+    }
+    return handle;
+}
+
+RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
+    if (!caps_.has_fbo) return INVALID_RENDER_TARGET;
+
+    GLFBO rt;
+    rt.w = w;
+    rt.h = h;
+
+    glGenFramebuffers(1, &rt.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt.fbo);
+
+    // RGBA16F color texture
+    glGenTextures(1, &rt.color_tex);
+    glBindTexture(GL_TEXTURE_2D, rt.color_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt.color_tex, 0);
+
+    // Sampleable depth texture
+    glGenTextures(1, &rt.depth_tex);
+    glBindTexture(GL_TEXTURE_2D, rt.depth_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0,
+                 GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rt.depth_tex, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    rt.depth_rb = 0;
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glDeleteFramebuffers(1, &rt.fbo);
+        glDeleteTextures(1, &rt.color_tex);
+        glDeleteTextures(1, &rt.depth_tex);
+        Log::err("Float FBO with depth not complete: 0x%X", status);
+        return INVALID_RENDER_TARGET;
+    }
+
+    rt.valid = true;
+
+    RenderTargetHandle handle;
+    if (!free_rt_slots_.empty()) {
+        handle = free_rt_slots_.back();
+        free_rt_slots_.pop_back();
+        render_targets_[handle] = rt;
+    } else {
+        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        render_targets_.push_back(rt);
+    }
+    return handle;
 }
 
 // --- Indirect draw ---
@@ -373,7 +497,9 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
     GLTex tex;
     glGenTextures(1, &tex.id);
     glBindTexture(GL_TEXTURE_2D, tex.id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    // Zero-initialize to prevent flicker from undefined texture data on first frame
+    std::vector<float> zeros(w * h * 4, 0.0f);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, zeros.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -397,7 +523,16 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
 
 void GL4Renderer::bindImageTexture(TextureHandle h, int unit,
                                     bool read, bool write) {
-    if (h == INVALID_TEXTURE || h >= textures_.size() || !textures_[h].valid) return;
+    if (h == INVALID_TEXTURE || h >= textures_.size() || !textures_[h].valid) {
+        // Unbind: bind texture 0 to release the image unit
+#ifdef CB_NEED_GL_LOAD
+        if (cb_glBindImageTexture)
+            cb_glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+#else
+        glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+#endif
+        return;
+    }
     GLenum access = GL_READ_WRITE;
     if (read && !write) access = GL_READ_ONLY;
     else if (!read && write) access = GL_WRITE_ONLY;
@@ -411,11 +546,16 @@ void GL4Renderer::bindImageTexture(TextureHandle h, int unit,
 }
 
 void GL4Renderer::imageMemoryBarrier() {
+    // GL4.3 spec: imageStore writes need different barriers depending on consumer:
+    //   GL_SHADER_IMAGE_ACCESS_BARRIER_BIT - for subsequent imageLoad()
+    //   GL_TEXTURE_FETCH_BARRIER_BIT       - for subsequent texture() sampler reads
+    // Use both since compute outputs are consumed by both compute (imageLoad) and
+    // fragment shaders (texture sampling in tone_map composite).
 #ifdef CB_NEED_GL_LOAD
     if (cb_glMemoryBarrier)
-        cb_glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        cb_glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
 #else
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
 #endif
 }
 

@@ -82,7 +82,8 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
             if (use_fbo) r->bindRenderTarget(rt);
             r->setViewport(0, 0, render_w, render_h);
             float t = 0.0f;  // Static camera during warmup (GPU priming only)
-            scene.renderFrame(r, t, static_cast<float>(warmup_timer.elapsed_sec()), render_w, render_h);
+            RenderTargetHandle dest = use_fbo ? rt : INVALID_RENDER_TARGET;
+            scene.renderFrame(r, t, static_cast<float>(warmup_timer.elapsed_sec()), render_w, render_h, dest);
 
             // Show loading screen instead of the scene
             if (!headless_warmup) {
@@ -149,7 +150,8 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         float t = static_cast<float>(total_timer.elapsed_sec() / duration_sec);
         float time = static_cast<float>(total_timer.elapsed_sec());
 
-        scene.renderFrame(r, t, time, render_w, render_h);
+        RenderTargetHandle dest = use_fbo ? rt : INVALID_RENDER_TARGET;
+        scene.renderFrame(r, t, time, render_w, render_h, dest);
 
         // Blit to screen before overlay
         if (use_fbo) {

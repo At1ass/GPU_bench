@@ -909,3 +909,51 @@ MeshData MeshGen::grassBlade() {
 
     return m;
 }
+
+// Simple hash for organic shape noise
+static float discNoise(float x) {
+    // Multiple sine waves at different frequencies for organic feel
+    return sinf(x * 2.3f) * 0.35f
+         + sinf(x * 5.7f + 1.3f) * 0.25f
+         + sinf(x * 11.1f + 3.7f) * 0.15f
+         + sinf(x * 17.3f + 0.9f) * 0.08f;
+}
+
+MeshData MeshGen::disc(float radius, int segments, unsigned int seed) {
+    MeshData m;
+
+    // Center vertex (slightly offset for organic feel)
+    Vertex center;
+    center.pos = Vec3(0, 0, 0);
+    center.normal = Vec3(0, 1, 0);
+    center.uv = Vec2(0.5f, 0.5f);
+    m.vertices.push_back(center);
+
+    // Ring vertices with organic edge perturbation
+    for (int i = 0; i <= segments; i++) {
+        float angle = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * 3.14159265f;
+
+        // Noise-based radius variation: ±20% of radius, smooth and organic
+        float phase = static_cast<float>(seed) * 2.17f + 7.31f;
+        float noise = discNoise(angle * 1.5f + phase);
+        float r = radius * (1.0f + noise * 0.2f);
+
+        float x = cosf(angle) * r;
+        float z = sinf(angle) * r;
+
+        Vertex v;
+        v.pos = Vec3(x, 0, z);
+        v.normal = Vec3(0, 1, 0);
+        v.uv = Vec2(cosf(angle) * 0.5f + 0.5f, sinf(angle) * 0.5f + 0.5f);
+        m.vertices.push_back(v);
+    }
+
+    // Triangle fan
+    for (int i = 1; i <= segments; i++) {
+        m.indices.push_back(0);
+        m.indices.push_back(static_cast<unsigned int>(i));
+        m.indices.push_back(static_cast<unsigned int>(i + 1));
+    }
+
+    return m;
+}

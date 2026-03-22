@@ -17,6 +17,11 @@ public:
     BufferHandle createSSBO(int size_bytes) override;
     void         destroySSBO(BufferHandle h) override;
     void         bindSSBO(BufferHandle h, int binding) override;
+    void         updateSSBO(BufferHandle h, const void* data, int size_bytes) override;
+
+    // Float render targets (HDR)
+    RenderTargetHandle createFloatRenderTarget(int w, int h) override;
+    RenderTargetHandle createFloatRenderTargetWithDepth(int w, int h) override;
 
     // GL4Features implementation
     BufferHandle createIndirectBuffer(int size_bytes, const void* data) override;

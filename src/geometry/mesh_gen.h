@@ -65,4 +65,9 @@ namespace MeshGen {
     // A tapered quad: wide at base (y=0), pointed at tip (y=1).
     // Centered at origin, unit height. Instance shader scales and places.
     MeshData grassBlade();
+
+    // Flat disc on the XZ plane (for puddles/reflective surfaces).
+    // Centered at origin, y=0, with organic irregular edges.
+    // seed varies the shape per instance.
+    MeshData disc(float radius, int segments, unsigned int seed = 0);
 }

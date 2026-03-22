@@ -83,6 +83,50 @@ private:
     // T3+ normal map texture
     ScopedTexture normal_map_tex_;
 
+    // T4+ PBR / compute / tessellation / HDR
+    ShaderProgram grass_shader_t4_;
+    ShaderProgram tess_shader_;
+    ShaderProgram compute_particle_shader_;
+    ShaderProgram particle_render_shader_;
+    ShaderProgram volumetric_fog_shader_;
+    ShaderProgram tone_map_shader_;
+    BufferHandle particle_ssbo_;
+    int compute_particle_count_;
+    ScopedRenderTarget hdr_scene_rt_;
+    ScopedRenderTarget hdr_bright_rt_;
+    TextureHandle hdr_depth_tex_;
+    ScopedRenderTarget fog_rt_;
+
+    // T4 Ultra: Compute GTAO
+    ShaderProgram gtao_shader_;
+    ShaderProgram gtao_blur_shader_;
+    ScopedTexture gtao_tex_;      // full-res float AO output
+    ScopedTexture gtao_blur_tex_; // full-res float blurred AO
+
+    // T4 Ultra: Compute Bloom (mip chain)
+    ShaderProgram bloom_down_compute_;
+    ShaderProgram bloom_up_compute_;
+    static const int BLOOM_MIP_COUNT = 6;
+    ScopedTexture bloom_mips_[BLOOM_MIP_COUNT]; // progressively smaller float textures
+
+    // T4 Ultra: Auto-Exposure
+    ShaderProgram histogram_shader_;
+    ShaderProgram exposure_shader_;
+    BufferHandle histogram_ssbo_;  // 256 uint bins
+    BufferHandle exposure_ssbo_;   // 1 float
+
+    // T4 Ultra: SSR
+    ShaderProgram ssr_shader_;
+    ScopedTexture ssr_tex_;  // float texture for SSR result
+
+    // T4 Ultra: DoF
+    ShaderProgram dof_shader_;
+    ScopedTexture dof_tex_;  // float texture for DoF result
+
+    // T4 Ultra: Puddle meshes (3 unique shapes)
+    static const int PUDDLE_COUNT = 3;
+    MeshHandle puddle_meshes_[PUDDLE_COUNT];
+
     bool loadSharedMeshes(Renderer* r);
     bool loadSharedTextures(Renderer* r);
     bool compileSkyShader(Renderer* r);
@@ -90,4 +134,5 @@ private:
     bool createShadowResources(Renderer* r, int shadow_size = 1024);
     bool createBloomResources(Renderer* r, int render_w, int render_h);
     bool createSSAOResources(Renderer* r, int render_w, int render_h);
+    bool createT4Resources(Renderer* r, int render_w, int render_h);
 };

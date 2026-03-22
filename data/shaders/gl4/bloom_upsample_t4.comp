@@ -1,0 +1,41 @@
+#version 430
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Input: lower resolution mip (sampled with bilinear)
+uniform sampler2D u_src_tex;
+// Output: higher resolution mip (accumulative blend)
+layout(rgba32f, binding = 0) uniform image2D u_dst_tex; // read-write for additive blend
+
+uniform float u_bloom_radius; // radius scale for soft spread
+
+void main() {
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 dst_size = imageSize(u_dst_tex);
+
+    if (gid.x >= dst_size.x || gid.y >= dst_size.y) return;
+
+    vec2 uv = (vec2(gid) + 0.5) / vec2(dst_size);
+    vec2 src_size = vec2(textureSize(u_src_tex, 0));
+    vec2 texelSize = u_bloom_radius / src_size;
+
+    // 9-tap tent filter for smooth upsampling
+    vec3 a = texture(u_src_tex, uv + vec2(-1.0, -1.0) * texelSize).rgb;
+    vec3 b = texture(u_src_tex, uv + vec2( 0.0, -1.0) * texelSize).rgb;
+    vec3 c = texture(u_src_tex, uv + vec2( 1.0, -1.0) * texelSize).rgb;
+    vec3 d = texture(u_src_tex, uv + vec2(-1.0,  0.0) * texelSize).rgb;
+    vec3 e = texture(u_src_tex, uv).rgb;
+    vec3 f = texture(u_src_tex, uv + vec2( 1.0,  0.0) * texelSize).rgb;
+    vec3 g = texture(u_src_tex, uv + vec2(-1.0,  1.0) * texelSize).rgb;
+    vec3 h = texture(u_src_tex, uv + vec2( 0.0,  1.0) * texelSize).rgb;
+    vec3 i = texture(u_src_tex, uv + vec2( 1.0,  1.0) * texelSize).rgb;
+
+    // Weighted 3x3 tent
+    vec3 upsampled = e * 4.0;
+    upsampled += (b + d + f + h) * 2.0;
+    upsampled += (a + c + g + i);
+    upsampled /= 16.0;
+
+    // Additive blend with existing content
+    vec4 existing = imageLoad(u_dst_tex, gid);
+    imageStore(u_dst_tex, gid, vec4(existing.rgb + upsampled, 1.0));
+}

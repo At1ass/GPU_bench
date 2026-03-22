@@ -1,0 +1,53 @@
+#version 430
+layout(local_size_x = 16, local_size_y = 16) in;
+
+uniform sampler2D u_scene_tex;
+uniform vec2 u_screen_size;
+uniform float u_min_log_lum;  // min log2 luminance (e.g., -8.0)
+uniform float u_log_lum_range; // range of log2 luminance (e.g., 12.0)
+
+// Histogram: 256 bins
+layout(std430, binding = 1) buffer HistogramBuffer {
+    uint histogram[256];
+};
+
+// Shared memory histogram for workgroup-local accumulation
+shared uint s_histogram[256];
+
+void main() {
+    uint lid = gl_LocalInvocationIndex;
+
+    // Clear shared histogram
+    if (lid < 256u) {
+        s_histogram[lid] = 0u;
+    }
+    barrier();
+
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 screen_size = ivec2(u_screen_size);
+
+    if (gid.x < screen_size.x && gid.y < screen_size.y) {
+        vec2 uv = (vec2(gid) + 0.5) / u_screen_size;
+        vec3 color = texture(u_scene_tex, uv).rgb;
+
+        // Luminance
+        float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+
+        if (lum > 0.001) {
+            // Map to histogram bin
+            float log_lum = clamp((log2(lum) - u_min_log_lum) / u_log_lum_range, 0.0, 1.0);
+            uint bin = uint(log_lum * 254.0 + 1.0); // bin 0 reserved for black pixels
+            bin = min(bin, 255u);
+            atomicAdd(s_histogram[bin], 1u);
+        } else {
+            atomicAdd(s_histogram[0], 1u); // black pixels
+        }
+    }
+
+    barrier();
+
+    // Merge shared histogram into global
+    if (lid < 256u) {
+        atomicAdd(histogram[lid], s_histogram[lid]);
+    }
+}

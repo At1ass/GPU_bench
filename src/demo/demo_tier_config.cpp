@@ -15,7 +15,24 @@ DemoTierConfig getTierConfig(DemoTier tier) {
     c.normal_map_strength = 0.4f;
 
     // Scene
-    c.fog_density = 0.035f;
+    c.fog_density = 0.045f;
+
+    // T4 Ultra defaults (disabled for lower tiers)
+    c.enable_pcss = false;
+    c.enable_gtao = false;
+    c.enable_compute_bloom = false;
+    c.enable_auto_exposure = false;
+    c.enable_ssr = false;
+    c.enable_dof = false;
+    c.enable_sss = false;
+    c.sss_strength = 0.0f;
+    c.chromatic_strength = 0.0f;
+    c.grain_strength = 0.0f;
+    c.dof_focal_distance = 3.5f;
+    c.dof_strength = 1.0f;
+    c.light_size = 0.0f;
+    c.fog_steps = 32;
+    c.displacement_strength = 0.02f;
 
     // Fur: varies by tier
     // density = cells per world unit. Model is ~2 units across.
@@ -41,6 +58,13 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.ssao_intensity = 0.0f;
             c.point_light_count = 0;
             c.enable_normal_map_texture = false;
+            c.enable_pbr = false;
+            c.enable_tessellation = false;
+            c.tess_level = 0;
+            c.enable_compute_particles = false;
+            c.compute_particle_count = 0;
+            c.enable_volumetric_fog = false;
+            c.enable_hdr = false;
             break;
         case DemoTier::Enhanced:
             c.fur_shells = 24;
@@ -62,6 +86,13 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.ssao_intensity = 1.0f;
             c.point_light_count = 0;
             c.enable_normal_map_texture = false;
+            c.enable_pbr = false;
+            c.enable_tessellation = false;
+            c.tess_level = 0;
+            c.enable_compute_particles = false;
+            c.compute_particle_count = 0;
+            c.enable_volumetric_fog = false;
+            c.enable_hdr = false;
             break;
         case DemoTier::Quality:
             c.fur_shells = 48;
@@ -83,6 +114,13 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.ssao_intensity = 1.0f;
             c.point_light_count = 3;
             c.enable_normal_map_texture = true;
+            c.enable_pbr = false;
+            c.enable_tessellation = false;
+            c.tess_level = 0;
+            c.enable_compute_particles = false;
+            c.compute_particle_count = 0;
+            c.enable_volumetric_fog = false;
+            c.enable_hdr = false;
             break;
         case DemoTier::Ultra:
             c.fur_shells = 64;
@@ -96,14 +134,37 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.instanced_grass_count = 60000;
             c.grass_area_size = 20.0f;
             c.enable_shadows = true;
-            c.shadow_map_size = 2048;
+            c.shadow_map_size = 4096;
             c.enable_bloom = true;
-            c.bloom_strength = 0.3f;
+            c.bloom_strength = 0.25f;
             c.enable_ssao = true;
-            c.ssao_radius = 0.35f;
-            c.ssao_intensity = 1.0f;
-            c.point_light_count = 3;
+            c.ssao_radius = 0.8f;
+            c.ssao_intensity = 1.4f;
+            c.point_light_count = 0;
             c.enable_normal_map_texture = true;
+            c.enable_pbr = true;
+            c.enable_tessellation = true;
+            c.tess_level = 6;
+            c.enable_compute_particles = true;
+            c.compute_particle_count = 2048;
+            c.enable_volumetric_fog = true;
+            c.enable_hdr = true;
+            // T4 Ultra enhancements
+            c.enable_pcss = true;
+            c.enable_gtao = true;
+            c.enable_compute_bloom = true;
+            c.enable_auto_exposure = true;
+            c.enable_ssr = true;
+            c.enable_dof = true;
+            c.enable_sss = true;
+            c.sss_strength = 0.8f;
+            c.chromatic_strength = 0.0005f;
+            c.grain_strength = 0.025f;
+            c.dof_focal_distance = 3.5f;
+            c.dof_strength = 0.5f;
+            c.light_size = 0.04f;
+            c.fog_steps = 64;
+            c.displacement_strength = 0.03f;
             break;
     }
 
@@ -152,14 +213,14 @@ TechniqueInfo getTierTechniqueInfo(DemoTier tier, int object_count) {
             info.estimated_draw_calls = object_count * 2 + fur_shells + 4;
             break;
         case DemoTier::Ultra:
-            info.shading = "Blinn-Phong (T1 fallback)";
-            info.shadows = "None";
-            info.lighting = "1 Sun + Fill + Rim";
-            info.ambient = "Hemisphere";
-            info.postfx = "None";
-            info.particles = "None";
-            info.extras = "Shell Fur (64), Sky [T1 shaders]";
-            info.estimated_draw_calls = object_count + fur_shells + 1;
+            info.shading = "PBR (Cook-Torrance GGX) + SSS";
+            info.shadows = "PCSS (4096, variable penumbra)";
+            info.lighting = "1 Sun + 3 Point + Fill + Rim + Auto-Exposure";
+            info.ambient = "Compute GTAO (full-res)";
+            info.postfx = "HDR + ACES + Compute Bloom + SSR + Vol Fog + DoF + Chromatic + Grain";
+            info.particles = "Compute Particles (2K, HDR glow)";
+            info.extras = "Tessellation (PN-tri), Fur (64), Grass (60K), Puddles";
+            info.estimated_draw_calls = object_count * 2 + fur_shells + 6;
             break;
     }
     return info;

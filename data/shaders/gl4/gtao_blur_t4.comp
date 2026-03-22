@@ -1,0 +1,69 @@
+#version 430
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Input: noisy AO
+layout(rgba32f, binding = 0) readonly uniform image2D u_ao_in;
+// Output: blurred AO
+layout(rgba32f, binding = 1) writeonly uniform image2D u_ao_out;
+
+uniform sampler2D u_depth_tex;
+uniform vec2 u_screen_size;
+uniform float u_near;
+uniform float u_far;
+
+// Shared memory for bilateral blur tile
+shared float s_ao[20][20];
+shared float s_depth[20][20];
+
+float linearizeDepth(float d) {
+    return u_near * u_far / (u_far - d * (u_far - u_near));
+}
+
+void main() {
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 lid = ivec2(gl_LocalInvocationID.xy);
+    ivec2 screen_size = ivec2(u_screen_size);
+
+    // Load into shared memory: tile + 2-pixel border = 20x20
+    ivec2 tile_origin = ivec2(gl_WorkGroupID.xy) * 16 - 2;
+    for (int dy = lid.y; dy < 20; dy += 16) {
+        for (int dx = lid.x; dx < 20; dx += 16) {
+            ivec2 coord = clamp(tile_origin + ivec2(dx, dy), ivec2(0), screen_size - 1);
+            s_ao[dy][dx] = imageLoad(u_ao_in, coord).r;
+            vec2 uv = (vec2(coord) + 0.5) / u_screen_size;
+            s_depth[dy][dx] = linearizeDepth(texture(u_depth_tex, uv).r);
+        }
+    }
+    barrier();
+
+    if (gid.x >= screen_size.x || gid.y >= screen_size.y) return;
+
+    float centerAO = s_ao[lid.y + 2][lid.x + 2];
+    float centerZ = s_depth[lid.y + 2][lid.x + 2];
+
+    // Edge-preserving bilateral blur (5x5 kernel)
+    float sum = 0.0;
+    float wsum = 0.0;
+    float depth_sigma = centerZ * 0.05; // relative depth threshold
+
+    for (int dy = -2; dy <= 2; dy++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            float ao_val = s_ao[lid.y + 2 + dy][lid.x + 2 + dx];
+            float z_val = s_depth[lid.y + 2 + dy][lid.x + 2 + dx];
+
+            // Spatial weight (Gaussian)
+            float spatial = exp(-float(dx*dx + dy*dy) * 0.2);
+
+            // Depth-based edge weight (bilateral)
+            float dz = abs(z_val - centerZ);
+            float depth_w = exp(-dz * dz / (2.0 * depth_sigma * depth_sigma + 0.001));
+
+            float w = spatial * depth_w;
+            sum += ao_val * w;
+            wsum += w;
+        }
+    }
+
+    float result = wsum > 0.001 ? sum / wsum : centerAO;
+    imageStore(u_ao_out, gid, vec4(result, result, result, 1.0));
+}

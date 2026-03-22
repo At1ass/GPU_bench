@@ -82,6 +82,7 @@ public:
     virtual BufferHandle createSSBO(int size_bytes) = 0;
     virtual void destroySSBO(BufferHandle h) = 0;
     virtual void bindSSBO(BufferHandle h, int binding) = 0;
+    virtual void updateSSBO(BufferHandle h, const void* data, int size_bytes) = 0;
 
 protected:
     bool has_compute_ = false;
