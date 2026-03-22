@@ -251,12 +251,104 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         return true;
     }
 
-    // Tiers 3-4: shaders don't exist yet
+    if (tier == 3) {
+        int idx = 2; // tier 3 -> index 2
+        // Island shader
+        {
+            std::string vs_str, fs_str;
+            if (r->isCoreProfile()) {
+                vs_str = ShaderLoader::load("gl3/island_t3_150.vert");
+                fs_str = ShaderLoader::load("gl3/island_t3_150.frag");
+            } else {
+                vs_str = ShaderLoader::load("gl3/island_t3.vert");
+                fs_str = ShaderLoader::load("gl3/island_t3.frag");
+            }
+            if (!island_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
+                Log::err("Resources: failed to create island shader (tier 3)");
+                return false;
+            }
+        }
+        // Fur shader
+        {
+            std::string vs_str, fs_str;
+            if (r->isCoreProfile()) {
+                vs_str = ShaderLoader::load("gl3/fur_t3_150.vert");
+                fs_str = ShaderLoader::load("gl3/fur_t3_150.frag");
+            } else {
+                vs_str = ShaderLoader::load("gl3/fur_t3.vert");
+                fs_str = ShaderLoader::load("gl3/fur_t3.frag");
+            }
+            if (!fur_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
+                Log::err("Resources: failed to create fur shader (tier 3)");
+                return false;
+            }
+        }
+        // Grass T3 shader (reuses T2 grass shader structure, just version bump + point lights)
+        // T3 uses the same grass_shader_ as T2 since grass instancing is shared
+        // We compile a separate T3 grass shader
+        {
+            std::string vs_str, fs_str;
+            if (r->isCoreProfile()) {
+                vs_str = ShaderLoader::load("gl3/grass_t3_150.vert");
+                fs_str = ShaderLoader::load("gl3/grass_t3_150.frag");
+            } else {
+                vs_str = ShaderLoader::load("gl3/grass_t3.vert");
+                fs_str = ShaderLoader::load("gl3/grass_t3.frag");
+            }
+            if (!grass_shader_t3_.create(r, vs_str.c_str(), fs_str.c_str())) {
+                Log::warn("Resources: failed to create grass T3 shader (non-critical)");
+            }
+        }
+
+        // Procedural normal map texture (256x256)
+        {
+            const int NM_SIZE = 256;
+            std::vector<unsigned char> nm_data(NM_SIZE * NM_SIZE * 3);
+            for (int y = 0; y < NM_SIZE; y++) {
+                for (int x = 0; x < NM_SIZE; x++) {
+                    float u = static_cast<float>(x) / NM_SIZE * 8.0f;
+                    float v = static_cast<float>(y) / NM_SIZE * 8.0f;
+                    // Simple procedural bumps using sin waves
+                    float h00 = sinf(u * 3.7f) * cosf(v * 4.1f) * 0.3f
+                              + sinf(u * 7.3f + 1.0f) * cosf(v * 6.7f + 2.0f) * 0.15f
+                              + sinf(u * 13.1f + 3.0f) * cosf(v * 11.3f) * 0.08f;
+                    float eps = 0.05f;
+                    float hx = sinf((u + eps) * 3.7f) * cosf(v * 4.1f) * 0.3f
+                             + sinf((u + eps) * 7.3f + 1.0f) * cosf(v * 6.7f + 2.0f) * 0.15f
+                             + sinf((u + eps) * 13.1f + 3.0f) * cosf(v * 11.3f) * 0.08f;
+                    float hy = sinf(u * 3.7f) * cosf((v + eps) * 4.1f) * 0.3f
+                             + sinf(u * 7.3f + 1.0f) * cosf((v + eps) * 6.7f + 2.0f) * 0.15f
+                             + sinf(u * 13.1f + 3.0f) * cosf((v + eps) * 11.3f) * 0.08f;
+                    float dx = (hx - h00) / eps;
+                    float dy = (hy - h00) / eps;
+                    // Normal from heightfield: N = normalize(-dx, 1, -dy)
+                    float len = sqrtf(dx * dx + 1.0f + dy * dy);
+                    float nx = -dx / len * 0.5f + 0.5f;
+                    float ny = 1.0f / len * 0.5f + 0.5f;
+                    float nz = -dy / len * 0.5f + 0.5f;
+                    int idx2 = (y * NM_SIZE + x) * 3;
+                    nm_data[idx2 + 0] = static_cast<unsigned char>(nx * 255.0f);
+                    nm_data[idx2 + 1] = static_cast<unsigned char>(ny * 255.0f);
+                    nm_data[idx2 + 2] = static_cast<unsigned char>(nz * 255.0f);
+                }
+            }
+            TextureHandle nt = r->createTexture(NM_SIZE, NM_SIZE, 3, nm_data.data());
+            if (nt != INVALID_TEXTURE) {
+                normal_map_tex_.assign(r, nt);
+                Log::info("Resources: generated normal map %dx%d", NM_SIZE, NM_SIZE);
+            }
+        }
+
+        return true;
+    }
+
+    // Tier 4: shaders don't exist yet
     Log::warn("Resources: tier %d shaders not implemented yet, reusing tier 1", tier);
     return false;
 }
 
-bool DemoResources::createShadowResources(Renderer* r) {
+bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
+    shadow_map_size_ = shadow_size;
     // Shadow depth shader
     {
         std::string vs_str, fs_str;
@@ -273,8 +365,7 @@ bool DemoResources::createShadowResources(Renderer* r) {
         }
     }
 
-    // Shadow depth render target (1024x1024)
-    shadow_map_size_ = 1024;
+    // Shadow depth render target (size set by caller)
     RenderTargetHandle srt = r->createDepthRenderTarget(shadow_map_size_, shadow_map_size_);
     if (srt == INVALID_RENDER_TARGET) {
         Log::warn("Resources: failed to create shadow depth FBO");
@@ -544,7 +635,8 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
 
     // Create shadow resources for T2+ (non-critical: T2 falls back to unshadowed)
     if (max_tier >= 2) {
-        createShadowResources(r);
+        int shadow_size = (max_tier >= 3) ? 2048 : 1024;
+        createShadowResources(r, shadow_size);
     }
 
     // Create bloom resources for T2+ (non-critical: T2 falls back to no bloom)
@@ -615,9 +707,19 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
     }
 
     // T2+ instanced grass resources
-    if (idx >= 1 && grass_shader_) {
-        view.grass_shader = &grass_shader_;
+    if (idx >= 1) {
+        // Use T3 grass shader if available, otherwise T2
+        if (idx >= 2 && grass_shader_t3_) {
+            view.grass_shader = &grass_shader_t3_;
+        } else if (grass_shader_) {
+            view.grass_shader = &grass_shader_;
+        }
         view.grass_blade_mesh = grass_blade_mesh_;
+    }
+
+    // T3+ normal map texture
+    if (idx >= 2 && normal_map_tex_) {
+        view.normal_map_tex = normal_map_tex_.get();
     }
 
     // T2+ SSAO resources
@@ -666,6 +768,10 @@ void DemoResources::destroy() {
 
     // Grass resources
     grass_shader_.reset();
+    grass_shader_t3_.reset();
+
+    // Normal map
+    normal_map_tex_.reset();
 
     // SSAO resources
     ssao_shader_.reset();

@@ -5,6 +5,7 @@
 #include "platform/logger.h"
 #include <cmath>
 #include <cstring>
+#include <cstdio>
 
 // ============================================================
 // Scene constants
@@ -306,6 +307,34 @@ void DemoScene::renderSky(Renderer* r, const FrameContext& fc) {
 }
 
 // ============================================================
+// setPointLightUniforms: T3+ animated point lights
+// ============================================================
+
+void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameContext& fc) {
+    if (config_.point_light_count <= 0) {
+        shader->set1i("u_point_light_count", 0);
+        return;
+    }
+    shader->set1i("u_point_light_count", config_.point_light_count);
+    static const Vec3 colors[] = {
+        Vec3(3.0f, 2.4f, 1.2f),  // warm yellow
+        Vec3(1.2f, 1.8f, 3.0f),  // cool blue
+        Vec3(1.5f, 3.0f, 1.5f),  // soft green
+    };
+    for (int i = 0; i < config_.point_light_count && i < 3; i++) {
+        float angle = fc.time * 0.5f + i * 2.094f;
+        float px = cosf(angle) * 1.8f;
+        float pz = sinf(angle) * 1.8f;
+        float py = -0.5f + sinf(fc.time * 0.8f + i * 1.5f) * 0.3f;
+        char name[32];
+        snprintf(name, sizeof(name), "u_point_lights[%d]", i);
+        shader->set3f(name, px, py, pz);
+        snprintf(name, sizeof(name), "u_point_colors[%d]", i);
+        shader->set3f(name, colors[i].x, colors[i].y, colors[i].z);
+    }
+}
+
+// ============================================================
 // renderOpaquePass
 // ============================================================
 
@@ -345,6 +374,18 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
     } else {
         res_.island_shader->set1f("u_has_shadow", 0.0f);
     }
+
+    // Normal map texture (T3+)
+    if (res_.normal_map_tex != INVALID_TEXTURE) {
+        r->bindTextureUnit(4, res_.normal_map_tex);
+        res_.island_shader->set1i("u_normal_map", 4);
+        res_.island_shader->set1f("u_has_normal_map", 1.0f);
+    } else {
+        res_.island_shader->set1f("u_has_normal_map", 0.0f);
+    }
+
+    // Point lights (T3+)
+    setPointLightUniforms(res_.island_shader, fc);
 
     for (size_t i = 0; i < opaque_objects_.size(); i++) {
         const SceneObject& obj = opaque_objects_[i];
@@ -406,6 +447,9 @@ void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
         res_.grass_shader->set1f("u_has_shadow", 0.0f);
     }
 
+    // Point lights (T3+)
+    setPointLightUniforms(res_.grass_shader, fc);
+
     r->setDepthTest(true);
     r->setDepthMask(true);
     r->setBlending(true);   // for tip alpha fade
@@ -454,6 +498,9 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
     } else {
         res_.fur_shader->set1f("u_has_shadow", 0.0f);
     }
+
+    // Point lights (T3+)
+    setPointLightUniforms(res_.fur_shader, fc);
 
     // Fur strand texture: unit 0
     r->bindTextureUnit(0, res_.fur_tex);

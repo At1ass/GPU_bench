@@ -66,6 +66,12 @@ struct DemoTierConfig {
     bool enable_ssao;
     float ssao_radius;
     float ssao_intensity;
+
+    // Point lights (T3+)
+    int point_light_count;
+
+    // Normal map texture (T3+)
+    bool enable_normal_map_texture;
 };
 
 DemoTierConfig getTierConfig(DemoTier tier);
@@ -159,6 +165,9 @@ private:
     // T2+ SSAO
     void renderSSAOPass(Renderer* r, const FrameContext& fc);
     void renderSSAOBlur(Renderer* r, const FrameContext& fc);
+
+    // Point light uniform helper
+    void setPointLightUniforms(ShaderProgram* shader, const FrameContext& fc);
 
     // T2+ bloom post-processing
     void renderSceneToFBO(Renderer* r, const FrameContext& fc);

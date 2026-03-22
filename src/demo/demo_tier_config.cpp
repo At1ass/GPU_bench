@@ -39,6 +39,8 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.enable_ssao = false;
             c.ssao_radius = 0.0f;
             c.ssao_intensity = 0.0f;
+            c.point_light_count = 0;
+            c.enable_normal_map_texture = false;
             break;
         case DemoTier::Enhanced:
             c.fur_shells = 24;
@@ -58,6 +60,8 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.enable_ssao = true;
             c.ssao_radius = 0.35f;
             c.ssao_intensity = 1.0f;
+            c.point_light_count = 0;
+            c.enable_normal_map_texture = false;
             break;
         case DemoTier::Quality:
             c.fur_shells = 48;
@@ -66,17 +70,19 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.fur_thickness = 0.7f;
             c.rock_count = 10;
             c.grass_count = 30;
-            c.particle_count = 200;
+            c.particle_count = 400;
             c.enable_wind = true;
-            c.instanced_grass_count = 600;
+            c.instanced_grass_count = 40000;
             c.grass_area_size = 20.0f;
             c.enable_shadows = true;
-            c.shadow_map_size = 1024;
+            c.shadow_map_size = 2048;
             c.enable_bloom = true;
             c.bloom_strength = 0.3f;
             c.enable_ssao = true;
-            c.ssao_radius = 0.5f;
-            c.ssao_intensity = 1.5f;
+            c.ssao_radius = 0.35f;
+            c.ssao_intensity = 1.0f;
+            c.point_light_count = 3;
+            c.enable_normal_map_texture = true;
             break;
         case DemoTier::Ultra:
             c.fur_shells = 64;
@@ -85,17 +91,19 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.fur_thickness = 0.65f;
             c.rock_count = 10;
             c.grass_count = 30;
-            c.particle_count = 200;
+            c.particle_count = 600;
             c.enable_wind = true;
-            c.instanced_grass_count = 1000;
+            c.instanced_grass_count = 60000;
             c.grass_area_size = 20.0f;
             c.enable_shadows = true;
-            c.shadow_map_size = 1024;
+            c.shadow_map_size = 2048;
             c.enable_bloom = true;
             c.bloom_strength = 0.3f;
             c.enable_ssao = true;
-            c.ssao_radius = 0.5f;
-            c.ssao_intensity = 1.5f;
+            c.ssao_radius = 0.35f;
+            c.ssao_intensity = 1.0f;
+            c.point_light_count = 3;
+            c.enable_normal_map_texture = true;
             break;
     }
 
@@ -134,14 +142,14 @@ TechniqueInfo getTierTechniqueInfo(DemoTier tier, int object_count) {
             info.estimated_draw_calls = object_count * 2 + fur_shells + 3; // shadow pass + main pass + sky + particles
             break;
         case DemoTier::Quality:
-            info.shading = "Blinn-Phong (T1 fallback)";
-            info.shadows = "None";
-            info.lighting = "1 Sun + Fill + Rim";
-            info.ambient = "Hemisphere";
-            info.postfx = "None";
-            info.particles = "None";
-            info.extras = "Shell Fur (48), Sky [T1 shaders]";
-            info.estimated_draw_calls = object_count + fur_shells + 1;
+            info.shading = "Blinn-Phong + Normal Map";
+            info.shadows = "Shadow Map (2048) + PCF 5x5";
+            info.lighting = "1 Sun + 3 Point Lights + Fill + Rim";
+            info.ambient = "Hemisphere + SSAO";
+            info.postfx = "Bloom + Vignette + Color Grade";
+            info.particles = "Billboard Dust (400)";
+            info.extras = "Instanced Fur (48), Sky+Clouds, Rocks, Instanced Grass (40000)+Wind";
+            info.estimated_draw_calls = object_count * 2 + fur_shells + 4;
             break;
         case DemoTier::Ultra:
             info.shading = "Blinn-Phong (T1 fallback)";

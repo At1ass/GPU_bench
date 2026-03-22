@@ -47,7 +47,10 @@ struct TierResourceView {
     RenderTargetHandle ssao_rt;
     RenderTargetHandle ssao_blur_rt;
     TextureHandle ssao_noise_tex;
-    TextureHandle scene_depth_tex;  // depth from scene FBO
+    TextureHandle scene_depth_tex;
+
+    // T3+ normal map
+    TextureHandle normal_map_tex;
 
     TierResourceView()
         : sky_shader(nullptr), island_shader(nullptr), fur_shader(nullptr)
@@ -64,5 +67,6 @@ struct TierResourceView {
         , bloom_strength(0.0f)
         , grass_shader(nullptr), grass_blade_mesh()
         , ssao_shader(nullptr), ssao_blur_shader(nullptr)
-        , ssao_rt(), ssao_blur_rt(), ssao_noise_tex(), scene_depth_tex() {}
+        , ssao_rt(), ssao_blur_rt(), ssao_noise_tex(), scene_depth_tex()
+        , normal_map_tex() {}
 };

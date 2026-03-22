@@ -69,6 +69,7 @@ private:
 
     // T2+ instanced grass
     ShaderProgram grass_shader_;
+    ShaderProgram grass_shader_t3_;
     MeshHandle grass_blade_mesh_;
 
     // T2+ SSAO
@@ -77,13 +78,16 @@ private:
     ScopedRenderTarget ssao_rt_;
     ScopedRenderTarget ssao_blur_rt_;
     ScopedTexture ssao_noise_tex_;
-    TextureHandle scene_depth_tex_;  // obtained from scene_rt_ via getRTDepthTexture
+    TextureHandle scene_depth_tex_;
+
+    // T3+ normal map texture
+    ScopedTexture normal_map_tex_;
 
     bool loadSharedMeshes(Renderer* r);
     bool loadSharedTextures(Renderer* r);
     bool compileSkyShader(Renderer* r);
     bool compileTierShaders(Renderer* r, int tier);
-    bool createShadowResources(Renderer* r);
+    bool createShadowResources(Renderer* r, int shadow_size = 1024);
     bool createBloomResources(Renderer* r, int render_w, int render_h);
     bool createSSAOResources(Renderer* r, int render_w, int render_h);
 };
