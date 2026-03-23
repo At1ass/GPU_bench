@@ -1,0 +1,146 @@
+// X-macro uniform registry for demo shaders.
+// U(enum_id, glsl_name, type)
+// Types: F=float, I=int, V2=vec2, V3=vec3, M4=mat4
+//
+// Adding a new uniform = one line here. All call sites use UniformId enum.
+
+// Transform matrices
+U(Proj,              "u_proj",               M4)
+U(View,              "u_view",               M4)
+U(Model,             "u_model",              M4)
+U(LightVP,           "u_light_vp",           M4)
+U(ViewInv,           "u_view_inv",           M4)
+
+// Camera
+U(CamPos,            "u_cam_pos",            V3)
+U(CamRight,          "u_cam_right",          V3)
+U(CamUp,             "u_cam_up",             V3)
+U(Near,              "u_near",               F)
+U(Far,               "u_far",                F)
+U(Aspect,            "u_aspect",             F)
+U(TanHalfFov,        "u_tan_half_fov",       F)
+
+// Lighting
+U(SunDir,            "u_sun_dir",            V3)
+U(LightDir,          "u_light_dir",          V3)
+U(LightSize,         "u_light_size",         F)
+U(PointLightCount,   "u_point_light_count",  I)
+
+// Material
+U(MatColor,          "u_mat_color",          V3)
+U(MatSpec,           "u_mat_spec",           F)
+U(Metallic,          "u_metallic",           F)
+U(Roughness,         "u_roughness",          F)
+U(ProcTex,           "u_proc_tex",           F)
+U(IsWater,           "u_is_water",           F)
+
+// Fog
+U(FogColor,          "u_fog_color",          V3)
+U(FogDensity,        "u_fog_density",        F)
+U(FogSteps,          "u_fog_steps",          I)
+
+// Shadows
+U(HasShadow,         "u_has_shadow",         F)
+U(ShadowMap,         "u_shadow_map",         I)
+U(ShadowTexelSize,   "u_shadow_texel_size",  V2)
+
+// SSAO
+U(SsaoTex,           "u_ssao_tex",           I)
+U(HasSsao,           "u_has_ssao",           F)
+U(AoRadius,          "u_ao_radius",          F)
+U(AoIntensity,       "u_ao_intensity",       F)
+U(NoiseTex,          "u_noise_tex",          I)
+U(Radius,            "u_radius",             F)
+U(Intensity,         "u_intensity",          F)
+
+// Normal map
+U(HasNormalMap,       "u_has_normal_map",     F)
+U(NormalMap,          "u_normal_map",         I)
+U(NormalStrength,     "u_normal_strength",    F)
+
+// Fur
+U(FurTex,            "u_fur_tex",            I)
+U(FurMask,           "u_fur_mask",           I)
+U(HasFurMask,        "u_has_fur_mask",       F)
+U(ShellIndex,        "u_shell_index",        F)
+U(FurShells,         "u_fur_shells",         F)
+U(FurLength,         "u_fur_length",         F)
+U(FurTexScale,       "u_fur_tex_scale",      F)
+U(FurColorRoot,      "u_fur_color_root",     V3)
+U(FurColorTip,       "u_fur_color_tip",      V3)
+U(FurAoPower,        "u_fur_ao_power",       F)
+
+// Grass
+U(UseInstancing,     "u_use_instancing",     F)
+U(GrassCount,        "u_grass_count",        I)
+U(AreaSize,          "u_area_size",          F)
+U(VertexWind,        "u_vertex_wind",        F)
+U(WindDir,           "u_wind_dir",           V3)
+
+// Bloom
+U(BloomTex,          "u_bloom_tex",          I)
+U(BloomStrength,     "u_bloom_strength",     F)
+U(BloomThreshold,    "u_bloom_threshold",    F)
+U(BloomRadius,       "u_bloom_radius",       F)
+U(Horizontal,        "u_horizontal",         I)
+U(Threshold,         "u_threshold",          F)
+
+// Tone map / HDR
+U(SceneTex,          "u_scene_tex",          I)
+U(Exposure,          "u_exposure",           F)
+U(ChromaticStrength, "u_chromatic_strength", F)
+U(GrainStrength,     "u_grain_strength",     F)
+
+// SSS
+U(SssStrength,       "u_sss_strength",       F)
+
+// Tessellation
+U(TessInner,         "u_tess_inner",         F)
+U(TessOuter,         "u_tess_outer",         F)
+U(DisplacementStr,   "u_displacement_strength", F)
+
+// Compute particles
+U(Dt,                "u_dt",                 F)
+U(EmitterPos,        "u_emitter_pos",        V3)
+U(Alpha,             "u_alpha",              F)
+
+// Textures (sampler bindings)
+U(Tex,               "u_tex",                I)
+U(DepthTex,          "u_depth_tex",          I)
+U(SrcTex,            "u_src_tex",            I)
+U(FogTex,            "u_fog_tex",            I)
+U(ReflectionTex,     "u_reflection_tex",     I)
+U(SsrTex,            "u_ssr_tex",            I)
+U(DofTex,            "u_dof_tex",            I)
+
+// Screen / viewport
+U(ScreenSize,        "u_screen_size",        V2)
+U(ViewportSize,      "u_viewport_size",      V2)
+U(SrcSize,           "u_src_size",           V2)
+U(TexelSize,         "u_texel_size",         V2)
+U(TotalPixels,       "u_total_pixels",       I)
+
+// Time
+U(Time,              "u_time",               F)
+
+// Feature flags
+U(HasReflection,     "u_has_reflection",     F)
+U(HasSsr,            "u_has_ssr",            F)
+U(HasFog,            "u_has_fog",            F)
+U(HasDof,            "u_has_dof",            F)
+U(FirstPass,         "u_first_pass",         I)
+U(Bias,              "u_bias",               F)
+
+// Auto-exposure
+U(MinLogLum,         "u_min_log_lum",        F)
+U(LogLumRange,       "u_log_lum_range",      F)
+U(AdaptSpeed,        "u_adapt_speed",        F)
+
+// DoF
+U(FocalDistance,      "u_focal_distance",     F)
+U(FocalRange,         "u_focal_range",        F)
+U(MaxBlur,            "u_max_blur",           F)
+U(DofStrength,        "u_dof_strength",       F)
+
+// Puddles
+U(PuddleCount,       "u_puddle_count",       I)

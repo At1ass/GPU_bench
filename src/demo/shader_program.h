@@ -73,6 +73,14 @@ public:
         renderer_->setUniformMat4(loc(name), m);
     }
 
+    // Direct setters by location (used by UniformBlock, no string lookup)
+    void set1i_raw(int l, int v) { renderer_->setUniform1i(l, v); }
+    void set1f_raw(int l, float v) { renderer_->setUniform1f(l, v); }
+    void set2f_raw(int l, float x, float y) { renderer_->setUniform2f(l, x, y); }
+    void set3f_raw(int l, float x, float y, float z) { renderer_->setUniform3f(l, x, y, z); }
+    void set4f_raw(int l, float r, float g, float b, float a) { renderer_->setUniform4f(l, r, g, b, a); }
+    void setMat4_raw(int l, const Mat4& m) { renderer_->setUniformMat4(l, m); }
+
     // Access underlying handle.
     ShaderHandle handle() const { return shader_.get(); }
     explicit operator bool() const { return static_cast<bool>(shader_); }
