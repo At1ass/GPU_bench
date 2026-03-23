@@ -182,6 +182,27 @@ set(SOURCES
     src/demo/demo_runner.cpp
     src/demo/demo_ui.cpp
     src/demo/demo_export.cpp
+    src/demo/passes/sky_pass.cpp
+    src/demo/passes/shadow_pass.cpp
+    src/demo/passes/particle_pass.cpp
+    src/demo/passes/opaque_pass.cpp
+    src/demo/passes/grass_instanced_pass.cpp
+    src/demo/passes/fur_pass.cpp
+    src/demo/passes/ssao_pass.cpp
+    src/demo/passes/bloom_pass.cpp
+    src/demo/passes/composite_pass.cpp
+    src/demo/passes/scene_to_fbo_pass.cpp
+    src/demo/passes/hdr_composite_pass.cpp
+    src/demo/passes/compute_particles_pass.cpp
+    src/demo/passes/compute_particles_draw_pass.cpp
+    src/demo/passes/tessellated_model_pass.cpp
+    src/demo/passes/gtao_pass.cpp
+    src/demo/passes/bloom_compute_pass.cpp
+    src/demo/passes/auto_exposure_pass.cpp
+    src/demo/passes/volumetric_fog_pass.cpp
+    src/demo/passes/water_pass.cpp
+    src/demo/passes/ssr_pass.cpp
+    src/demo/passes/dof_pass.cpp
 
     # UI
     src/ui/bench_ui.cpp
