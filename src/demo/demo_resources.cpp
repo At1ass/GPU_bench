@@ -735,7 +735,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 init_data[base + 11] = 1.0f;
             }
             cf->updateSSBO(ssbo, init_data.data(), compute_particle_count_ * particle_size);
-            particle_ssbo_ = ssbo;
+            particle_ssbo_.assign(renderer_, ssbo);
             LOG_INF("Resources: compute particle SSBO created (%d particles)", compute_particle_count_);
         }
     }
@@ -885,16 +885,16 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 // Zero-initialize histogram
                 std::vector<unsigned int> zeros(256, 0);
                 cf->updateSSBO(hist, zeros.data(), static_cast<int>(256 * sizeof(unsigned int)));
-                histogram_ssbo_ = hist;
+                histogram_ssbo_.assign(renderer_, hist);
             }
             // Single float for exposure
             BufferHandle exp_buf = cf->createSSBO(static_cast<int>(sizeof(float)));
             if (exp_buf != INVALID_BUFFER) {
                 float init_exp = 1.0f;
                 cf->updateSSBO(exp_buf, &init_exp, static_cast<int>(sizeof(float)));
-                exposure_ssbo_ = exp_buf;
+                exposure_ssbo_.assign(renderer_, exp_buf);
             }
-            if (histogram_ssbo_ != INVALID_BUFFER && exposure_ssbo_ != INVALID_BUFFER) {
+            if (histogram_ssbo_ && exposure_ssbo_) {
                 LOG_INF("Resources: auto-exposure SSBOs created");
             } else {
                 LOG_WRN("Resources: failed to create exposure SSBOs");
@@ -1005,64 +1005,64 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
 TierResourceView DemoResources::viewForTier(DemoTier tier) {
     TierResourceView view;
 
-    view.sky_shader = &sky_shader_;
-    view.model_mesh = model_mesh_;
-    view.sky_mesh = sky_mesh_.get();
-    view.ground_mesh = ground_mesh_;
-    view.rock_mesh = rock_mesh_;
-    view.grass_mesh = grass_mesh_;
-    view.particle_mesh = particle_mesh_;
-    view.fur_tex = fur_tex_.get();
-    view.fur_mask_tex = fur_mask_tex_.get();
-    view.model_bounding_radius = model_bounding_radius_;
-    view.particle_shader = particle_shader_ ? &particle_shader_ : nullptr;
+    view.core.sky_shader = &sky_shader_;
+    view.core.model_mesh = model_mesh_;
+    view.core.sky_mesh = sky_mesh_.get();
+    view.core.ground_mesh = ground_mesh_;
+    view.core.rock_mesh = rock_mesh_;
+    view.core.grass_mesh = grass_mesh_;
+    view.core.particle_mesh = particle_mesh_;
+    view.core.fur_tex = fur_tex_.get();
+    view.core.fur_mask_tex = fur_mask_tex_.get();
+    view.core.model_bounding_radius = model_bounding_radius_;
+    view.core.particle_shader = particle_shader_ ? &particle_shader_ : nullptr;
 
     int idx = static_cast<int>(tier) - 1;
     if (idx < 0 || idx >= MAX_TIERS) idx = 0;
 
     // Use tier-specific shaders if available, otherwise fall back to tier 1
     if (island_shaders_[idx]) {
-        view.island_shader = &island_shaders_[idx];
+        view.core.island_shader = &island_shaders_[idx];
     } else {
-        view.island_shader = &island_shaders_[0];
+        view.core.island_shader = &island_shaders_[0];
     }
 
     if (fur_shaders_[idx]) {
-        view.fur_shader = &fur_shaders_[idx];
+        view.core.fur_shader = &fur_shaders_[idx];
     } else {
-        view.fur_shader = &fur_shaders_[0];
+        view.core.fur_shader = &fur_shaders_[0];
     }
 
     // T2+ shadow mapping resources
     if (idx >= 1 && shadow_shader_ && shadow_rt_) {
-        view.shadow_shader = &shadow_shader_;
-        view.shadow_rt = shadow_rt_.get();
-        view.shadow_depth_tex = shadow_depth_tex_;
-        view.shadow_map_size = shadow_map_size_;
+        view.shadow.shader = &shadow_shader_;
+        view.shadow.rt = shadow_rt_.get();
+        view.shadow.depth_tex = shadow_depth_tex_;
+        view.shadow.map_size = shadow_map_size_;
     }
 
     // T2+ bloom post-processing resources
     if (idx >= 1 && bloom_extract_shader_ && bloom_blur_shader_
         && bloom_composite_shader_ && scene_rt_ && bright_rt_ && blur_rt_) {
-        view.bloom_extract_shader = &bloom_extract_shader_;
-        view.bloom_blur_shader = &bloom_blur_shader_;
-        view.bloom_composite_shader = &bloom_composite_shader_;
-        view.fullscreen_quad = fullscreen_quad_.get();
-        view.scene_rt = scene_rt_.get();
-        view.bright_rt = bright_rt_.get();
-        view.blur_rt = blur_rt_.get();
-        view.bloom_strength = bloom_strength_;
+        view.bloom.extract_shader = &bloom_extract_shader_;
+        view.bloom.blur_shader = &bloom_blur_shader_;
+        view.bloom.composite_shader = &bloom_composite_shader_;
+        view.bloom.fullscreen_quad = fullscreen_quad_.get();
+        view.bloom.scene_rt = scene_rt_.get();
+        view.bloom.bright_rt = bright_rt_.get();
+        view.bloom.blur_rt = blur_rt_.get();
+        view.bloom.strength = bloom_strength_;
     }
 
     // T2+ instanced grass resources
     if (idx >= 1) {
         // Use T3 grass shader if available, otherwise T2
         if (idx >= 2 && grass_shader_t3_) {
-            view.grass_shader = &grass_shader_t3_;
+            view.grass.shader = &grass_shader_t3_;
         } else if (grass_shader_) {
-            view.grass_shader = &grass_shader_;
+            view.grass.shader = &grass_shader_;
         }
-        view.grass_blade_mesh = grass_blade_mesh_;
+        view.grass.blade_mesh = grass_blade_mesh_;
     }
 
     // T3+ normal map texture
@@ -1072,66 +1072,66 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
 
     // T2+ SSAO resources
     if (idx >= 1 && ssao_shader_ && ssao_blur_shader_ && ssao_rt_ && ssao_blur_rt_) {
-        view.ssao_shader = &ssao_shader_;
-        view.ssao_blur_shader = &ssao_blur_shader_;
-        view.ssao_rt = ssao_rt_.get();
-        view.ssao_blur_rt = ssao_blur_rt_.get();
-        view.ssao_noise_tex = ssao_noise_tex_.get();
-        view.scene_depth_tex = scene_depth_tex_;
+        view.ssao.shader = &ssao_shader_;
+        view.ssao.blur_shader = &ssao_blur_shader_;
+        view.ssao.rt = ssao_rt_.get();
+        view.ssao.blur_rt = ssao_blur_rt_.get();
+        view.ssao.noise_tex = ssao_noise_tex_.get();
+        view.ssao.scene_depth_tex = scene_depth_tex_;
     }
 
     // T4+ resources
     if (idx >= 3) {
         // Use T4 grass shader if available
         if (grass_shader_t4_) {
-            view.grass_shader = &grass_shader_t4_;
+            view.grass.shader = &grass_shader_t4_;
         }
-        if (tess_shader_) view.tess_shader = &tess_shader_;
-        if (compute_particle_shader_) view.compute_particle_shader = &compute_particle_shader_;
-        if (particle_render_shader_) view.particle_render_shader = &particle_render_shader_;
-        if (volumetric_fog_shader_) view.volumetric_fog_shader = &volumetric_fog_shader_;
-        if (tone_map_shader_) view.tone_map_shader = &tone_map_shader_;
-        view.particle_ssbo = particle_ssbo_;
-        view.compute_particle_count = compute_particle_count_;
+        if (tess_shader_) view.t4.tess_shader = &tess_shader_;
+        if (compute_particle_shader_) view.t4.compute_particle_shader = &compute_particle_shader_;
+        if (particle_render_shader_) view.t4.particle_render_shader = &particle_render_shader_;
+        if (volumetric_fog_shader_) view.t4.volumetric_fog_shader = &volumetric_fog_shader_;
+        if (tone_map_shader_) view.t4.tone_map_shader = &tone_map_shader_;
+        view.t4.particle_ssbo = particle_ssbo_.get();
+        view.t4.compute_particle_count = compute_particle_count_;
         if (hdr_scene_rt_) {
-            view.hdr_scene_rt = hdr_scene_rt_.get();
-            view.hdr_depth_tex = hdr_depth_tex_;
+            view.t4.hdr_scene_rt = hdr_scene_rt_.get();
+            view.t4.hdr_depth_tex = hdr_depth_tex_;
             // Override scene_depth_tex for SSAO to use HDR depth
-            view.scene_depth_tex = hdr_depth_tex_;
+            view.ssao.scene_depth_tex = hdr_depth_tex_;
         }
-        if (hdr_bright_rt_) view.hdr_bright_rt = hdr_bright_rt_.get();
-        if (fog_rt_) view.fog_rt = fog_rt_.get();
+        if (hdr_bright_rt_) view.t4.hdr_bright_rt = hdr_bright_rt_.get();
+        if (fog_rt_) view.t4.fog_rt = fog_rt_.get();
 
         // T4 Ultra: GTAO
-        if (gtao_shader_) view.gtao_shader = &gtao_shader_;
-        if (gtao_blur_shader_) view.gtao_blur_shader = &gtao_blur_shader_;
-        if (gtao_tex_) view.gtao_tex = gtao_tex_.get();
-        if (gtao_blur_tex_) view.gtao_blur_tex = gtao_blur_tex_.get();
+        if (gtao_shader_) view.t4.gtao_shader = &gtao_shader_;
+        if (gtao_blur_shader_) view.t4.gtao_blur_shader = &gtao_blur_shader_;
+        if (gtao_tex_) view.t4.gtao_tex = gtao_tex_.get();
+        if (gtao_blur_tex_) view.t4.gtao_blur_tex = gtao_blur_tex_.get();
 
         // T4 Ultra: Compute Bloom
-        if (bloom_down_compute_) view.bloom_down_compute = &bloom_down_compute_;
-        if (bloom_up_compute_) view.bloom_up_compute = &bloom_up_compute_;
+        if (bloom_down_compute_) view.t4.bloom_down_compute = &bloom_down_compute_;
+        if (bloom_up_compute_) view.t4.bloom_up_compute = &bloom_up_compute_;
         for (int i = 0; i < BLOOM_MIP_COUNT; i++) {
-            if (bloom_mips_[i]) view.bloom_mips[i] = bloom_mips_[i].get();
+            if (bloom_mips_[i]) view.t4.bloom_mips[i] = bloom_mips_[i].get();
         }
 
         // T4 Ultra: Auto-Exposure
-        if (histogram_shader_) view.histogram_shader = &histogram_shader_;
-        if (exposure_shader_) view.exposure_shader = &exposure_shader_;
-        view.histogram_ssbo = histogram_ssbo_;
-        view.exposure_ssbo = exposure_ssbo_;
+        if (histogram_shader_) view.t4.histogram_shader = &histogram_shader_;
+        if (exposure_shader_) view.t4.exposure_shader = &exposure_shader_;
+        view.t4.histogram_ssbo = histogram_ssbo_.get();
+        view.t4.exposure_ssbo = exposure_ssbo_.get();
 
         // T4 Ultra: SSR
-        if (ssr_shader_) view.ssr_shader = &ssr_shader_;
-        if (ssr_tex_) view.ssr_tex = ssr_tex_.get();
+        if (ssr_shader_) view.t4.ssr_shader = &ssr_shader_;
+        if (ssr_tex_) view.t4.ssr_tex = ssr_tex_.get();
 
         // T4 Ultra: DoF
-        if (dof_shader_) view.dof_shader = &dof_shader_;
-        if (dof_tex_) view.dof_tex = dof_tex_.get();
+        if (dof_shader_) view.t4.dof_shader = &dof_shader_;
+        if (dof_tex_) view.t4.dof_tex = dof_tex_.get();
 
         // T4 Ultra: Puddles
         for (int i = 0; i < PUDDLE_COUNT; i++)
-            view.puddle_meshes[i] = puddle_meshes_[i];
+            view.t4.puddle_meshes[i] = puddle_meshes_[i];
     }
 
     return view;
@@ -1182,11 +1182,7 @@ void DemoResources::destroy() {
     particle_render_shader_.reset();
     volumetric_fog_shader_.reset();
     tone_map_shader_.reset();
-    if (particle_ssbo_ != INVALID_BUFFER) {
-        ComputeFeatures* cf = renderer_->features<ComputeFeatures>();
-        if (cf) cf->destroySSBO(particle_ssbo_);
-        particle_ssbo_ = BufferHandle();
-    }
+    particle_ssbo_.reset();
     compute_particle_count_ = 0;
     hdr_scene_rt_.reset();
     hdr_bright_rt_.reset();
@@ -1203,15 +1199,8 @@ void DemoResources::destroy() {
     for (int i = 0; i < BLOOM_MIP_COUNT; i++) bloom_mips_[i].reset();
     histogram_shader_.reset();
     exposure_shader_.reset();
-    {
-        ComputeFeatures* cf = renderer_ ? renderer_->features<ComputeFeatures>() : nullptr;
-        if (cf) {
-            if (histogram_ssbo_ != INVALID_BUFFER) cf->destroySSBO(histogram_ssbo_);
-            if (exposure_ssbo_ != INVALID_BUFFER) cf->destroySSBO(exposure_ssbo_);
-        }
-        histogram_ssbo_ = BufferHandle();
-        exposure_ssbo_ = BufferHandle();
-    }
+    histogram_ssbo_.reset();
+    exposure_ssbo_.reset();
     ssr_shader_.reset();
     ssr_tex_.reset();
     dof_shader_.reset();

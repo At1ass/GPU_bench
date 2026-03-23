@@ -3,6 +3,7 @@
 #include "renderer/scoped_handle.h"
 #include "demo/shader_program.h"
 #include "demo/mesh_pool.h"
+#include "demo/scoped_ssbo.h"
 #include "demo/tier_resource_view.h"
 #include "geometry/mesh.h"
 
@@ -90,7 +91,7 @@ private:
     ShaderProgram particle_render_shader_;
     ShaderProgram volumetric_fog_shader_;
     ShaderProgram tone_map_shader_;
-    BufferHandle particle_ssbo_;
+    ScopedSSBO particle_ssbo_;
     int compute_particle_count_;
     ScopedRenderTarget hdr_scene_rt_;
     ScopedRenderTarget hdr_bright_rt_;
@@ -112,8 +113,8 @@ private:
     // T4 Ultra: Auto-Exposure
     ShaderProgram histogram_shader_;
     ShaderProgram exposure_shader_;
-    BufferHandle histogram_ssbo_;  // 256 uint bins
-    BufferHandle exposure_ssbo_;   // 1 float
+    ScopedSSBO histogram_ssbo_;  // 256 uint bins
+    ScopedSSBO exposure_ssbo_;   // 1 float
 
     // T4 Ultra: SSR
     ShaderProgram ssr_shader_;
