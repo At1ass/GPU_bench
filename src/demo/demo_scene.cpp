@@ -188,94 +188,10 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     scene_data_.model_mesh = model_mesh_;
     scene_data_.model_transform = model_transform_;
 
-    // Create all render passes via factory (DemoScene only sees DemoRenderPass*)
+    // Create render passes and build pipeline (DemoScene knows neither
+    // concrete pass types nor pipeline assembly rules)
     pass_ = createPasses(passes_, res_, config_);
-
-    // Build render pipeline for this tier
-    pipeline_.clear();
-
-    bool is_t4_hdr = config_.enable_hdr && res_.t4.hdr_scene_rt != INVALID_RENDER_TARGET && !debug_.skip_hdr;
-    bool is_t2t3_bloom = config_.enable_bloom && !is_t4_hdr;
-
-    if (is_t4_hdr) {
-        // T4 Ultra HDR pipeline — full scene + post-processing in one pipeline
-
-        // Pre-scene passes
-        if (config_.enable_shadows)
-            pipeline_.addPass(pass_.shadow);
-        if (config_.enable_compute_particles)
-            pipeline_.addPass(pass_.compute_particles);
-
-        // Scene to HDR FBO
-        pipeline_.addPassWithRT(pass_.sky, res_.t4.hdr_scene_rt,
-                                true, FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
-                                viewport_w_, viewport_h_);
-        pipeline_.addPass(pass_.opaque);
-        pipeline_.addPass(pass_.grass);
-        pipeline_.addPass(pass_.tess_model, config_.enable_tessellation);
-        pipeline_.addPass(pass_.fur, !config_.enable_tessellation);
-        pipeline_.addPass(pass_.compute_particles_draw, config_.enable_compute_particles);
-        pipeline_.addPass(pass_.particle, !config_.enable_compute_particles);
-
-        // SSR copy + water
-        pipeline_.addCommand(&DemoScene::ssrCopyCommand,
-                             config_.enable_ssr && res_.t4.ssr_tex != INVALID_TEXTURE);
-        pipeline_.addPass(pass_.water);
-
-        // Unbind scene FBO
-        pipeline_.addRTSwitch(INVALID_RENDER_TARGET);
-
-        // Post-processing
-        pipeline_.addPass(pass_.auto_exposure,
-                          config_.enable_auto_exposure && !debug_.skip_auto_exposure);
-
-        bool use_gtao = !debug_.skip_gtao && config_.enable_gtao
-                        && res_.t4.gtao_shader != nullptr && res_.t4.gtao_tex != INVALID_TEXTURE;
-        pipeline_.addPass(pass_.gtao, use_gtao);
-        pipeline_.addPass(pass_.ssao, config_.enable_ssao && !use_gtao);
-
-        pipeline_.addPass(pass_.vol_fog,
-                          config_.enable_volumetric_fog && !debug_.skip_vol_fog);
-
-        bool use_compute_bloom = !debug_.skip_compute_bloom && config_.enable_compute_bloom
-                                 && res_.t4.bloom_down_compute != nullptr
-                                 && res_.t4.bloom_mips[0] != INVALID_TEXTURE;
-        pipeline_.addPass(pass_.bloom_compute, use_compute_bloom);
-        pipeline_.addPass(pass_.bloom, config_.enable_bloom && !use_compute_bloom);
-
-        pipeline_.addPass(pass_.dof,
-                          config_.enable_dof && res_.t4.dof_shader != nullptr && !debug_.skip_dof);
-
-        // Barrier + final composite
-        pipeline_.addBarrier(4);
-        pipeline_.addPassToDest(pass_.hdr_composite, false, 0.0f, 0.0f, 0.0f, 0.0f,
-                                viewport_w_, viewport_h_);
-    } else if (is_t2t3_bloom) {
-        // T2/T3 pipeline
-        if (config_.enable_shadows)
-            pipeline_.addPass(pass_.shadow);
-        pipeline_.addPass(pass_.scene_to_fbo);
-        if (config_.enable_ssao)
-            pipeline_.addPass(pass_.ssao);
-        pipeline_.addPass(pass_.bloom);
-        pipeline_.addPass(pass_.composite);
-    } else {
-        // T1 Basic pipeline
-        if (config_.enable_shadows)
-            pipeline_.addPass(pass_.shadow);
-        pipeline_.addDefaultFBWithClear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
-                                        viewport_w_, viewport_h_);
-        pipeline_.addPass(pass_.sky);
-        pipeline_.addPass(pass_.opaque);
-        pipeline_.addPass(pass_.grass);
-        pipeline_.addPass(pass_.fur);
-        pipeline_.addPass(pass_.particle);
-    }
-
-    LOG_DBG("Pipeline: %d passes (%d enabled) for tier %d",
-            static_cast<int>(pipeline_.passCount()),
-            static_cast<int>(pipeline_.enabledCount()),
-            t);
+    buildPipeline(pipeline_, pass_, config_, debug_, res_, viewport_w_, viewport_h_);
 
     initialized_ = true;
     int total_obj = static_cast<int>(opaque_objects_.size());
@@ -363,18 +279,6 @@ FrameData DemoScene::buildFrameData(float t, float time, int w, int h,
     return fd;
 }
 
-// ============================================================
-// ssrCopyCommand: copy framebuffer to SSR texture (pipeline command)
-// ============================================================
-
-void DemoScene::ssrCopyCommand(Renderer* r, FrameData& fd,
-                               const TierResourceView& res,
-                               const DemoTierConfig& cfg,
-                               const SceneData& scene) {
-    (void)cfg; (void)scene;
-    if (res.t4.ssr_tex != INVALID_TEXTURE)
-        r->copyFramebufferToTexture(res.t4.ssr_tex, fd.viewport_w, fd.viewport_h);
-}
 
 // ============================================================
 // renderFrame: pipeline orchestrator

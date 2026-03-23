@@ -5,6 +5,7 @@
 #include "demo/demo_frame_data.h"
 #include "demo/demo_pipeline.h"
 #include "demo/pass_factory.h"
+#include "demo/pipeline_builder.h"
 #include "demo/scene_data.h"
 #include "demo/tier_resource_view.h"
 #include <memory>
@@ -167,9 +168,4 @@ private:
     RenderTargetHandle dest_rt_;
 
     FrameData buildFrameData(float t, float time, int w, int h, RenderTargetHandle dest_rt);
-
-    static void ssrCopyCommand(Renderer* r, FrameData& fd,
-                               const TierResourceView& res,
-                               const DemoTierConfig& cfg,
-                               const SceneData& scene);
 };
