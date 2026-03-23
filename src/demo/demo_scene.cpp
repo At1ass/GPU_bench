@@ -1,4 +1,5 @@
 #include "demo/demo_scene.h"
+#include "demo/tier_config_validate.h"
 #include "demo/shader_loader.h"
 #include "renderer/features.h"
 #include "renderer/gl_funcs.h"
@@ -242,6 +243,7 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     r_ = r;
     tier_ = tier;
     config_ = getTierConfig(tier);
+    validateTierConfig(config_);
     viewport_w_ = viewport_w;
     viewport_h_ = viewport_h;
     res_ = resources;
@@ -727,7 +729,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     fc.cam_pos = camera_.getPosition(t);
     Vec3 cam_target = camera_.getTarget(t);
     float aspect = static_cast<float>(viewport_w) / static_cast<float>(viewport_h > 0 ? viewport_h : 1);
-    fc.proj = Mat4::perspective(60.0f, aspect, 0.1f, 50.0f);
+    fc.proj = Mat4::perspective(kDemoFovDeg, aspect, kDemoNear, kDemoFar);
     fc.view = Mat4::lookAt(fc.cam_pos, cam_target, Vec3(0.0f, 1.0f, 0.0f));
 
     Mat4 vp = fc.proj * fc.view;
@@ -743,17 +745,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
                  fc.has_volumetric_fog, fc.has_hdr);
     }
 
-    // === DEBUG: set to 1 to disable specific T4 features ===
-    // Disable one at a time, rebuild, and test to find the culprit
-    #define DBG_SKIP_HDR          0  // 1 = skip entire HDR pipeline (use T3 path)
-    #define DBG_SKIP_AUTO_EXPOSE  0  // 1 = skip auto-exposure
-    #define DBG_SKIP_GTAO         0  // 1 = skip compute GTAO (use fragment SSAO)
-    #define DBG_SKIP_VOL_FOG      1  // 1 = skip volumetric fog
-    #define DBG_SKIP_SSR          1  // 1 = skip SSR compute (water does its own SSR now)
-    #define DBG_SKIP_COMPUTE_BLOOM 0 // 1 = skip compute bloom (use fragment bloom)
-    #define DBG_SKIP_DOF          0  // 1 = skip depth of field
-
-    if (fc.has_hdr && !DBG_SKIP_HDR) {
+    if (fc.has_hdr && !debug_.skip_hdr) {
         // T4 pipeline: auto-exposure -> compute particles -> shadow -> HDR scene ->
         //              GTAO/SSAO -> vol fog -> compute bloom -> HDR composite
         if (fc.has_compute_particles)
@@ -794,11 +786,11 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
         r->bindRenderTarget(INVALID_RENDER_TARGET);
 
         // Auto-exposure (histogram from HDR scene)
-        if (config_.enable_auto_exposure && !DBG_SKIP_AUTO_EXPOSE)
+        if (config_.enable_auto_exposure && !debug_.skip_auto_exposure)
             computeAutoExposure(r, fc);
 
         // AO: use Compute GTAO if available, otherwise fragment SSAO
-        if (!DBG_SKIP_GTAO && config_.enable_gtao && res_.gtao_shader && res_.gtao_tex != INVALID_TEXTURE) {
+        if (!debug_.skip_gtao && config_.enable_gtao && res_.gtao_shader && res_.gtao_tex != INVALID_TEXTURE) {
             renderGTAOPass(r, fc);
             renderGTAOBlur(r, fc);
         } else if (fc.has_ssao) {
@@ -807,21 +799,21 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
         }
 
         // Volumetric fog
-        if (fc.has_volumetric_fog && !DBG_SKIP_VOL_FOG)
+        if (fc.has_volumetric_fog && !debug_.skip_vol_fog)
             renderVolumetricFog(r, fc);
 
         // Restore full-res viewport after half-res fog pass
         r->setViewport(0, 0, viewport_w_, viewport_h_);
 
         // Bloom: compute bloom if available, otherwise fragment bloom
-        if (!DBG_SKIP_COMPUTE_BLOOM && config_.enable_compute_bloom && res_.bloom_down_compute && res_.bloom_mips[0] != INVALID_TEXTURE) {
+        if (!debug_.skip_compute_bloom && config_.enable_compute_bloom && res_.bloom_down_compute && res_.bloom_mips[0] != INVALID_TEXTURE) {
             renderBloomCompute(r, fc);
         } else {
             renderBloomPasses(r, fc);
         }
 
         // DoF (after bloom, before composite)
-        if (config_.enable_dof && res_.dof_shader && !DBG_SKIP_DOF)
+        if (config_.enable_dof && res_.dof_shader && !debug_.skip_dof)
             renderDoF(r, fc);
 
         // Ensure all compute writes are visible before fragment shader composite.
@@ -927,13 +919,13 @@ void DemoScene::renderSSAOPass(Renderer* r, const FrameContext& fc) {
     res_.ssao_shader->set1i("u_noise_tex", 1);
 
     // Projection parameters (perspective: fov=60, near=0.1, far=50)
-    float fov_rad = 60.0f * 3.14159265f / 180.0f;
+    float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
     res_.ssao_shader->set2f("u_screen_size",
                             static_cast<float>(viewport_w_),
                             static_cast<float>(viewport_h_));
-    res_.ssao_shader->set1f("u_near", 0.1f);
-    res_.ssao_shader->set1f("u_far", 50.0f);
+    res_.ssao_shader->set1f("u_near", kDemoNear);
+    res_.ssao_shader->set1f("u_far", kDemoFar);
     res_.ssao_shader->set1f("u_aspect", aspect);
     res_.ssao_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
     res_.ssao_shader->set1f("u_radius", config_.ssao_radius);
@@ -1176,10 +1168,10 @@ void DemoScene::renderVolumetricFog(Renderer* r, const FrameContext& fc) {
     r->bindTextureUnit(0, res_.hdr_depth_tex);
     res_.volumetric_fog_shader->set1i("u_depth_tex", 0);
 
-    float fov_rad = 60.0f * 3.14159265f / 180.0f;
+    float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
-    res_.volumetric_fog_shader->set1f("u_near", 0.1f);
-    res_.volumetric_fog_shader->set1f("u_far", 50.0f);
+    res_.volumetric_fog_shader->set1f("u_near", kDemoNear);
+    res_.volumetric_fog_shader->set1f("u_far", kDemoFar);
     res_.volumetric_fog_shader->set1f("u_aspect", aspect);
     res_.volumetric_fog_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
     res_.volumetric_fog_shader->set3f("u_sun_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
@@ -1224,12 +1216,12 @@ void DemoScene::renderGTAOPass(Renderer* r, const FrameContext& fc) {
 
     g4->bindImageTexture(res_.gtao_tex, 0, false, true); // write-only
 
-    float fov_rad = 60.0f * 3.14159265f / 180.0f;
+    float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
     res_.gtao_shader->set2f("u_screen_size",
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.gtao_shader->set1f("u_near", 0.1f);
-    res_.gtao_shader->set1f("u_far", 50.0f);
+    res_.gtao_shader->set1f("u_near", kDemoNear);
+    res_.gtao_shader->set1f("u_far", kDemoFar);
     res_.gtao_shader->set1f("u_aspect", aspect);
     res_.gtao_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
     res_.gtao_shader->set1f("u_ao_radius", config_.ssao_radius);
@@ -1262,8 +1254,8 @@ void DemoScene::renderGTAOBlur(Renderer* r, const FrameContext& fc) {
     res_.gtao_blur_shader->set1i("u_depth_tex", 0);
     res_.gtao_blur_shader->set2f("u_screen_size",
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.gtao_blur_shader->set1f("u_near", 0.1f);
-    res_.gtao_blur_shader->set1f("u_far", 50.0f);
+    res_.gtao_blur_shader->set1f("u_near", kDemoNear);
+    res_.gtao_blur_shader->set1f("u_far", kDemoFar);
 
     int gx = (viewport_w_ + 15) / 16;
     int gy = (viewport_h_ + 15) / 16;
@@ -1454,8 +1446,8 @@ void DemoScene::renderWaterPass(Renderer* r, const FrameContext& fc) {
         res_.island_shader->set2f("u_screen_size",
             static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
-        res_.island_shader->set1f("u_near", 0.1f);
-        res_.island_shader->set1f("u_far", 50.0f);
+        res_.island_shader->set1f("u_near", kDemoNear);
+        res_.island_shader->set1f("u_far", kDemoFar);
     } else {
         res_.island_shader->set1f("u_has_reflection", 0.0f);
     }
@@ -1516,12 +1508,12 @@ void DemoScene::renderSSR(Renderer* r, const FrameContext& fc) {
     vi.m[15] = 1;
     res_.ssr_shader->setMat4("u_view_inv", vi);
 
-    float fov_rad = 60.0f * 3.14159265f / 180.0f;
+    float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
     res_.ssr_shader->set2f("u_screen_size",
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.ssr_shader->set1f("u_near", 0.1f);
-    res_.ssr_shader->set1f("u_far", 50.0f);
+    res_.ssr_shader->set1f("u_near", kDemoNear);
+    res_.ssr_shader->set1f("u_far", kDemoFar);
     res_.ssr_shader->set1f("u_aspect", aspect);
     res_.ssr_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
 
@@ -1567,8 +1559,8 @@ void DemoScene::renderDoF(Renderer* r, const FrameContext& fc) {
 
     res_.dof_shader->set2f("u_screen_size",
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.dof_shader->set1f("u_near", 0.1f);
-    res_.dof_shader->set1f("u_far", 50.0f);
+    res_.dof_shader->set1f("u_near", kDemoNear);
+    res_.dof_shader->set1f("u_far", kDemoFar);
     res_.dof_shader->set1f("u_focal_distance", config_.dof_focal_distance);
     res_.dof_shader->set1f("u_focal_range", 5.0f);
     res_.dof_shader->set1f("u_max_blur", 5.0f);

@@ -1,6 +1,7 @@
 #pragma once
 #include "renderer/renderer.h"
 #include "demo/demo_camera.h"
+#include "demo/demo_debug.h"
 #include "demo/material.h"
 #include "demo/tier_resource_view.h"
 #include <vector>
@@ -129,6 +130,11 @@ struct FrustumPlanes {
     float planes[6][4]; // A,B,C,D for each plane
 };
 
+// Camera/projection constants shared across all render passes
+static const float kDemoFovDeg  = 60.0f;
+static const float kDemoNear    = 0.1f;
+static const float kDemoFar     = 50.0f;
+
 // Demo scene: OBJ model with fur, orbiting camera.
 class DemoScene {
 public:
@@ -232,6 +238,7 @@ private:
     bool initialized_;
     bool passes_logged_;       // log active passes only once per tier
     float prev_exposure_;
+    DemoDebugOverrides debug_;
 
     // Destination render target: the RT that was active when renderFrame was called.
     // Post-processing composite passes render TO this RT instead of the default framebuffer.

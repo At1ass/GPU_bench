@@ -178,6 +178,7 @@ set(SOURCES
     src/demo/shader_loader.cpp
     src/demo/demo_scene.cpp
     src/demo/demo_tier_config.cpp
+    src/demo/tier_config_validate.cpp
     src/demo/demo_runner.cpp
     src/demo/demo_ui.cpp
     src/demo/demo_export.cpp
