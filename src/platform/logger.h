@@ -22,6 +22,13 @@
 //   src/demo/scene.cpp   → "demo"
 //   src/main.cpp         → "app"
 
+// Compile-time printf format checking (GCC/Clang)
+#if defined(__GNUC__) || defined(__clang__)
+#define LOG_PRINTF_ATTR(fmt_idx, args_idx) __attribute__((format(printf, fmt_idx, args_idx)))
+#else
+#define LOG_PRINTF_ATTR(fmt_idx, args_idx)
+#endif
+
 class Log {
 public:
     Log() = delete;  // Pure static class, no instances
@@ -56,6 +63,7 @@ public:
 
     // --- Classic API (no source location) ---
 
+    LOG_PRINTF_ATTR(1, 2)
     static void dbg(const char* fmt, ...) {
         if (s_level > Level::Debug) return;
         SubsystemTag none = { nullptr, 0 };
@@ -64,6 +72,7 @@ public:
         va_end(ap);
     }
 
+    LOG_PRINTF_ATTR(1, 2)
     static void info(const char* fmt, ...) {
         if (s_level > Level::Info) return;
         SubsystemTag none = { nullptr, 0 };
@@ -72,6 +81,7 @@ public:
         va_end(ap);
     }
 
+    LOG_PRINTF_ATTR(1, 2)
     static void warn(const char* fmt, ...) {
         if (s_level > Level::Warn) return;
         SubsystemTag none = { nullptr, 0 };
@@ -80,6 +90,7 @@ public:
         va_end(ap);
     }
 
+    LOG_PRINTF_ATTR(1, 2)
     static void err(const char* fmt, ...) {
         SubsystemTag none = { nullptr, 0 };
         va_list ap; va_start(ap, fmt);
@@ -89,6 +100,7 @@ public:
 
     // --- Location-aware API (called by LOG_* macros) ---
 
+    LOG_PRINTF_ATTR(3, 4)
     static void dbg_loc(const char* file, int line, const char* fmt, ...) {
         if (s_level > Level::Debug) return;
         va_list ap; va_start(ap, fmt);
@@ -96,6 +108,7 @@ public:
         va_end(ap);
     }
 
+    LOG_PRINTF_ATTR(3, 4)
     static void info_loc(const char* file, int line, const char* fmt, ...) {
         if (s_level > Level::Info) return;
         va_list ap; va_start(ap, fmt);
@@ -103,6 +116,7 @@ public:
         va_end(ap);
     }
 
+    LOG_PRINTF_ATTR(3, 4)
     static void warn_loc(const char* file, int line, const char* fmt, ...) {
         if (s_level > Level::Warn) return;
         va_list ap; va_start(ap, fmt);
@@ -110,6 +124,7 @@ public:
         va_end(ap);
     }
 
+    LOG_PRINTF_ATTR(3, 4)
     static void err_loc(const char* file, int line, const char* fmt, ...) {
         va_list ap; va_start(ap, fmt);
         writeMsg(Level::Error, file, extractSubsystem(file), line, fmt, ap);
