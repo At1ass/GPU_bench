@@ -674,11 +674,11 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
     bool use_instancing = (tier_ >= DemoTier::Enhanced) && g3 && g3->hasInstancing();
 
     if (use_instancing) {
-        ub_fur_.set(U::UseInstancing, 1.0f);
-        ub_fur_.set(U::FurShells, static_cast<float>(num_shells));
+        ub_fur_.set(U::UseInstancing, 1);
+        ub_fur_.set(U::FurShells, num_shells);
         g3->drawMeshInstanced(model_mesh_, num_shells - 1);
     } else {
-        ub_fur_.set(U::UseInstancing, 0.0f);
+        ub_fur_.set(U::UseInstancing, 0);
         for (int i = 1; i < num_shells; i++) {
             float shell_index = static_cast<float>(i) / static_cast<float>(num_shells - 1);
             ub_fur_.set(U::ShellIndex, shell_index);
