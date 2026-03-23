@@ -6,18 +6,11 @@
 #include "demo/demo_pipeline.h"
 #include "demo/pass_factory.h"
 #include "demo/pipeline_builder.h"
+#include "demo/resource_id.h"
 #include "demo/scene_data.h"
 #include "demo/tier_resource_view.h"
 #include <memory>
 #include <vector>
-
-// Demo tier levels matching GL capability
-enum class DemoTier {
-    Basic    = 1,  // GL 2.1: forward Blinn-Phong, basic fog
-    Enhanced = 2,  // GL 3.0+: shadow map, SSAO, bloom
-    Quality  = 3,  // GL 3.3+: PCF, point lights, particles, DoF
-    Ultra    = 4   // GL 4.3+: PBR, compute particles, tessellation, vol fog
-};
 
 // Information about active rendering techniques (for UI overlay)
 struct TechniqueInfo {
