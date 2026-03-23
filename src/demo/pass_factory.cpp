@@ -22,69 +22,74 @@
 #include "demo/passes/ssr_pass.h"
 #include "demo/passes/ssr_copy_pass.h"
 #include "demo/passes/dof_pass.h"
+#include <cstring>
 
-// Helper: create, init, push to vector, return raw pointer
-// Create pass, init, transfer ownership to vector, return non-owning observer.
+// Helper: create, init, push to vector.
 // Safe: vector is pre-reserved so push_back never invalidates prior elements.
 template<typename T>
-static DemoRenderPass* make(std::vector<std::unique_ptr<DemoRenderPass>>& out,
-                            const TierResourceView& res) {
+static void make(std::vector<std::unique_ptr<DemoRenderPass>>& out,
+                 const TierResourceView& res) {
     out.push_back(std::unique_ptr<DemoRenderPass>(new T()));
     static_cast<T*>(out.back().get())->init(res);
-    return out.back().get();
 }
 
-DemoPassSet createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
-                         const TierResourceView& res,
-                         const DemoTierConfig& cfg) {
+static DemoRenderPass* findByName(const std::vector<std::unique_ptr<DemoRenderPass>>& passes,
+                                   const char* name) {
+    for (size_t i = 0; i < passes.size(); i++)
+        if (strcmp(passes[i]->name(), name) == 0) return passes[i].get();
+    return nullptr;
+}
+
+void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
+                  const TierResourceView& res,
+                  const DemoTierConfig& cfg) {
     out.clear();
     out.reserve(22);
-
-    DemoPassSet s;
+    (void)cfg;
 
     // Core passes (all tiers)
-    s.sky      = make<SkyPass>(out, res);
-    s.shadow   = make<ShadowPass>(out, res);
-    s.opaque   = make<OpaquePass>(out, res);
-    s.grass    = make<GrassInstancedPass>(out, res);
-    s.fur      = make<FurPass>(out, res);
-    s.particle = make<ParticlePass>(out, res);
+    make<SkyPass>(out, res);
+    make<ShadowPass>(out, res);
+    make<OpaquePass>(out, res);
+    make<GrassInstancedPass>(out, res);
+    make<FurPass>(out, res);
+    make<ParticlePass>(out, res);
 
     // T2+ post-processing
-    s.ssao       = make<SSAOPass>(out, res);
-    s.bloom      = make<BloomPass>(out, res);
-    s.composite  = make<CompositePass>(out, res);
-
-    // T2/T3 scene-to-FBO wrapper
-    {
-        out.push_back(std::unique_ptr<DemoRenderPass>(new SceneToFBOPass()));
-        static_cast<SceneToFBOPass*>(out.back().get())
-            ->setSubPasses(s.sky, s.opaque, s.grass, s.fur, s.particle);
-        s.scene_to_fbo = out.back().get();
-    }
+    make<SSAOPass>(out, res);
+    make<BloomPass>(out, res);
+    make<CompositePass>(out, res);
 
     // T4 passes
-    s.hdr_composite        = make<HDRCompositePass>(out, res);
-    s.compute_particles    = make<ComputeParticlesPass>(out, res);
-    s.compute_particles_draw = make<ComputeParticlesDrawPass>(out, res);
+    make<HDRCompositePass>(out, res);
+    make<ComputeParticlesPass>(out, res);
+    make<ComputeParticlesDrawPass>(out, res);
+    make<GTAOPass>(out, res);
+    make<BloomComputePass>(out, res);
+    make<AutoExposurePass>(out, res);
+    make<VolumetricFogPass>(out, res);
+    make<WaterPass>(out, res);
+    make<SSRPass>(out, res);
+    make<SSRCopyPass>(out, res);
+    make<DoFPass>(out, res);
 
+    // SceneToFBOPass (needs sub-pass wiring, no init)
     {
-        out.push_back(std::unique_ptr<DemoRenderPass>(new TessellatedModelPass()));
-        auto* tess = static_cast<TessellatedModelPass*>(out.back().get());
-        tess->init(res);
-        tess->setFurPass(s.fur);
-        s.tess_model = out.back().get();
+        out.push_back(std::unique_ptr<DemoRenderPass>(new SceneToFBOPass()));
+        SceneToFBOPass* fbo = static_cast<SceneToFBOPass*>(out.back().get());
+        fbo->setSubPasses(
+            findByName(out, "sky"),
+            findByName(out, "opaque"),
+            findByName(out, "grass_instanced"),
+            findByName(out, "fur"),
+            findByName(out, "particle"));
     }
 
-    s.gtao           = make<GTAOPass>(out, res);
-    s.bloom_compute  = make<BloomComputePass>(out, res);
-    s.auto_exposure  = make<AutoExposurePass>(out, res);
-    s.vol_fog        = make<VolumetricFogPass>(out, res);
-    s.water          = make<WaterPass>(out, res);
-    s.ssr            = make<SSRPass>(out, res);
-    s.ssr_copy       = make<SSRCopyPass>(out, res);
-    s.dof            = make<DoFPass>(out, res);
-
-    (void)cfg; // cfg available for future conditional pass creation
-    return s;
+    // TessellatedModelPass (needs init + setFurPass)
+    {
+        out.push_back(std::unique_ptr<DemoRenderPass>(new TessellatedModelPass()));
+        TessellatedModelPass* tess = static_cast<TessellatedModelPass*>(out.back().get());
+        tess->init(res);
+        tess->setFurPass(findByName(out, "fur"));
+    }
 }

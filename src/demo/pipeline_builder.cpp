@@ -1,118 +1,316 @@
 #include "demo/pipeline_builder.h"
 #include "demo/demo_scene.h"
 #include "demo/demo_utils.h"
+#include "demo/resource_id.h"
 #include "platform/logger.h"
+#include <cstring>
+#include <vector>
 
-void ssrCopyCommand(Renderer* r, FrameData& fd,
-                    const TierResourceView& res,
-                    const DemoTierConfig& cfg,
-                    const SceneData& scene) {
-    (void)cfg; (void)scene;
-    if (res.t4.ssr_tex != INVALID_TEXTURE)
-        r->copyFramebufferToTexture(res.t4.ssr_tex, fd.viewport_w, fd.viewport_h);
-}
+// ============================================================
+// Topological-sort pipeline builder
+// ============================================================
+//
+// 1. Filter passes by tier and isEnabled()
+// 2. Build adjacency graph from resource read/write declarations
+// 3. Kahn's algorithm with executionOrder() tie-breaking
+// 4. Emit PipelineNodes with RT bindings/barriers
 
 void buildPipeline(DemoPipeline& pipeline,
-                   const DemoPassSet& pass,
+                   const std::vector<std::unique_ptr<DemoRenderPass>>& passes,
                    const DemoTierConfig& config,
                    const DemoDebugOverrides& debug,
                    const TierResourceView& res,
                    int viewport_w, int viewport_h) {
     pipeline.clear();
 
-    bool is_t4_hdr = config.enable_hdr
-                     && res.t4.hdr_scene_rt != INVALID_RENDER_TARGET
-                     && !debug.skip_hdr;
-    bool is_t2t3_bloom = config.enable_bloom && !is_t4_hdr;
+    int tier_int = static_cast<int>(config.tier);
 
-    if (is_t4_hdr) {
+    // ----------------------------------------------------------
+    // Step 1: collect enabled passes
+    // ----------------------------------------------------------
+    std::vector<DemoRenderPass*> enabled;
+    enabled.reserve(passes.size());
+    for (size_t i = 0; i < passes.size(); i++) {
+        DemoRenderPass* p = passes[i].get();
+        if (static_cast<int>(p->minTier()) > tier_int) continue;
+        if (!p->isEnabled(config, debug)) continue;
+        enabled.push_back(p);
+    }
+
+    int n = static_cast<int>(enabled.size());
+    if (n == 0) return;
+
+    // ----------------------------------------------------------
+    // Step 2: build adjacency from resource declarations
+    // ----------------------------------------------------------
+    static const size_t RES_COUNT = static_cast<size_t>(ResourceId::COUNT);
+
+    // For each ResourceId, track which enabled-pass indices write/read it
+    std::vector<size_t> writers_buf[RES_COUNT];
+    std::vector<size_t> readers_buf[RES_COUNT];
+
+    for (size_t i = 0; i < static_cast<size_t>(n); i++) {
+        const ResourceDecl* decls = enabled[i]->resourceDecls();
+        int dc = enabled[i]->resourceDeclCount();
+        for (int d = 0; d < dc; d++) {
+            size_t rid = static_cast<size_t>(decls[d].id);
+            if (decls[d].access == ResourceDecl::WRITE)
+                writers_buf[rid].push_back(i);
+            else
+                readers_buf[rid].push_back(i);
+        }
+    }
+
+    // Adjacency: edge[i] = list of passes that must run after pass i
+    std::vector<std::vector<size_t> > adj(static_cast<size_t>(n));
+    std::vector<int> in_degree(static_cast<size_t>(n), 0);
+
+    for (size_t rid = 0; rid < RES_COUNT; rid++) {
+        for (size_t wi = 0; wi < writers_buf[rid].size(); wi++) {
+            size_t w = writers_buf[rid][wi];
+            for (size_t ri = 0; ri < readers_buf[rid].size(); ri++) {
+                size_t r = readers_buf[rid][ri];
+                if (w == r) continue;
+                adj[w].push_back(r);
+                in_degree[r]++;
+            }
+        }
+    }
+
+    // ----------------------------------------------------------
+    // Step 3: Kahn's algorithm with executionOrder() tie-breaking
+    // ----------------------------------------------------------
+    // Queue: passes with in_degree 0, sorted by executionOrder()
+    std::vector<size_t> queue;
+    queue.reserve(static_cast<size_t>(n));
+    for (size_t i = 0; i < static_cast<size_t>(n); i++)
+        if (in_degree[i] == 0) queue.push_back(i);
+
+    std::vector<DemoRenderPass*> sorted;
+    sorted.reserve(static_cast<size_t>(n));
+
+    while (!queue.empty()) {
+        // Find the queue element with smallest executionOrder (tie-break)
+        size_t best_idx = 0;
+        int best_order = enabled[queue[0]]->executionOrder();
+        for (size_t qi = 1; qi < queue.size(); qi++) {
+            int order = enabled[queue[qi]]->executionOrder();
+            if (order < best_order) {
+                best_order = order;
+                best_idx = qi;
+            }
+        }
+        size_t u = queue[best_idx];
+        queue.erase(queue.begin() + static_cast<ptrdiff_t>(best_idx));
+        sorted.push_back(enabled[u]);
+
+        for (size_t ei = 0; ei < adj[u].size(); ei++) {
+            size_t v = adj[u][ei];
+            in_degree[v]--;
+            if (in_degree[v] == 0)
+                queue.push_back(v);
+        }
+    }
+
+    // Warn if cycle detected (should never happen with valid pass graph)
+    if (static_cast<int>(sorted.size()) != n) {
+        LOG_ERR("Pipeline: topological sort found cycle! %d of %d passes sorted",
+                static_cast<int>(sorted.size()), n);
+    }
+
+    // ----------------------------------------------------------
+    // Step 4: determine pipeline path and emit nodes
+    // ----------------------------------------------------------
+    // Detect rendering path based on which resources are written
+    bool has_hdr_writer = false;
+    bool has_scene_writer = false;
+    for (size_t i = 0; i < sorted.size(); i++) {
+        const ResourceDecl* decls = sorted[i]->resourceDecls();
+        int dc = sorted[i]->resourceDeclCount();
+        for (int d = 0; d < dc; d++) {
+            if (decls[d].access == ResourceDecl::WRITE) {
+                if (decls[d].id == ResourceId::HDRColor) has_hdr_writer = true;
+                if (decls[d].id == ResourceId::SceneColor) has_scene_writer = true;
+            }
+        }
+    }
+
+    float fogR = FOG_COLOR.x, fogG = FOG_COLOR.y, fogB = FOG_COLOR.z;
+    int shadow_size = res.shadow.map_size > 0 ? res.shadow.map_size : 1024;
+
+    if (has_hdr_writer) {
         // ============================================================
-        // T4 Ultra HDR pipeline
+        // T4 HDR pipeline path
         // ============================================================
+        // Passes are sorted by dependencies. We need to:
+        // - Bind shadow RT for ShadowPass
+        // - Bind HDR RT before first HDRColor writer (with clear)
+        // - Unbind HDR RT before first post-processing pass
+        // - Add barrier before final composite
+        // - Composite renders to dest
 
-        // Pre-scene compute
-        if (config.enable_shadows)
-            pipeline.addPass(pass.shadow);
-        if (config.enable_compute_particles)
-            pipeline.addPass(pass.compute_particles);
+        bool hdr_rt_bound = false;
+        bool hdr_rt_unbound = false;
 
-        // Scene to HDR FBO
-        pipeline.addPassWithRT(pass.sky, res.t4.hdr_scene_rt,
-                               true, FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
-                               viewport_w, viewport_h);
-        pipeline.addPass(pass.opaque);
-        pipeline.addPass(pass.grass);
-        pipeline.addPass(pass.tess_model, config.enable_tessellation);
-        pipeline.addPass(pass.fur, !config.enable_tessellation);
-        pipeline.addPass(pass.compute_particles_draw, config.enable_compute_particles);
-        pipeline.addPass(pass.particle, !config.enable_compute_particles);
+        for (size_t i = 0; i < sorted.size(); i++) {
+            DemoRenderPass* pass = sorted[i];
+            const char* pname = pass->name();
 
-        // SSR copy + water
-        pipeline.addCommand(&ssrCopyCommand,
-                            config.enable_ssr && res.t4.ssr_tex != INVALID_TEXTURE);
-        pipeline.addPass(pass.water);
+            bool writes_shadow = false;
+            bool writes_hdr = false;
+            bool reads_hdr_post = false; // reads HDR but doesn't write it (post-proc)
 
-        // Unbind scene FBO
-        pipeline.addRTSwitch(INVALID_RENDER_TARGET);
+            const ResourceDecl* decls = pass->resourceDecls();
+            int dc = pass->resourceDeclCount();
+            bool w_hdr = false, r_hdr = false, r_hdrd = false;
+            for (int d = 0; d < dc; d++) {
+                if (decls[d].id == ResourceId::ShadowMap && decls[d].access == ResourceDecl::WRITE)
+                    writes_shadow = true;
+                if (decls[d].id == ResourceId::HDRColor && decls[d].access == ResourceDecl::WRITE)
+                    w_hdr = true;
+                if (decls[d].id == ResourceId::HDRColor && decls[d].access == ResourceDecl::READ)
+                    r_hdr = true;
+                if (decls[d].id == ResourceId::HDRDepth && decls[d].access == ResourceDecl::READ)
+                    r_hdrd = true;
+            }
+            writes_hdr = w_hdr;
+            reads_hdr_post = (r_hdr || r_hdrd) && !w_hdr;
 
-        // Post-processing
-        pipeline.addPass(pass.auto_exposure,
-                         config.enable_auto_exposure && !debug.skip_auto_exposure);
+            // Shadow pass: bind shadow RT
+            if (writes_shadow) {
+                pipeline.addPassWithRT(pass, res.shadow.rt, true,
+                                       1.0f, 1.0f, 1.0f, 1.0f,
+                                       shadow_size, shadow_size);
+                continue;
+            }
 
-        bool use_gtao = !debug.skip_gtao && config.enable_gtao
-                        && res.t4.gtao_shader != nullptr
-                        && res.t4.gtao_tex != INVALID_TEXTURE;
-        pipeline.addPass(pass.gtao, use_gtao);
-        pipeline.addPass(pass.ssao, config.enable_ssao && !use_gtao);
+            // Compute passes that don't touch FBOs (e.g., compute_particles)
+            if (pass->queueType() == QueueType::Compute && !writes_hdr && !reads_hdr_post) {
+                PipelineNode node;
+                node.pass = pass;
+                node.enabled = true;
+                node.barrier = true;
+                pipeline.addPass(pass);
+                continue;
+            }
 
-        pipeline.addPass(pass.vol_fog,
-                         config.enable_volumetric_fog && !debug.skip_vol_fog);
+            // First HDR writer: bind HDR RT with clear
+            if (writes_hdr && !hdr_rt_bound) {
+                hdr_rt_bound = true;
+                pipeline.addPassWithRT(pass, res.t4.hdr_scene_rt, true,
+                                       fogR, fogG, fogB, 1.0f,
+                                       viewport_w, viewport_h);
+                continue;
+            }
 
-        bool use_compute_bloom = !debug.skip_compute_bloom
-                                 && config.enable_compute_bloom
-                                 && res.t4.bloom_down_compute != nullptr
-                                 && res.t4.bloom_mips[0] != INVALID_TEXTURE;
-        pipeline.addPass(pass.bloom_compute, use_compute_bloom);
-        pipeline.addPass(pass.bloom, config.enable_bloom && !use_compute_bloom);
+            // Subsequent HDR writers (scene geometry passes)
+            if (writes_hdr && hdr_rt_bound && !hdr_rt_unbound) {
+                pipeline.addPass(pass);
+                continue;
+            }
 
-        pipeline.addPass(pass.dof,
-                         config.enable_dof && res.t4.dof_shader != nullptr
-                         && !debug.skip_dof);
+            // Post-processing reader: unbind HDR RT first time
+            if (reads_hdr_post && !hdr_rt_unbound) {
+                hdr_rt_unbound = true;
+                pipeline.addRTSwitch(INVALID_RENDER_TARGET);
+            }
 
-        // Compute barrier + final composite
-        pipeline.addBarrier(4);
-        pipeline.addPassToDest(pass.hdr_composite, false, 0.0f, 0.0f, 0.0f, 0.0f,
-                               viewport_w, viewport_h);
+            // SceneToFBO manages its own FBO, just add it
+            if (strcmp(pname, "scene_to_fbo") == 0) {
+                pipeline.addPass(pass);
+                continue;
+            }
 
-    } else if (is_t2t3_bloom) {
+            // HDR composite: barrier + render to dest
+            if (strcmp(pname, "hdr_composite") == 0) {
+                pipeline.addBarrier(4);
+                pipeline.addPassToDest(pass, false, 0.0f, 0.0f, 0.0f, 0.0f,
+                                       viewport_w, viewport_h);
+                continue;
+            }
+
+            // Compute post-proc passes get barrier flag
+            if (pass->queueType() == QueueType::Compute) {
+                pipeline.addPass(pass);
+                // Barrier is handled by the pipeline node's compute sync
+                continue;
+            }
+
+            // Default: just add the pass
+            pipeline.addPass(pass);
+        }
+
+    } else if (has_scene_writer) {
         // ============================================================
-        // T2/T3: shadow → scene FBO → SSAO → bloom → composite
+        // T2/T3 scene FBO path
         // ============================================================
-        if (config.enable_shadows)
-            pipeline.addPass(pass.shadow);
-        pipeline.addPass(pass.scene_to_fbo);
-        if (config.enable_ssao)
-            pipeline.addPass(pass.ssao);
-        pipeline.addPass(pass.bloom);
-        pipeline.addPass(pass.composite);
+        for (size_t i = 0; i < sorted.size(); i++) {
+            DemoRenderPass* pass = sorted[i];
+            const char* pname = pass->name();
+
+            bool writes_shadow = false;
+            const ResourceDecl* decls = pass->resourceDecls();
+            int dc = pass->resourceDeclCount();
+            for (int d = 0; d < dc; d++) {
+                if (decls[d].id == ResourceId::ShadowMap && decls[d].access == ResourceDecl::WRITE)
+                    writes_shadow = true;
+            }
+
+            if (writes_shadow) {
+                pipeline.addPassWithRT(pass, res.shadow.rt, true,
+                                       1.0f, 1.0f, 1.0f, 1.0f,
+                                       shadow_size, shadow_size);
+                continue;
+            }
+
+            // Composite: render to dest
+            if (strcmp(pname, "composite") == 0) {
+                pipeline.addPassToDest(pass, false, 0.0f, 0.0f, 0.0f, 0.0f,
+                                       viewport_w, viewport_h);
+                continue;
+            }
+
+            // Everything else (scene_to_fbo, ssao, bloom): just add
+            pipeline.addPass(pass);
+        }
 
     } else {
         // ============================================================
-        // T1 Basic: shadow → clear → sky → opaque → grass → fur → particles
+        // T1 default FB path (no FBO)
         // ============================================================
-        if (config.enable_shadows)
-            pipeline.addPass(pass.shadow);
-        pipeline.addDefaultFBWithClear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
-                                       viewport_w, viewport_h);
-        pipeline.addPass(pass.sky);
-        pipeline.addPass(pass.opaque);
-        pipeline.addPass(pass.grass);
-        pipeline.addPass(pass.fur);
-        pipeline.addPass(pass.particle);
+        bool fb_cleared = false;
+        for (size_t i = 0; i < sorted.size(); i++) {
+            DemoRenderPass* pass = sorted[i];
+
+            bool writes_shadow = false;
+            const ResourceDecl* decls = pass->resourceDecls();
+            int dc = pass->resourceDeclCount();
+            for (int d = 0; d < dc; d++) {
+                if (decls[d].id == ResourceId::ShadowMap && decls[d].access == ResourceDecl::WRITE)
+                    writes_shadow = true;
+            }
+
+            if (writes_shadow) {
+                pipeline.addPassWithRT(pass, res.shadow.rt, true,
+                                       1.0f, 1.0f, 1.0f, 1.0f,
+                                       shadow_size, shadow_size);
+                continue;
+            }
+
+            // Insert default FB clear before first geometry pass
+            if (!fb_cleared) {
+                fb_cleared = true;
+                pipeline.addDefaultFBWithClear(fogR, fogG, fogB, 1.0f,
+                                               viewport_w, viewport_h);
+            }
+
+            pipeline.addPass(pass);
+        }
     }
 
-    LOG_DBG("Pipeline: %d nodes (%d enabled) for tier %d",
+    LOG_DBG("Pipeline: %d nodes (%d enabled) for tier %d, path=%s",
             static_cast<int>(pipeline.passCount()),
             static_cast<int>(pipeline.enabledCount()),
-            static_cast<int>(config.tier));
+            tier_int,
+            has_hdr_writer ? "HDR" : (has_scene_writer ? "SceneFBO" : "DefaultFB"));
 }

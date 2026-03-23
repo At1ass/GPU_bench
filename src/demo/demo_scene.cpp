@@ -188,10 +188,9 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     scene_data_.model_mesh = model_mesh_;
     scene_data_.model_transform = model_transform_;
 
-    // Create render passes and build pipeline.
-    // DemoPassSet is only needed during pipeline assembly — not stored.
-    DemoPassSet pass_set = createPasses(passes_, res_, config_);
-    buildPipeline(pipeline_, pass_set, config_, debug_, res_, viewport_w_, viewport_h_);
+    // Create render passes and build pipeline via topological sort.
+    createPasses(passes_, res_, config_);
+    buildPipeline(pipeline_, passes_, config_, debug_, res_, viewport_w_, viewport_h_);
 
     initialized_ = true;
     int total_obj = static_cast<int>(opaque_objects_.size());

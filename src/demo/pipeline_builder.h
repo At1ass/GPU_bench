@@ -1,22 +1,18 @@
 #pragma once
 #include "demo/demo_pipeline.h"
-#include "demo/pass_factory.h"
+#include <memory>
+#include <vector>
 
 struct DemoTierConfig;
 struct DemoDebugOverrides;
 struct TierResourceView;
+class DemoRenderPass;
 
-// SSR framebuffer copy command (used as PipelineCommandFn)
-void ssrCopyCommand(Renderer* r, FrameData& fd,
-                    const TierResourceView& res,
-                    const DemoTierConfig& cfg,
-                    const SceneData& scene);
-
-// Builds render pipeline for a given tier configuration.
-// Knows the rules: which passes, in what order, with what RT bindings.
-// DemoScene and DemoPipeline don't know these rules.
+// Build render pipeline from pass vector using resource dependency
+// topological sort. Passes declare reads/writes via resourceDecls(),
+// builder determines execution order automatically.
 void buildPipeline(DemoPipeline& pipeline,
-                   const DemoPassSet& passes,
+                   const std::vector<std::unique_ptr<DemoRenderPass>>& passes,
                    const DemoTierConfig& config,
                    const DemoDebugOverrides& debug,
                    const TierResourceView& res,
