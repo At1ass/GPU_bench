@@ -154,10 +154,8 @@ private:
 
     Mat4 model_transform_;
 
-    // Render passes (owned via unique_ptr, accessed via base pointers)
+    // Render passes (owned, accessed only through pipeline)
     std::vector<std::unique_ptr<DemoRenderPass>> passes_;
-    DemoPassSet pass_;  // named non-owning pointers into passes_
-
     DemoPipeline pipeline_;
 
     int viewport_w_, viewport_h_;
