@@ -90,7 +90,7 @@ bool GL3Renderer::init(int w, int h) {
     if (!has_vao_) {
         Log::warn("GL3Renderer: VAO not available, falling back to GL2 behavior");
     }
-    Log::info("GL3Renderer: vao=%s, instancing=%s, tex_array=%s, mrt=%s, ubo=%s, tf=%s, gs=%s",
+    Log::dbg("GL3Renderer: vao=%s, instancing=%s, tex_array=%s, mrt=%s, ubo=%s, tf=%s, gs=%s",
             has_vao_ ? "yes" : "no",
             has_instancing_ ? "yes" : "no",
             has_texture_array_ ? "yes" : "no",
@@ -166,6 +166,7 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+    Log::dbg("GL3: createMesh VAO %u for handle %u", gm.vao, (unsigned)h);
     return h;
 }
 
@@ -326,6 +327,8 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
+    Log::dbg("GL3: createMRTRenderTarget %dx%d, %d attachments -> handle %u",
+             w, h, num_attachments, (unsigned)handle);
     return handle;
 }
 
@@ -358,6 +361,8 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
+    Log::dbg("GL3: createTextureArray %dx%d, %d layers, ch=%d -> handle %u",
+             w, h, layers, channels, (unsigned)th);
     return th;
 }
 
@@ -621,6 +626,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
+    Log::dbg("GL3: createDepthRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 

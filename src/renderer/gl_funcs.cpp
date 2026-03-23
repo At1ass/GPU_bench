@@ -1,4 +1,5 @@
 #include "renderer/gl_funcs.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
 
@@ -41,26 +42,35 @@ bool loadGL2Functions() {
 }
 
 bool loadGL3Functions() {
+    int loaded = 0, total = 0;
     #define CB_LOAD_OPT(name) \
-        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name); \
+        total++; if (cb_##name) loaded++;
     CB_GL3_OPTIONAL_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
+    Log::dbg("GL3 funcs: %d/%d loaded", loaded, total);
     return true;
 }
 
 bool loadGL4Functions() {
+    int loaded = 0, total = 0;
     #define CB_LOAD_OPT(name) \
-        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name); \
+        total++; if (cb_##name) loaded++;
     CB_GL4_OPTIONAL_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
+    Log::dbg("GL4 funcs: %d/%d loaded", loaded, total);
     return true;
 }
 
 bool loadGLExtFunctions() {
+    int loaded = 0, total = 0;
     #define CB_LOAD_OPT(name) \
-        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name); \
+        total++; if (cb_##name) loaded++;
     CB_GL_EXT_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
+    Log::dbg("GL ext funcs: %d/%d loaded", loaded, total);
     return true;
 }
 
@@ -100,10 +110,13 @@ CB_GL_EXT_FUNCS(CB_DEFINE_EXT_PTR)
 #undef CB_DEFINE_EXT_PTR
 
 bool loadGLExtFunctions() {
+    int loaded = 0, total = 0;
     #define CB_LOAD_OPT(name) \
-        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name);
+        cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name); \
+        total++; if (cb_##name) loaded++;
     CB_GL_EXT_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
+    Log::dbg("GL ext funcs: %d/%d loaded", loaded, total);
     return true;
 }
 

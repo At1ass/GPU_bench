@@ -230,6 +230,7 @@ private:
 
     int viewport_w_, viewport_h_;
     bool initialized_;
+    bool passes_logged_;       // log active passes only once per tier
     float prev_exposure_;
 
     // Destination render target: the RT that was active when renderFrame was called.

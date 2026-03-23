@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 DrawCallTest::DrawCallTest(const DrawCallParams& params)
@@ -21,6 +22,7 @@ void DrawCallTest::setup(Renderer* r, int vw, int vh) {
     for (size_t i = 0; i < static_cast<size_t>(params_.mesh_count); i++) {
         meshes_[i] = r->createMesh(unit);
     }
+    Log::dbg("Test '%s': setup complete (%d meshes, %d draws/frame)", name(), params_.mesh_count, params_.draws_per_frame);
 }
 
 void DrawCallTest::render(Renderer* r) {

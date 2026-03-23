@@ -2,6 +2,7 @@
 #include "renderer/features.h"
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <vector>
 
 // GLSL 4.00 textureGather test.
@@ -61,6 +62,7 @@ void TextureGatherTest::setupGL4(Renderer& r, GL4Features&, int vw, int vh) {
     if (shader_ != INVALID_SHADER) {
         u_iterations_loc_ = r.getCustomUniformLoc(shader_, "u_iterations");
     }
+    Log::dbg("Test '%s': setup complete (tex %d, %d iterations)", name(), params_.tex_size, params_.iterations);
 }
 
 void TextureGatherTest::renderGL4(Renderer& r, GL4Features&) {

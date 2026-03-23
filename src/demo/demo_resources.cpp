@@ -53,7 +53,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
             }
         }
         if (md.vertices.empty()) {
-            Log::info("Resources: OBJ not found, using fallback sphere");
+            Log::dbg("Demo: OBJ not found, using fallback sphere");
             md = MeshGen::sphere(64, 32);
             ObjLoader::normalize(md);
         }
@@ -98,6 +98,8 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         Log::info("Resources: generated grass blade template (%d verts)",
                   static_cast<int>(blade.vertices.size()));
     }
+
+    Log::dbg("Demo: mesh pool loaded (%d meshes)", 7);  // sky + model + ground + rocks + grass + particles + blade
 
     return true;
 }

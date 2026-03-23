@@ -46,12 +46,15 @@ bool GLLoader::init() {
 
     // GL3 — optional, load function pointers
     loadGL3Functions();
+    Log::dbg("GLLoader: GL3 function pointers loaded");
 
     // GL4 — optional, load function pointers
     loadGL4Functions();
+    Log::dbg("GLLoader: GL4 function pointers loaded");
 
     // Extension-only functions (ARB_bindless_texture etc)
     loadGLExtFunctions();
+    Log::dbg("GLLoader: extension function pointers loaded");
 
     // Cache availability
 #ifdef CB_NEED_GL_LOAD

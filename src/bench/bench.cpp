@@ -145,6 +145,9 @@ BenchResult computeStats(const std::string& name,
 
     // Mark as invalid if CV is too high
     r.valid = (r.cv <= CV_INVALID_THRESHOLD);
+
+    Log::dbg("Score: '%s' = %.2f %s (avg %.3f ms, CV %.4f)",
+             name.c_str(), score, unit.c_str(), r.avg_ms, r.cv);
     return r;
 }
 

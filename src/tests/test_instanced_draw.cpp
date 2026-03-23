@@ -1,6 +1,7 @@
 #include "tests/tests.h"
 #include "renderer/features.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 // GLSL 1.40 vertex shader using gl_InstanceID for per-instance positioning.
@@ -95,6 +96,7 @@ void InstancedDrawTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) 
         u_view_loc_ = r.getCustomUniformLoc(shader_, "u_view");
         u_instance_count_loc_ = r.getCustomUniformLoc(shader_, "u_instance_count");
     }
+    Log::dbg("Test '%s': setup complete (%d instances, %d tris/instance)", name(), params_.instance_count, tri_count_);
 }
 
 void InstancedDrawTest::renderGL3(Renderer& r, GL3Features& gl3) {

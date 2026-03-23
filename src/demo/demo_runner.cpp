@@ -69,6 +69,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
     // Warmup: show loading screen, prime GPU with a few hidden scene renders
     {
+        Log::dbg("Demo: tier %d warmup start", static_cast<int>(tier));
         bool headless_warmup = ctx->isHeadless();
         Timer warmup_timer;
         while (warmup_timer.elapsed_sec() < 1.0) {
@@ -111,6 +112,8 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
             ctx->swapBuffers();
         }
+        Log::dbg("Demo: tier %d warmup complete (%.1f ms)", static_cast<int>(tier),
+                 warmup_timer.elapsed_ms());
     }
 
     // Drain warmup pipeline
@@ -224,6 +227,8 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     Log::info("Demo tier %d: avg %.1f FPS (%.2f ms), min %.1f, P1%% %.1f, P99%% %.1f, score %.2f",
               static_cast<int>(tier), result.avg_fps, result.avg_ms,
               result.min_fps, result.p99_fps, result.p1_fps, result.normalized_score);
+    Log::dbg("Demo: tier %d measurement: %d frames, avg %.1f fps, score %.2f",
+             static_cast<int>(tier), result.frames, result.avg_fps, result.normalized_score);
 
     return result;
 }

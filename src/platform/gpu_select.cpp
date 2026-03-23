@@ -1,5 +1,6 @@
 #include "platform/gpu_select.h"
 #include "platform/compat.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -257,6 +258,8 @@ bool selectGPU(int index) {
         return false;
     }
 
+    Log::dbg("GPU: selected device %d: '%s'", target->index, target->name.c_str());
+
     // Determine which env vars to set based on driver situation.
     // Check if NVIDIA proprietary driver is in use by looking for its GLX library.
     bool has_nvidia_proprietary = false;
@@ -500,6 +503,8 @@ bool selectGPU(int index) {
         fprintf(stderr, "GPU index %d not found.\n", index);
         return false;
     }
+
+    Log::dbg("GPU: selected device %d: '%s'", target->index, target->name.c_str());
 
     // On Windows, GPU selection for OpenGL is limited to discrete/integrated hint
     // via the exported NvOptimusEnablement / AmdPowerXpressRequestHighPerformance symbols.

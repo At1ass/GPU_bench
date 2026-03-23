@@ -2,6 +2,7 @@
 #include "renderer/features.h"
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 // GLSL 150: VS passes through, GS takes triangles and amplifies
@@ -104,6 +105,7 @@ void GeometryShaderTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh)
         md.indices.push_back(base + 2);
     }
     points_mesh_ = r.createMesh(md);
+    Log::dbg("Test '%s': setup complete (%d input tris, %d tris/point)", name(), params_.input_points, params_.tris_per_point);
 }
 
 void GeometryShaderTest::renderGL3(Renderer& r, GL3Features&) {

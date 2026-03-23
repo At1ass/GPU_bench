@@ -170,9 +170,12 @@ bool GLESRenderer::init(int w, int h) {
 
     setViewport(0, 0, w, h);
 
-    Log::info("GLESRenderer: GLES %s, 32bit_idx=%s",
-            gles3_ ? "3.0+" : "2.0",
-            caps_.supports_32bit_indices ? "yes" : "no");
+    Log::dbg("GLESRenderer: GLES %s, version=%s, 32bit_idx=%s, fbo=%s, max_tex=%d",
+             gles3_ ? "3.0+" : "2.0",
+             gl_version_.c_str(),
+             caps_.supports_32bit_indices ? "yes" : "no",
+             caps_.has_fbo ? "yes" : "no",
+             caps_.max_texture_size);
 
     initialized_ = true;
     return true;

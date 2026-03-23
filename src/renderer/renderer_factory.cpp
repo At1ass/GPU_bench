@@ -13,6 +13,8 @@ static std::unique_ptr<Renderer> createWithFallback(RendererBackend requested) {
     bool want_gl3 = (requested == RendererBackend::GL3 || want_gl4);
 
     if (want_gl4 && GLLoader::hasGL4() && GLLoader::hasGL3()) {
+        Log::dbg("RendererFactory: selected GL4 (GL %d.%d, GL4+GL3 available)",
+                 GLLoader::glMajor(), GLLoader::glMinor());
         return std::unique_ptr<Renderer>(new GL4Renderer());
     }
     if (want_gl4) {
@@ -23,6 +25,8 @@ static std::unique_ptr<Renderer> createWithFallback(RendererBackend requested) {
     if (want_gl3 && GLLoader::hasGL3()) {
         if (want_gl4)
             Log::warn("Falling back to GL3 renderer");
+        Log::dbg("RendererFactory: selected GL3 (GL %d.%d)",
+                 GLLoader::glMajor(), GLLoader::glMinor());
         return std::unique_ptr<Renderer>(new GL3Renderer());
     }
     if (want_gl3) {
@@ -31,18 +35,20 @@ static std::unique_ptr<Renderer> createWithFallback(RendererBackend requested) {
         Log::warn("Falling back to GL2 renderer");
     }
 
+    Log::dbg("RendererFactory: selected GL2 fallback (GL %d.%d)",
+             GLLoader::glMajor(), GLLoader::glMinor());
     return std::unique_ptr<Renderer>(new GL2Renderer());
 }
 
 std::unique_ptr<Renderer> createRenderer(RendererBackend backend) {
     if (backend == RendererBackend::GLES ||
         (backend == RendererBackend::Auto && GLLoader::isGLES())) {
-        Log::info("Using GLES renderer");
+        Log::dbg("RendererFactory: selected GLES (GLES detected or requested)");
         return std::unique_ptr<Renderer>(new GLESRenderer());
     }
 
     if (backend == RendererBackend::GL2) {
-        Log::info("Using GL2 renderer");
+        Log::dbg("RendererFactory: selected GL2 (explicitly requested)");
         return std::unique_ptr<Renderer>(new GL2Renderer());
     }
 

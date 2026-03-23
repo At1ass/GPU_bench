@@ -1,6 +1,7 @@
 #include "tests/tests.h"
 #include "renderer/features.h"
 #include "renderer/renderer.h"
+#include "platform/logger.h"
 #include <cstring>
 
 // Persistent buffer mapping throughput test (GL 4.4+).
@@ -24,6 +25,7 @@ void PersistentMapTest::setupGL4(Renderer&, GL4Features& gl4, int, int) {
     buffer_size_ = params_.buffer_size_mb * 1024 * 1024;
     persistent_buf_ = gl4.createPersistentBuffer(buffer_size_);
     frame_idx_ = 0;
+    Log::dbg("Test '%s': setup complete (%d MB buffer, %d frames in flight)", name(), params_.buffer_size_mb, params_.frames_in_flight);
 }
 
 void PersistentMapTest::renderGL4(Renderer&, GL4Features& gl4) {

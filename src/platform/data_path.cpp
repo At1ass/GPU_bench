@@ -1,4 +1,5 @@
 #include "platform/data_path.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
 #include <sys/stat.h>
@@ -69,20 +70,30 @@ std::string getDataPath(const char* relative_path) {
     // 1. ./data/
     {
         std::string p = std::string("data/") + relative_path;
-        if (fileExists(p)) return p;
+        if (fileExists(p)) {
+            Log::dbg("DataPath: '%s' -> '%s'", relative_path, p.c_str());
+            return p;
+        }
     }
 
     // 2. <exe_dir>/data/
     std::string exe_dir = getExeDir();
     if (!exe_dir.empty()) {
         std::string p = exe_dir + "data/" + relative_path;
-        if (fileExists(p)) return p;
+        if (fileExists(p)) {
+            Log::dbg("DataPath: '%s' -> '%s'", relative_path, p.c_str());
+            return p;
+        }
 
         // 3. <exe_dir>/../share/gpu_benchmark/data/
         std::string p2 = exe_dir + "../share/gpu_benchmark/data/" + relative_path;
-        if (fileExists(p2)) return p2;
+        if (fileExists(p2)) {
+            Log::dbg("DataPath: '%s' -> '%s'", relative_path, p2.c_str());
+            return p2;
+        }
     }
 
+    Log::dbg("DataPath: '%s' not found", relative_path);
     return std::string();
 }
 

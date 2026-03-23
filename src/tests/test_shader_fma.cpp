@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cmath>
 
@@ -87,6 +88,7 @@ void ShaderFMATest::setup(Renderer* r, int vw, int vh) {
         u_iterations_loc_ = r->getCustomUniformLoc(shader_, "u_iterations");
         u_time_loc_ = r->getCustomUniformLoc(shader_, "u_time");
     }
+    Log::dbg("Test '%s': setup complete (%d iterations, %dx%d)", name(), params_.iterations, vw_, vh_);
 }
 
 void ShaderFMATest::render(Renderer* r) {

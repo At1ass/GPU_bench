@@ -86,6 +86,7 @@ DemoScene::DemoScene()
     , tier_(DemoTier::Basic)
     , viewport_w_(0), viewport_h_(0)
     , initialized_(false)
+    , passes_logged_(false)
     , prev_exposure_(1.0f)
     , dest_rt_(INVALID_RENDER_TARGET)
 {
@@ -731,6 +732,16 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
 
     Mat4 vp = fc.proj * fc.view;
     fc.frustum = extractFrustum(vp);
+
+    // Log active render passes once per tier setup
+    if (!passes_logged_) {
+        passes_logged_ = true;
+        Log::dbg("Demo: tier %d passes: shadow=%d ssao=%d bloom=%d pbr=%d tess=%d "
+                 "compute_particles=%d vol_fog=%d hdr=%d",
+                 fc.tier_int, fc.has_shadows, fc.has_ssao, fc.has_bloom,
+                 fc.has_pbr, fc.has_tessellation, fc.has_compute_particles,
+                 fc.has_volumetric_fog, fc.has_hdr);
+    }
 
     // === DEBUG: set to 1 to disable specific T4 features ===
     // Disable one at a time, rebuild, and test to find the culprit

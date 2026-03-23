@@ -450,6 +450,7 @@ void App::exportResults() {
 }
 
 void App::runDemo() {
+    Log::dbg("App: entering demo mode");
     DemoConfig dcfg;
     dcfg.tier_override = config_.demo_tier;
     dcfg.duration_per_tier = config_.demo_duration;
@@ -509,6 +510,7 @@ void App::runDemo() {
 }
 
 void App::runHeadless() {
+    Log::dbg("App: entering headless mode");
     if (config_.demo_mode) {
         runDemo();
         return;
@@ -520,12 +522,14 @@ void App::runHeadless() {
     }
 
     if (config_.stress_duration_sec > 0) {
+        Log::dbg("App: entering stress mode");
         StressRunner stress;
         stress.run(renderer_.get(), ctx_.get(),
                    current_preset_.shader_alu.iterations,
                    render_w_, render_h_,
                    config_.stress_duration_sec, this);
     } else {
+        Log::dbg("App: entering benchmark mode");
         runSelectedTests();
     }
 
@@ -543,6 +547,7 @@ void App::run() {
         return;
     }
 
+    Log::dbg("App: entering interactive mode");
     frame_timer_.reset();
     while (running_) {
         double dt = frame_timer_.elapsed_sec();

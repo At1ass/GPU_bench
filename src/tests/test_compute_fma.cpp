@@ -1,6 +1,7 @@
 #include "tests/tests.h"
 #include "renderer/features.h"
 #include "renderer/renderer.h"
+#include "platform/logger.h"
 #include <cstdio>
 
 // GLSL 4.30 compute shader: pure FMA throughput on SSBO data.
@@ -57,6 +58,7 @@ void ComputeFMATest::setupCompute(Renderer& r, ComputeFeatures& comp, int, int) 
     int total_invocations = params_.work_groups * LOCAL_SIZE_X;
     int ssbo_size = total_invocations * 16; // sizeof(vec4)
     ssbo_ = comp.createSSBO(ssbo_size);
+    Log::dbg("Test '%s': setup complete (%d workgroups, %d iterations)", name(), params_.work_groups, params_.iterations);
 }
 
 void ComputeFMATest::renderCompute(Renderer& r, ComputeFeatures& comp) {

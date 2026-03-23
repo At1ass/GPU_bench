@@ -588,6 +588,8 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         h = MeshHandle(static_cast<unsigned int>(meshes_.size()));
         meshes_.push_back(gm);
     }
+    Log::dbg("GL2: createMesh %u verts, %u indices -> handle %u",
+             (unsigned)data.vertices.size(), (unsigned)data.indices.size(), (unsigned)h);
     return h;
 }
 
@@ -601,11 +603,11 @@ void GL2Renderer::destroyMesh(MeshHandle h) {
 
 TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsigned char* pixels) {
     if (w > caps_.max_texture_size || h > caps_.max_texture_size) {
-        Log::warn("Warning: texture %dx%d exceeds max %d, clamping",
-                w, h, caps_.max_texture_size);
         int nw = w, nh = h;
         while (nw > caps_.max_texture_size) nw /= 2;
         while (nh > caps_.max_texture_size) nh /= 2;
+        Log::warn("GL2: texture %dx%d exceeds max %d, clamping to %dx%d",
+                w, h, caps_.max_texture_size, nw, nh);
 
         std::vector<unsigned char> scaled(static_cast<size_t>(nw) * static_cast<size_t>(nh) * static_cast<size_t>(channels));
         for (int sy = 0; sy < nh; sy++) {
@@ -660,6 +662,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
+    Log::dbg("GL2: createTexture %dx%d ch=%d -> handle %u", w, h, channels, (unsigned)th);
     return th;
 }
 
@@ -989,11 +992,13 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
+    Log::dbg("GL2: createRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
 void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return;
+    Log::dbg("GL2: destroyRenderTarget handle %u", (unsigned)rt);
     GLFBO& fbo = render_targets_[rt];
     if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
     if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);

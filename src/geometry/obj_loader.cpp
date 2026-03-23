@@ -1,5 +1,6 @@
 #include "geometry/obj_loader.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -11,7 +12,10 @@ MeshData ObjLoader::load(const char* filepath) {
     MeshData result;
 
     FILE* f = fopen(filepath, "r");
-    if (!f) return result;
+    if (!f) {
+        Log::dbg("OBJ: cannot open '%s'", filepath);
+        return result;
+    }
 
     std::vector<Vec3> positions;
     std::vector<Vec3> normals;
@@ -120,6 +124,10 @@ MeshData ObjLoader::load(const char* filepath) {
 
     fclose(f);
 
+    Log::dbg("OBJ: loaded %d verts, %d tris from '%s'",
+             static_cast<int>(result.vertices.size()),
+             static_cast<int>(result.indices.size() / 3), filepath);
+
     // Recompute normals if none were provided
     if (normals.empty() && !result.vertices.empty()) {
         MeshGen::recomputeNormals(result);
@@ -155,4 +163,6 @@ void ObjLoader::normalize(MeshData& mesh) {
         mesh.vertices[i].pos.y = (mesh.vertices[i].pos.y - center.y) * scale;
         mesh.vertices[i].pos.z = (mesh.vertices[i].pos.z - center.z) * scale;
     }
+
+    Log::dbg("OBJ: normalized, scale factor %.4f", static_cast<double>(scale));
 }

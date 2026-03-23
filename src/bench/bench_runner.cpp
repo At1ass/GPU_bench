@@ -95,6 +95,7 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
     if (use_fbo) r->bindRenderTarget(bench_rt_);
 
     r->resetState();
+    Log::dbg("Bench: setting up '%s'", test->name());
     test->setup(r, cfg.render_w, cfg.render_h);
 
     bool use_gpu_timer = (cfg.timing_mode == TimingMode::GPU) && r->hasTimerQueries();
@@ -122,12 +123,15 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
             if (nonzero == 0) {
                 sanity_ok = false;
                 Log::warn("Sanity check FAILED for '%s' — render output is black", test->name());
+                Log::dbg("Bench: sanity pixel sample at (%d,%d): R=%d G=%d B=%d A=%d",
+                         cx, cy, px[0], px[1], px[2], px[3]);
             }
         }
 
         progress_ = static_cast<int>(100.0 * i / cfg.warmup_frames * 0.1);
         if (cb && !cb->onFrame(rt)) goto cleanup;
     }
+    Log::dbg("Bench: warmup done for '%s' (%d frames)", test->name(), cfg.warmup_frames);
 
     // Measurement
     {
@@ -183,11 +187,14 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         result.sanity_ok = sanity_ok;
         if (!sanity_ok) result.valid = false;
 
+        Log::dbg("Bench: '%s' measured %d frames in %.1fs", test->name(),
+                 result.frames, result.avg_ms * result.frames / 1000.0);
         results_.push_back(result);
     }
 
 cleanup:
     test->cleanup(r);
+    Log::dbg("Bench: cleanup '%s'", test->name());
     active_ = false;
     status_ = "Done";
     ctx->setVSync(true);

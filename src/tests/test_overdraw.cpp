@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 OverdrawTest::OverdrawTest(const OverdrawParams& params)
@@ -15,6 +16,7 @@ const char* OverdrawTest::description() const {
 void OverdrawTest::setup(Renderer* r, int vw, int vh) {
     vw_ = vw; vh_ = vh;
     quad_ = r->createMesh(MeshGen::quad());
+    Log::dbg("Test '%s': setup complete (%d layers, alpha=%.2f)", name(), params_.layers, static_cast<double>(params_.alpha));
 }
 
 void OverdrawTest::render(Renderer* r) {

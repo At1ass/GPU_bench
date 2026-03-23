@@ -1,6 +1,7 @@
 #include "tests/tests.h"
 #include "renderer/features.h"
 #include "renderer/renderer.h"
+#include "platform/logger.h"
 #include <cstdio>
 
 // GLSL 4.30 compute shader: memory bandwidth test.
@@ -52,6 +53,7 @@ void ComputeBandwidthTest::setupCompute(Renderer& r, ComputeFeatures& comp, int,
     int ssbo_size = params_.buffer_size_mb * 1024 * 1024;
     ssbo_in_ = comp.createSSBO(ssbo_size);
     ssbo_out_ = comp.createSSBO(ssbo_size);
+    Log::dbg("Test '%s': setup complete (%d MB buffer, %d workgroups)", name(), params_.buffer_size_mb, params_.work_groups);
 }
 
 void ComputeBandwidthTest::renderCompute(Renderer& r, ComputeFeatures& comp) {

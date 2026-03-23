@@ -94,8 +94,8 @@ bool GL4Renderer::init(int w, int h) {
     PersistentBuffer invalid_pb;
     persistent_buffers_.push_back(invalid_pb);
 
-    Log::info("GL4Renderer: compute=%s, indirect_draw=%s, tessellation=%s, "
-              "texture_gather=%s, image_load_store=%s, buffer_storage=%s, bindless_texture=%s",
+    Log::dbg("GL4Renderer: compute=%s, indirect_draw=%s, tessellation=%s, "
+             "texture_gather=%s, image_load_store=%s, buffer_storage=%s, bindless_texture=%s",
             has_compute_ ? "yes" : "no",
             has_indirect_draw_ ? "yes" : "no",
             has_tessellation_ ? "yes" : "no",
@@ -183,6 +183,7 @@ ShaderHandle GL4Renderer::createComputeShader(const char* source) {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
     }
+    Log::dbg("GL4: createComputeShader -> handle %u", (unsigned)h);
     return h;
 }
 
@@ -225,6 +226,7 @@ BufferHandle GL4Renderer::createSSBO(int size_bytes) {
         h = BufferHandle(static_cast<unsigned int>(ssbos_.size()));
         ssbos_.push_back(buf);
     }
+    Log::dbg("GL4: createSSBO %d bytes -> handle %u", size_bytes, (unsigned)h);
     return h;
 }
 
@@ -311,6 +313,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
+    Log::dbg("GL4: createFloatRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
@@ -394,6 +397,7 @@ BufferHandle GL4Renderer::createIndirectBuffer(int size_bytes, const void* data)
         h = BufferHandle(static_cast<unsigned int>(indirect_buffers_.size()));
         indirect_buffers_.push_back(buf);
     }
+    Log::dbg("GL4: createIndirectBuffer %d bytes -> handle %u", size_bytes, (unsigned)h);
     return h;
 }
 
@@ -487,6 +491,7 @@ ShaderHandle GL4Renderer::createTessShader(const char* vs, const char* tcs,
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
     }
+    Log::dbg("GL4: createTessShader -> handle %u", (unsigned)h);
     return h;
 }
 
@@ -523,6 +528,7 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(tex);
     }
+    Log::dbg("GL4: createFloatTexture %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
@@ -598,6 +604,7 @@ BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {
         h = BufferHandle(static_cast<unsigned int>(persistent_buffers_.size()));
         persistent_buffers_.push_back(pb);
     }
+    Log::dbg("GL4: createPersistentBuffer %d bytes -> handle %u", size_bytes, (unsigned)h);
     return h;
 }
 

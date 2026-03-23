@@ -2,6 +2,7 @@
 #include "renderer/features.h"
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 // GLSL 4.00 tessellation throughput test.
@@ -74,6 +75,7 @@ void TessellationTPTest::setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh)
         r.useCustomShader(shader_);
         r.setUniform1i(loc, params_.patch_subdivisions);
     }
+    Log::dbg("Test '%s': setup complete (%d subdivisions, %d patches)", name(), params_.patch_subdivisions, params_.patches);
 }
 
 void TessellationTPTest::renderGL4(Renderer& r, GL4Features& gl4) {

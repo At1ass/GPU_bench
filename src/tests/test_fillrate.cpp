@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 // ---- Shared texture generation helpers ----
@@ -54,6 +55,7 @@ const char* FillrateTest::description() const {
 void FillrateTest::setup(Renderer* r, int vw, int vh) {
     vw_ = vw; vh_ = vh;
     quad_ = r->createMesh(MeshGen::quad());
+    Log::dbg("Test '%s': setup complete (%d layers, %dx%d)", name(), layers_, vw_, vh_);
 }
 
 void FillrateTest::render(Renderer* r) {

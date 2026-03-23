@@ -1,6 +1,7 @@
 #include "bench/results.h"
 #include "tests/test_registry.h"
 #include "platform/compat.h"
+#include "platform/logger.h"
 
 void exportText(FILE* out, const std::vector<BenchResult>& results,
                 const HWInfo& hw, const RenderCaps& caps,
@@ -232,5 +233,11 @@ bool writeBenchResults(OutputFormat fmt, const char* output_file,
                        composite, bottleneck);
             break;
     }
+
+    const char* fmt_name = (fmt == OutputFormat::CSV) ? "CSV" : (fmt == OutputFormat::JSON) ? "JSON" : "Text";
+    if (output_file && output_file[0])
+        Log::dbg("Export: wrote %s results to '%s'", fmt_name, output_file);
+    else
+        Log::dbg("Export: wrote %s results to stdout", fmt_name);
     return true;
 }

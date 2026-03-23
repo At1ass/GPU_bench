@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 
 TexturingTest::TexturingTest(const TexturingParams& params)
     : tex_size_(params.tex_size), actual_tex_size_(params.tex_size), layers_(params.layers),
@@ -21,6 +22,7 @@ void TexturingTest::setup(Renderer* r, int vw, int vh) {
 
     auto pixels = genColorNoise(actual_tex_size_, 42);
     texture_ = r->createTexture(actual_tex_size_, actual_tex_size_, 3, pixels.data());
+    Log::dbg("Test '%s': setup complete (tex %dx%d, %d layers)", name(), actual_tex_size_, actual_tex_size_, layers_);
 }
 
 void TexturingTest::render(Renderer* r) {

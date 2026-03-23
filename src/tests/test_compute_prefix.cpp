@@ -1,6 +1,7 @@
 #include "tests/tests.h"
 #include "renderer/features.h"
 #include "renderer/renderer.h"
+#include "platform/logger.h"
 
 // GLSL 4.30 compute shader: parallel prefix sum (Hillis-Steele scan).
 // Measures compute shader throughput with shared memory synchronization.
@@ -66,6 +67,7 @@ void ComputePrefixTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, in
     ssbo_in_ = comp.createSSBO(ssbo_size);
     // ssbo_out_ unused in this scan variant but kept for API consistency
     (void)ssbo_out_;
+    Log::dbg("Test '%s': setup complete (%d elements, %d workgroups)", name(), params_.element_count, params_.work_groups);
 }
 
 void ComputePrefixTest::renderCompute(Renderer& r, ComputeFeatures& comp) {

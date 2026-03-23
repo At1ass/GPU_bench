@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cstdio>
 
 GeometryTest::GeometryTest(const GeometryParams& params)
@@ -21,6 +22,7 @@ void GeometryTest::setup(Renderer* r, int vw, int vh) {
         fprintf(stderr, "GeometryTest: failed to create mesh (grid=%d)\n", grid_size_);
         tri_count_ = 0;
     }
+    Log::dbg("Test '%s': setup complete (grid %d, %d tris)", name(), grid_size_, tri_count_);
 }
 
 void GeometryTest::render(Renderer* r) {

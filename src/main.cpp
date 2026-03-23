@@ -1,5 +1,6 @@
 #include "app.h"
 #include "platform/gpu_select.h"
+#include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -327,6 +328,17 @@ int main(int argc, char* argv[]) {
     if (!app.init(cfg)) {
         fprintf(stderr, "Failed to initialize GPU_benchmark\n");
         return 1;
+    }
+
+    {
+        const char* mode = cfg.demo_mode ? "demo"
+                         : (cfg.stress_duration_sec > 0) ? "stress"
+                         : (cfg.headless) ? "benchmark"
+                         : "interactive";
+        const char* preset_names[] = { "light", "medium", "heavy", "ultra", "extreme" };
+        const char* preset_name = (cfg.preset_index >= 0 && cfg.preset_index < 5)
+                                  ? preset_names[cfg.preset_index] : "custom";
+        Log::dbg("CLI: mode=%s, %dx%d, preset=%s", mode, cfg.width, cfg.height, preset_name);
     }
 
     app.run();

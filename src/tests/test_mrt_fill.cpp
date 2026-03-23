@@ -2,6 +2,7 @@
 #include "renderer/features.h"
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 #include <cmath>
 
 // GLSL 150 shader that writes to multiple render targets
@@ -78,6 +79,7 @@ void MRTFillTest::setupGL3(Renderer& r, GL3Features& gl3, int, int) {
 
     shader_ = r.createCustomShader(MRT_VS, fs);
     rt_ = gl3.createMRTRenderTarget(rt_size_, rt_size_, params_.num_targets);
+    Log::dbg("Test '%s': setup complete (RT %dx%d, %d targets, %d layers)", name(), rt_size_, rt_size_, params_.num_targets, params_.layers);
 }
 
 void MRTFillTest::renderGL3(Renderer& r, GL3Features&) {

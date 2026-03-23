@@ -1,6 +1,7 @@
 #include "bench/preset.h"
 #include "tests/test_registry.h"
 #include "platform/compat.h"
+#include "platform/logger.h"
 #include <cstdio>
 
 static const BenchPreset PRESETS[static_cast<int>(PresetIndex::Count)] = {
@@ -193,6 +194,7 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
         snprintf(buf, sizeof(buf), "Texturing test requires %d textures but GPU max is %d",
                  p.texturing.tex_size, caps.max_texture_size);
         v.reason = buf;
+        Log::dbg("Preset: clamped texturing tex_size %d -> %d (GPU max)", p.texturing.tex_size, caps.max_texture_size);
         return v;
     }
     if (p.scene.terrain_tex > caps.max_texture_size) {
@@ -201,6 +203,7 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
         snprintf(buf, sizeof(buf), "Scene test requires %d terrain texture but GPU max is %d",
                  p.scene.terrain_tex, caps.max_texture_size);
         v.reason = buf;
+        Log::dbg("Preset: clamped scene terrain_tex %d -> %d (GPU max)", p.scene.terrain_tex, caps.max_texture_size);
         return v;
     }
     if (p.scene.obj_tex > caps.max_texture_size) {
@@ -209,6 +212,7 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
         snprintf(buf, sizeof(buf), "Scene test requires %d object texture but GPU max is %d",
                  p.scene.obj_tex, caps.max_texture_size);
         v.reason = buf;
+        Log::dbg("Preset: clamped scene obj_tex %d -> %d (GPU max)", p.scene.obj_tex, caps.max_texture_size);
         return v;
     }
     if (p.texupload.tex_size > caps.max_texture_size) {
@@ -217,6 +221,7 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
         snprintf(buf, sizeof(buf), "TexUpload test requires %d textures but GPU max is %d",
                  p.texupload.tex_size, caps.max_texture_size);
         v.reason = buf;
+        Log::dbg("Preset: clamped texupload tex_size %d -> %d (GPU max)", p.texupload.tex_size, caps.max_texture_size);
         return v;
     }
 
@@ -230,6 +235,7 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
             snprintf(buf, sizeof(buf), "Geometry grid %d requires 32-bit indices (max grid=%d for 16-bit)",
                      p.geometry.grid_size, max_grid);
             v.reason = buf;
+            Log::dbg("Preset: geometry grid_size %d exceeds 16-bit index limit (max=%d)", p.geometry.grid_size, max_grid);
             return v;
         }
         if (p.scene.cube_grid > max_grid) {
@@ -238,10 +244,13 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
             snprintf(buf, sizeof(buf), "Scene cube grid %d requires 32-bit indices (max=%d for 16-bit)",
                      p.scene.cube_grid, max_grid);
             v.reason = buf;
+            Log::dbg("Preset: scene cube_grid %d exceeds 16-bit index limit (max=%d)", p.scene.cube_grid, max_grid);
             return v;
         }
     }
 
+    Log::dbg("Preset: '%s' validated OK (max_tex=%d, 32bit_idx=%s)",
+             p.name, caps.max_texture_size, caps.supports_32bit_indices ? "yes" : "no");
     return v;
 }
 

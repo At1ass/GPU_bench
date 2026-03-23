@@ -1,5 +1,6 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
+#include "platform/logger.h"
 
 TexUploadTest::TexUploadTest(const TexUploadParams& params)
     : params_(params), actual_tex_size_(params.tex_size),
@@ -22,6 +23,7 @@ void TexUploadTest::setup(Renderer* r, int vw, int vh) {
     // Create initial texture
     upload_data_ = genColorNoise(actual_tex_size_, 12345);
     texture_ = r->createTexture(actual_tex_size_, actual_tex_size_, 3, upload_data_.data());
+    Log::dbg("Test '%s': setup complete (tex %dx%d, %d uploads/frame)", name(), actual_tex_size_, actual_tex_size_, params_.uploads_per_frame);
 }
 
 void TexUploadTest::render(Renderer* r) {
