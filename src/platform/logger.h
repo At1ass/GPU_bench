@@ -9,18 +9,20 @@
 
 // Logger with timestamps, ANSI colors, and automatic subsystem detection.
 //
-// Preferred API (full compile-time format checking + auto source location):
+// Usage:
 //   LOG_DBG("mesh %u created", handle);
 //   LOG_INF("loaded %d textures", count);
 //   LOG_WRN("feature %s unavailable", name);
 //   LOG_ERR("shader compile failed: %s", log);
 //
-// Classic API (no source location, format checking via snprintf inlining):
-//   Log::info("message");              // zero-args: no formatting
-//   Log::info("value=%d", x);          // variadic: formatted via snprintf
+// Output:
+//   [INF +1.234s] [renderer] gl3_renderer.cpp:42  loaded 5 textures
 //
-// Output format:
-//   [INF +1.234s] [renderer] gl3_renderer.cpp:42  message text
+// - Timestamps: elapsed since Log::init()
+// - ANSI colors: auto-detected (isatty), gray/green/yellow/red
+// - Subsystem: extracted from __FILE__ (src/renderer/ → [renderer])
+// - Source location: __FILE__:__LINE__ in every message
+// - Format checking: snprintf at call site → full -Wformat=2 verification
 
 class Log {
 public:
@@ -54,8 +56,7 @@ public:
     static void setLevel(Level lvl) { s_level = lvl; }
     static bool levelEnabled(Level lvl) { return lvl >= s_level; }
 
-    // --- Core sink: pre-formatted message, no formatting concerns ---
-
+    // Pre-formatted message sink (called by LOG_* macros)
     static void emitMsg(Level lvl, const char* file, int line, const char* msg) {
         s_counts[static_cast<int>(lvl)]++;
         double elapsed = elapsedSec();
@@ -70,53 +71,7 @@ public:
         }
     }
 
-    // --- Classic API: zero-args overloads (no snprintf, no warnings) ---
-
-    static void dbg(const char* msg) {
-        if (s_level > Level::Debug) return;
-        emitMsg(Level::Debug, nullptr, 0, msg);
-    }
-    static void info(const char* msg) {
-        if (s_level > Level::Info) return;
-        emitMsg(Level::Info, nullptr, 0, msg);
-    }
-    static void warn(const char* msg) {
-        if (s_level > Level::Warn) return;
-        emitMsg(Level::Warn, nullptr, 0, msg);
-    }
-    static void err(const char* msg) {
-        emitMsg(Level::Error, nullptr, 0, msg);
-    }
-
-    // --- Classic API: variadic template overloads (with formatting) ---
-    // Note: format checking relies on snprintf inlining at -O1+.
-    // For guaranteed compile-time checking, prefer LOG_* macros.
-
-    template<typename T, typename... Args>
-    static void dbg(const char* fmt, T first, Args... rest) {
-        if (s_level > Level::Debug) return;
-        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
-        emitMsg(Level::Debug, nullptr, 0, buf);
-    }
-    template<typename T, typename... Args>
-    static void info(const char* fmt, T first, Args... rest) {
-        if (s_level > Level::Info) return;
-        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
-        emitMsg(Level::Info, nullptr, 0, buf);
-    }
-    template<typename T, typename... Args>
-    static void warn(const char* fmt, T first, Args... rest) {
-        if (s_level > Level::Warn) return;
-        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
-        emitMsg(Level::Warn, nullptr, 0, buf);
-    }
-    template<typename T, typename... Args>
-    static void err(const char* fmt, T first, Args... rest) {
-        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
-        emitMsg(Level::Error, nullptr, 0, buf);
-    }
-
-    // --- Subsystem/filename extraction from __FILE__ ---
+    // --- Path utilities (public for testing, used by macros) ---
 
     struct SubsystemTag {
         const char* name;
@@ -203,21 +158,12 @@ private:
         fputs(msg, out);
         fputc('\n', out);
     }
-
-    // snprintf wrapper — isolated from public API.
-    // Non-literal format is unavoidable here; checking happens at the call
-    // site when the compiler inlines the template (any optimization level).
-    template<typename... Args>
-    static void formatBuf(char* buf, size_t sz, const char* fmt, Args... args) {
-        snprintf(buf, sz, fmt, args...);
-    }
 };
 
-// --- LOG_* macros: format at call site for full compile-time checking ---
+// === Single logging interface ===
 //
-// snprintf sees the literal format string directly → GCC/Clang verify
-// argument types against format specifiers with zero false positives.
-// Also provides automatic __FILE__:__LINE__ and subsystem tag.
+// snprintf at call site → compiler sees literal format string →
+// full -Wformat=2 checking, automatic __FILE__:__LINE__ + subsystem.
 
 #define LOG_DBG(fmt, ...) \
     do { if (Log::levelEnabled(Log::Level::Debug)) { \
