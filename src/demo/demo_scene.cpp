@@ -1,4 +1,5 @@
 #include "demo/demo_scene.h"
+#include "demo/demo_utils.h"
 #include "demo/tier_config_validate.h"
 #include "demo/shader_loader.h"
 #include "demo/uniform_id.h"
@@ -19,65 +20,6 @@ static Vec3 normalizeSafe(const Vec3& v) {
     return l > 1e-8f ? Vec3(v.x / l, v.y / l, v.z / l) : Vec3(0.0f, 1.0f, 0.0f);
 }
 
-static FrustumPlanes extractFrustum(const Mat4& vp) {
-    FrustumPlanes f;
-    const float* m = vp.m;
-    // Column-major: row i of matrix = m[i], m[4+i], m[8+i], m[12+i]
-    // Left:   row3 + row0
-    f.planes[0][0] = m[3]  + m[0];  f.planes[0][1] = m[7]  + m[4];
-    f.planes[0][2] = m[11] + m[8];  f.planes[0][3] = m[15] + m[12];
-    // Right:  row3 - row0
-    f.planes[1][0] = m[3]  - m[0];  f.planes[1][1] = m[7]  - m[4];
-    f.planes[1][2] = m[11] - m[8];  f.planes[1][3] = m[15] - m[12];
-    // Bottom: row3 + row1
-    f.planes[2][0] = m[3]  + m[1];  f.planes[2][1] = m[7]  + m[5];
-    f.planes[2][2] = m[11] + m[9];  f.planes[2][3] = m[15] + m[13];
-    // Top:    row3 - row1
-    f.planes[3][0] = m[3]  - m[1];  f.planes[3][1] = m[7]  - m[5];
-    f.planes[3][2] = m[11] - m[9];  f.planes[3][3] = m[15] - m[13];
-    // Near:   row3 + row2
-    f.planes[4][0] = m[3]  + m[2];  f.planes[4][1] = m[7]  + m[6];
-    f.planes[4][2] = m[11] + m[10]; f.planes[4][3] = m[15] + m[14];
-    // Far:    row3 - row2
-    f.planes[5][0] = m[3]  - m[2];  f.planes[5][1] = m[7]  - m[6];
-    f.planes[5][2] = m[11] - m[10]; f.planes[5][3] = m[15] - m[14];
-    // Normalize each plane
-    for (int i = 0; i < 6; i++) {
-        float len = sqrtf(f.planes[i][0] * f.planes[i][0] +
-                          f.planes[i][1] * f.planes[i][1] +
-                          f.planes[i][2] * f.planes[i][2]);
-        if (len > 1e-8f) {
-            float inv = 1.0f / len;
-            f.planes[i][0] *= inv; f.planes[i][1] *= inv;
-            f.planes[i][2] *= inv; f.planes[i][3] *= inv;
-        }
-    }
-    return f;
-}
-
-static bool sphereInFrustum(const FrustumPlanes& f, const Vec3& center, float radius) {
-    for (int i = 0; i < 6; i++) {
-        float dist = f.planes[i][0] * center.x + f.planes[i][1] * center.y +
-                     f.planes[i][2] * center.z + f.planes[i][3];
-        if (dist < -radius) return false;
-    }
-    return true;
-}
-
-static const Vec3 SUN_DIR_RAW(0.4f, 0.8f, 0.3f);
-static const Vec3 FOG_COLOR(0.62f, 0.67f, 0.76f);
-
-// Set bounding sphere from transform (assumes mesh is centered at origin)
-static void setBounds(SceneObject& obj, float mesh_radius) {
-    // Extract translation from transform matrix (column-major)
-    obj.bounds_center = Vec3(obj.transform.m[12], obj.transform.m[13], obj.transform.m[14]);
-    // Scale factor: max of the 3 column lengths
-    float sx = sqrtf(obj.transform.m[0]*obj.transform.m[0] + obj.transform.m[1]*obj.transform.m[1] + obj.transform.m[2]*obj.transform.m[2]);
-    float sy = sqrtf(obj.transform.m[4]*obj.transform.m[4] + obj.transform.m[5]*obj.transform.m[5] + obj.transform.m[6]*obj.transform.m[6]);
-    float sz = sqrtf(obj.transform.m[8]*obj.transform.m[8] + obj.transform.m[9]*obj.transform.m[9] + obj.transform.m[10]*obj.transform.m[10]);
-    float max_scale = sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz);
-    obj.bounds_radius = mesh_radius * max_scale;
-}
 
 // ============================================================
 // DemoScene implementation
@@ -320,20 +262,6 @@ TechniqueInfo DemoScene::getTechniqueInfo() const {
 }
 
 // ============================================================
-// computeLightMatrix: orthographic projection from sun direction
-// ============================================================
-
-void DemoScene::computeLightMatrix(FrameData& fc) {
-    Vec3 light_pos = fc.sun_dir * 15.0f;
-    Vec3 up(0.0f, 0.0f, 1.0f);
-    if (fabsf(Vec3::dot(fc.sun_dir, up)) > 0.99f)
-        up = Vec3(1.0f, 0.0f, 0.0f);
-    Mat4 light_view = Mat4::lookAt(light_pos, Vec3(0, 0, 0), up);
-    Mat4 light_proj = Mat4::ortho(-6.0f, 6.0f, -6.0f, 6.0f, 0.1f, 30.0f);
-    fc.light_vp = light_proj * light_view;
-}
-
-// ============================================================
 // renderShadowPass: depth-only from sun perspective
 // ============================================================
 
@@ -381,34 +309,6 @@ void DemoScene::renderSky(Renderer* r, const FrameData& fc) {
 
     r->setDepthTest(true);
     r->setCullFace(true);
-}
-
-// ============================================================
-// setPointLightUniforms: T3+ animated point lights
-// ============================================================
-
-void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameData& fc) {
-    if (config_.point_light_count <= 0) {
-        shader->set1i("u_point_light_count", 0);
-        return;
-    }
-    shader->set1i("u_point_light_count", config_.point_light_count);
-    static const Vec3 colors[] = {
-        Vec3(2.0f, 1.6f, 0.8f),  // warm yellow
-        Vec3(0.8f, 1.2f, 2.0f),  // cool blue
-        Vec3(0.8f, 1.5f, 0.8f),  // soft green
-    };
-    for (int i = 0; i < config_.point_light_count && i < 3; i++) {
-        float angle = fc.time * 0.5f + static_cast<float>(i) * 2.094f;
-        float px = cosf(angle) * 1.8f;
-        float pz = sinf(angle) * 1.8f;
-        float py = -0.5f + sinf(fc.time * 0.8f + static_cast<float>(i) * 1.5f) * 0.3f;
-        char name[32];
-        snprintf(name, sizeof(name), "u_point_lights[%d]", i);
-        shader->set3f(name, px, py, pz);
-        snprintf(name, sizeof(name), "u_point_colors[%d]", i);
-        shader->set3f(name, colors[i].x, colors[i].y, colors[i].z);
-    }
 }
 
 // ============================================================
@@ -482,7 +382,7 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameData& fc) {
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(res_.core.island_shader, fc);
+    setPointLightUniforms(res_.core.island_shader, fc, config_.point_light_count);
 
     for (size_t i = 0; i < opaque_objects_.size(); i++) {
         const SceneObject& obj = opaque_objects_[i];
@@ -582,7 +482,7 @@ void DemoScene::renderGrassInstanced(Renderer* r, const FrameData& fc) {
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(res_.grass.shader, fc);
+    setPointLightUniforms(res_.grass.shader, fc, config_.point_light_count);
 
     r->setDepthTest(true);
     r->setDepthMask(true);
@@ -641,7 +541,7 @@ void DemoScene::renderFurPass(Renderer* r, const FrameData& fc) {
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(res_.core.fur_shader, fc);
+    setPointLightUniforms(res_.core.fur_shader, fc, config_.point_light_count);
 
     // Fur strand texture: unit 0
     r->bindTextureUnit(0, res_.core.fur_tex);
@@ -1173,7 +1073,7 @@ void DemoScene::renderTessellatedModel(Renderer* r, const FrameData& fc) {
         ub_tess_.set(U::HasShadow, 0.0f);
     }
 
-    setPointLightUniforms(res_.t4.tess_shader, fc);
+    setPointLightUniforms(res_.t4.tess_shader, fc, config_.point_light_count);
     ub_tess_.set(U::HasNormalMap, 0.0f);
 
     g4->setPatchVertices(3);

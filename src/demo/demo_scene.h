@@ -151,7 +151,6 @@ private:
     Mat4 model_transform_;
 
     // Render passes (still inline methods — will be extracted to pass classes later)
-    void computeLightMatrix(FrameData& fd);
     void renderShadowPass(Renderer* r, const FrameData& fd);
     void renderSky(Renderer* r, const FrameData& fd);
     void renderOpaquePass(Renderer* r, const FrameData& fd);
@@ -162,9 +161,6 @@ private:
     // T2+ SSAO
     void renderSSAOPass(Renderer* r, const FrameData& fd);
     void renderSSAOBlur(Renderer* r, const FrameData& fd);
-
-    // Point light uniform helper
-    void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd);
 
     // T4 render passes
     void renderComputeParticles(Renderer* r, const FrameData& fd);
