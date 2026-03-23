@@ -79,7 +79,7 @@ void UBOSwitchTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) {
             ubos_.push_back(ubo);
         }
     }
-    Log::dbg("Test '%s': setup complete (%d UBOs, %d switches/frame)", name(), static_cast<int>(ubos_.size()), params_.switches_per_frame);
+    LOG_DBG("Test '%s': setup complete (%d UBOs, %d switches/frame)", name(), static_cast<int>(ubos_.size()), params_.switches_per_frame);
 }
 
 void UBOSwitchTest::renderGL3(Renderer& r, GL3Features& gl3) {

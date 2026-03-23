@@ -48,12 +48,12 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
                 ObjLoader::normalize(md);
                 MeshGen::smoothNormals(md);
                 MeshGen::optimizeVertexCache(md);
-                Log::info("Resources: loaded OBJ model from %s (%d verts, smooth normals, cache-optimized)",
+                LOG_INF("Resources: loaded OBJ model from %s (%d verts, smooth normals, cache-optimized)",
                           obj_path.c_str(), static_cast<int>(md.vertices.size()));
             }
         }
         if (md.vertices.empty()) {
-            Log::dbg("Demo: OBJ not found, using fallback sphere");
+            LOG_DBG("Demo: OBJ not found, using fallback sphere");
             md = MeshGen::sphere(64, 32);
             ObjLoader::normalize(md);
         }
@@ -71,7 +71,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     {
         MeshData rocks = MeshGen::scatteredRocks(10, 8.0f, 0.1f, 0.3f, 137u);
         rock_mesh_ = scene_meshes_.add(rocks);
-        Log::info("Resources: generated %d scattered rocks (%d verts)",
+        LOG_INF("Resources: generated %d scattered rocks (%d verts)",
                   10, static_cast<int>(rocks.vertices.size()));
     }
 
@@ -79,7 +79,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     {
         MeshData grass = MeshGen::scatteredGrass(600, 20.0f, 0.30f, 0.10f, 251u);
         grass_mesh_ = scene_meshes_.add(grass);
-        Log::info("Resources: generated %d grass blades (%d verts)",
+        LOG_INF("Resources: generated %d grass blades (%d verts)",
                   600, static_cast<int>(grass.vertices.size()));
     }
 
@@ -87,7 +87,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     {
         MeshData particles = MeshGen::particleQuads(200, 6.0f, 2.0f, 317u);
         particle_mesh_ = scene_meshes_.add(particles);
-        Log::info("Resources: generated %d particle quads (%d verts)",
+        LOG_INF("Resources: generated %d particle quads (%d verts)",
                   200, static_cast<int>(particles.vertices.size()));
     }
 
@@ -95,11 +95,11 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     {
         MeshData blade = MeshGen::grassBlade();
         grass_blade_mesh_ = scene_meshes_.add(blade);
-        Log::info("Resources: generated grass blade template (%d verts)",
+        LOG_INF("Resources: generated grass blade template (%d verts)",
                   static_cast<int>(blade.vertices.size()));
     }
 
-    Log::dbg("Demo: mesh pool loaded (%d meshes)", 7);  // sky + model + ground + rocks + grass + particles + blade
+    LOG_DBG("Demo: mesh pool loaded (%d meshes)", 7);  // sky + model + ground + rocks + grass + particles + blade
 
     return true;
 }
@@ -110,7 +110,7 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
         const int fur_tex_size = 128;
         std::vector<unsigned char> fur_pixels = generateFurTexture(fur_tex_size, 0.75f);
         fur_tex_.assign(r, r->createTexture(fur_tex_size, fur_tex_size, 4, fur_pixels.data()));
-        Log::info("Resources: generated fur texture %dx%d", fur_tex_size, fur_tex_size);
+        LOG_INF("Resources: generated fur texture %dx%d", fur_tex_size, fur_tex_size);
     }
 
     // Fur mask (fur.png)
@@ -122,7 +122,7 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
             unsigned char* pixels = stbi_load(mask_path.c_str(), &mw, &mh, &mc, 4);
             if (pixels && mw > 0 && mh > 0) {
                 fur_mask_tex_.assign(r, r->createTexture(mw, mh, 4, pixels));
-                Log::info("Resources: loaded fur mask %dx%d from %s", mw, mh, mask_path.c_str());
+                LOG_INF("Resources: loaded fur mask %dx%d from %s", mw, mh, mask_path.c_str());
             }
             if (pixels) stbi_image_free(pixels);
         }
@@ -141,7 +141,7 @@ bool DemoResources::compileSkyShader(Renderer* r) {
         fs_str = ShaderLoader::load("gl2/sky.frag");
     }
     if (!sky_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-        Log::err("Resources: failed to create sky shader");
+        LOG_ERR("Resources: failed to create sky shader");
         return false;
     }
     return true;
@@ -163,7 +163,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl2/island_t1.frag");
             }
             if (!island_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::err("Resources: failed to create island shader (tier %d)", tier);
+                LOG_ERR("Resources: failed to create island shader (tier %d)", tier);
                 return false;
             }
         }
@@ -179,7 +179,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl2/fur.frag");
             }
             if (!fur_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::err("Resources: failed to create fur shader (tier %d)", tier);
+                LOG_ERR("Resources: failed to create fur shader (tier %d)", tier);
                 return false;
             }
         }
@@ -195,7 +195,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl2/particle.frag");
             }
             if (!particle_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::warn("Resources: failed to create particle shader (non-critical)");
+                LOG_WRN("Resources: failed to create particle shader (non-critical)");
                 // Non-critical: particles just won't render
             }
         }
@@ -215,7 +215,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl3/island_t2.frag");
             }
             if (!island_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::err("Resources: failed to create island shader (tier %d)", tier);
+                LOG_ERR("Resources: failed to create island shader (tier %d)", tier);
                 return false;
             }
         }
@@ -231,7 +231,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl3/fur_t2.frag");
             }
             if (!fur_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::err("Resources: failed to create fur shader (tier %d)", tier);
+                LOG_ERR("Resources: failed to create fur shader (tier %d)", tier);
                 return false;
             }
         }
@@ -247,7 +247,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl3/grass_t2.frag");
             }
             if (!grass_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::warn("Resources: failed to create grass T2 shader (non-critical)");
+                LOG_WRN("Resources: failed to create grass T2 shader (non-critical)");
             }
         }
 
@@ -267,7 +267,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl3/island_t3.frag");
             }
             if (!island_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::err("Resources: failed to create island shader (tier 3)");
+                LOG_ERR("Resources: failed to create island shader (tier 3)");
                 return false;
             }
         }
@@ -282,7 +282,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl3/fur_t3.frag");
             }
             if (!fur_shaders_[idx].create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::err("Resources: failed to create fur shader (tier 3)");
+                LOG_ERR("Resources: failed to create fur shader (tier 3)");
                 return false;
             }
         }
@@ -299,7 +299,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 fs_str = ShaderLoader::load("gl3/grass_t3.frag");
             }
             if (!grass_shader_t3_.create(r, vs_str.c_str(), fs_str.c_str())) {
-                Log::warn("Resources: failed to create grass T3 shader (non-critical)");
+                LOG_WRN("Resources: failed to create grass T3 shader (non-critical)");
             }
         }
 
@@ -338,7 +338,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             TextureHandle nt = r->createTexture(NM_SIZE, NM_SIZE, 3, nm_data.data());
             if (nt != INVALID_TEXTURE) {
                 normal_map_tex_.assign(r, nt);
-                Log::info("Resources: generated normal map %dx%d", NM_SIZE, NM_SIZE);
+                LOG_INF("Resources: generated normal map %dx%d", NM_SIZE, NM_SIZE);
             }
         }
 
@@ -352,7 +352,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             std::string vs = ShaderLoader::load("gl4/island_t4.vert");
             std::string fs = ShaderLoader::load("gl4/island_t4.frag");
             if (!island_shaders_[idx].create(r, vs.c_str(), fs.c_str())) {
-                Log::err("Resources: failed to create PBR island shader (tier 4)");
+                LOG_ERR("Resources: failed to create PBR island shader (tier 4)");
                 return false;
             }
         }
@@ -361,7 +361,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             std::string vs = ShaderLoader::load("gl4/fur_t4.vert");
             std::string fs = ShaderLoader::load("gl4/fur_t4.frag");
             if (!fur_shaders_[idx].create(r, vs.c_str(), fs.c_str())) {
-                Log::err("Resources: failed to create PBR fur shader (tier 4)");
+                LOG_ERR("Resources: failed to create PBR fur shader (tier 4)");
                 return false;
             }
         }
@@ -370,7 +370,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             std::string vs = ShaderLoader::load("gl4/grass_t4.vert");
             std::string fs = ShaderLoader::load("gl4/grass_t4.frag");
             if (!grass_shader_t4_.create(r, vs.c_str(), fs.c_str())) {
-                Log::warn("Resources: failed to create PBR grass shader (tier 4)");
+                LOG_WRN("Resources: failed to create PBR grass shader (tier 4)");
             }
         }
         // Tessellation shader
@@ -385,9 +385,9 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                                                        tes.c_str(), fs.c_str());
                 if (sh != INVALID_SHADER) {
                     tess_shader_.adopt(r, sh);
-                    Log::info("Resources: tessellation shader created");
+                    LOG_INF("Resources: tessellation shader created");
                 } else {
-                    Log::warn("Resources: failed to create tessellation shader");
+                    LOG_WRN("Resources: failed to create tessellation shader");
                 }
             }
         }
@@ -399,9 +399,9 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 ShaderHandle sh = cf->createComputeShader(cs.c_str());
                 if (sh != INVALID_SHADER) {
                     compute_particle_shader_.adopt(r, sh);
-                    Log::info("Resources: compute particle shader created");
+                    LOG_INF("Resources: compute particle shader created");
                 } else {
-                    Log::warn("Resources: failed to create compute particle shader");
+                    LOG_WRN("Resources: failed to create compute particle shader");
                 }
             }
         }
@@ -410,7 +410,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             std::string vs = ShaderLoader::load("gl4/particle_render_t4.vert");
             std::string fs = ShaderLoader::load("gl4/particle_render_t4.frag");
             if (!particle_render_shader_.create(r, vs.c_str(), fs.c_str())) {
-                Log::warn("Resources: failed to create particle render shader");
+                LOG_WRN("Resources: failed to create particle render shader");
             }
         }
         // Volumetric fog shader
@@ -418,7 +418,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             std::string vs = ShaderLoader::load("gl4/volumetric_fog_t4.vert");
             std::string fs = ShaderLoader::load("gl4/volumetric_fog_t4.frag");
             if (!volumetric_fog_shader_.create(r, vs.c_str(), fs.c_str())) {
-                Log::warn("Resources: failed to create volumetric fog shader");
+                LOG_WRN("Resources: failed to create volumetric fog shader");
             }
         }
         // HDR tone map composite shader
@@ -426,13 +426,13 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
             std::string vs = ShaderLoader::load("gl4/tone_map_t4.vert");
             std::string fs = ShaderLoader::load("gl4/tone_map_t4.frag");
             if (!tone_map_shader_.create(r, vs.c_str(), fs.c_str())) {
-                Log::warn("Resources: failed to create tone map shader");
+                LOG_WRN("Resources: failed to create tone map shader");
             }
         }
         return true;
     }
 
-    Log::warn("Resources: tier %d shaders not implemented yet, reusing tier 1", tier);
+    LOG_WRN("Resources: tier %d shaders not implemented yet, reusing tier 1", tier);
     return false;
 }
 
@@ -449,7 +449,7 @@ bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
             fs_str = ShaderLoader::load("gl3/shadow_depth.frag");
         }
         if (!shadow_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-            Log::warn("Resources: failed to create shadow depth shader");
+            LOG_WRN("Resources: failed to create shadow depth shader");
             return false;
         }
     }
@@ -457,7 +457,7 @@ bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
     // Shadow depth render target (size set by caller)
     RenderTargetHandle srt = r->createDepthRenderTarget(shadow_map_size_, shadow_map_size_);
     if (srt == INVALID_RENDER_TARGET) {
-        Log::warn("Resources: failed to create shadow depth FBO");
+        LOG_WRN("Resources: failed to create shadow depth FBO");
         shadow_shader_.reset();
         shadow_map_size_ = 0;
         return false;
@@ -465,7 +465,7 @@ bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
     shadow_rt_.assign(r, srt);
     shadow_depth_tex_ = r->getDepthTexture(srt);
 
-    Log::info("Resources: shadow map %dx%d created", shadow_map_size_, shadow_map_size_);
+    LOG_INF("Resources: shadow map %dx%d created", shadow_map_size_, shadow_map_size_);
     return true;
 }
 
@@ -481,7 +481,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
             fs_str = ShaderLoader::load("gl3/bloom_extract.frag");
         }
         if (!bloom_extract_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-            Log::warn("Resources: failed to create bloom extract shader");
+            LOG_WRN("Resources: failed to create bloom extract shader");
             return false;
         }
     }
@@ -497,7 +497,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
             fs_str = ShaderLoader::load("gl3/bloom_blur.frag");
         }
         if (!bloom_blur_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-            Log::warn("Resources: failed to create bloom blur shader");
+            LOG_WRN("Resources: failed to create bloom blur shader");
             bloom_extract_shader_.reset();
             return false;
         }
@@ -514,7 +514,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
             fs_str = ShaderLoader::load("gl3/bloom_composite.frag");
         }
         if (!bloom_composite_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-            Log::warn("Resources: failed to create bloom composite shader");
+            LOG_WRN("Resources: failed to create bloom composite shader");
             bloom_extract_shader_.reset();
             bloom_blur_shader_.reset();
             return false;
@@ -526,7 +526,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
         MeshData qd = MeshGen::quad();
         MeshHandle qh = r->createMesh(qd);
         if (qh == MeshHandle()) {
-            Log::warn("Resources: failed to create fullscreen quad mesh");
+            LOG_WRN("Resources: failed to create fullscreen quad mesh");
             bloom_extract_shader_.reset();
             bloom_blur_shader_.reset();
             bloom_composite_shader_.reset();
@@ -539,7 +539,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
     {
         RenderTargetHandle srt = r->createRenderTargetWithDepth(render_w, render_h);
         if (srt == INVALID_RENDER_TARGET) {
-            Log::warn("Resources: failed to create scene FBO for bloom");
+            LOG_WRN("Resources: failed to create scene FBO for bloom");
             bloom_extract_shader_.reset();
             bloom_blur_shader_.reset();
             bloom_composite_shader_.reset();
@@ -558,7 +558,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
     {
         RenderTargetHandle brt = r->createRenderTarget(bw, bh);
         if (brt == INVALID_RENDER_TARGET) {
-            Log::warn("Resources: failed to create bright FBO for bloom");
+            LOG_WRN("Resources: failed to create bright FBO for bloom");
             bloom_extract_shader_.reset();
             bloom_blur_shader_.reset();
             bloom_composite_shader_.reset();
@@ -573,7 +573,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
     {
         RenderTargetHandle blrt = r->createRenderTarget(bw, bh);
         if (blrt == INVALID_RENDER_TARGET) {
-            Log::warn("Resources: failed to create blur FBO for bloom");
+            LOG_WRN("Resources: failed to create blur FBO for bloom");
             bloom_extract_shader_.reset();
             bloom_blur_shader_.reset();
             bloom_composite_shader_.reset();
@@ -587,7 +587,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
 
     bloom_strength_ = 0.3f;
 
-    Log::info("Resources: bloom FBOs created (scene %dx%d, bloom %dx%d)",
+    LOG_INF("Resources: bloom FBOs created (scene %dx%d, bloom %dx%d)",
               render_w, render_h, bw, bh);
     return true;
 }
@@ -604,7 +604,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
             fs_str = ShaderLoader::load("gl3/ssao.frag");
         }
         if (!ssao_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-            Log::warn("Resources: failed to create SSAO shader");
+            LOG_WRN("Resources: failed to create SSAO shader");
             return false;
         }
     }
@@ -620,7 +620,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
             fs_str = ShaderLoader::load("gl3/ssao_blur.frag");
         }
         if (!ssao_blur_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
-            Log::warn("Resources: failed to create SSAO blur shader");
+            LOG_WRN("Resources: failed to create SSAO blur shader");
             ssao_shader_.reset();
             return false;
         }
@@ -635,7 +635,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
     {
         RenderTargetHandle srt = r->createRenderTarget(sw, sh);
         if (srt == INVALID_RENDER_TARGET) {
-            Log::warn("Resources: failed to create SSAO FBO");
+            LOG_WRN("Resources: failed to create SSAO FBO");
             ssao_shader_.reset();
             ssao_blur_shader_.reset();
             return false;
@@ -646,7 +646,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
     {
         RenderTargetHandle brt = r->createRenderTarget(sw, sh);
         if (brt == INVALID_RENDER_TARGET) {
-            Log::warn("Resources: failed to create SSAO blur FBO");
+            LOG_WRN("Resources: failed to create SSAO blur FBO");
             ssao_shader_.reset();
             ssao_blur_shader_.reset();
             ssao_rt_.reset();
@@ -668,7 +668,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
         }
         TextureHandle nt = r->createTexture(4, 4, 3, noise);
         if (nt == INVALID_TEXTURE) {
-            Log::warn("Resources: failed to create SSAO noise texture");
+            LOG_WRN("Resources: failed to create SSAO noise texture");
             ssao_shader_.reset();
             ssao_blur_shader_.reset();
             ssao_rt_.reset();
@@ -681,7 +681,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
     // Get depth texture from scene FBO
     scene_depth_tex_ = r->getRTDepthTexture(scene_rt_.get());
     if (scene_depth_tex_ == INVALID_TEXTURE) {
-        Log::warn("Resources: scene FBO has no sampleable depth texture, SSAO disabled");
+        LOG_WRN("Resources: scene FBO has no sampleable depth texture, SSAO disabled");
         ssao_shader_.reset();
         ssao_blur_shader_.reset();
         ssao_rt_.reset();
@@ -690,7 +690,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
         return false;
     }
 
-    Log::info("Resources: SSAO created (FBO %dx%d)", sw, sh);
+    LOG_INF("Resources: SSAO created (FBO %dx%d)", sw, sh);
     return true;
 }
 
@@ -736,7 +736,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
             }
             cf->updateSSBO(ssbo, init_data.data(), compute_particle_count_ * particle_size);
             particle_ssbo_ = ssbo;
-            Log::info("Resources: compute particle SSBO created (%d particles)", compute_particle_count_);
+            LOG_INF("Resources: compute particle SSBO created (%d particles)", compute_particle_count_);
         }
     }
 
@@ -746,9 +746,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (hrt != INVALID_RENDER_TARGET) {
             hdr_scene_rt_.assign(r, hrt);
             hdr_depth_tex_ = r->getRTDepthTexture(hrt);
-            Log::info("Resources: HDR scene FBO created %dx%d", render_w, render_h);
+            LOG_INF("Resources: HDR scene FBO created %dx%d", render_w, render_h);
         } else {
-            Log::warn("Resources: failed to create HDR FBO, falling back to LDR");
+            LOG_WRN("Resources: failed to create HDR FBO, falling back to LDR");
         }
     }
 
@@ -771,7 +771,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         RenderTargetHandle frt = r->createFloatRenderTarget(fw, fh);
         if (frt != INVALID_RENDER_TARGET) {
             fog_rt_.assign(r, frt);
-            Log::info("Resources: HDR fog FBO created %dx%d", fw, fh);
+            LOG_INF("Resources: HDR fog FBO created %dx%d", fw, fh);
         }
     }
 
@@ -784,7 +784,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
             ShaderHandle sh = cf->createComputeShader(gtao_src.c_str());
             if (sh != INVALID_SHADER) {
                 gtao_shader_.adopt(r, sh);
-                Log::info("Resources: GTAO compute shader created");
+                LOG_INF("Resources: GTAO compute shader created");
             }
         }
         std::string gtao_blur_src = ShaderLoader::load("gl4/gtao_blur_t4.comp");
@@ -792,7 +792,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
             ShaderHandle sh = cf->createComputeShader(gtao_blur_src.c_str());
             if (sh != INVALID_SHADER) {
                 gtao_blur_shader_.adopt(r, sh);
-                Log::info("Resources: GTAO blur compute shader created");
+                LOG_INF("Resources: GTAO blur compute shader created");
             }
         }
 
@@ -806,9 +806,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 gtao_blur_tex_.assign(r, ao_blur);
             }
             if (gtao_tex_ && gtao_blur_tex_) {
-                Log::info("Resources: GTAO textures created %dx%d", render_w, render_h);
+                LOG_INF("Resources: GTAO textures created %dx%d", render_w, render_h);
             } else {
-                Log::warn("Resources: failed to create GTAO textures");
+                LOG_WRN("Resources: failed to create GTAO textures");
                 gtao_shader_.reset();
                 gtao_blur_shader_.reset();
                 gtao_tex_.reset();
@@ -851,9 +851,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 mh /= 2;
             }
             if (all_ok) {
-                Log::info("Resources: compute bloom mip chain created (%d levels)", BLOOM_MIP_COUNT);
+                LOG_INF("Resources: compute bloom mip chain created (%d levels)", BLOOM_MIP_COUNT);
             } else {
-                Log::warn("Resources: failed to create bloom mip chain");
+                LOG_WRN("Resources: failed to create bloom mip chain");
                 bloom_down_compute_.reset();
                 bloom_up_compute_.reset();
                 for (int i = 0; i < BLOOM_MIP_COUNT; i++) bloom_mips_[i].reset();
@@ -895,9 +895,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 exposure_ssbo_ = exp_buf;
             }
             if (histogram_ssbo_ != INVALID_BUFFER && exposure_ssbo_ != INVALID_BUFFER) {
-                Log::info("Resources: auto-exposure SSBOs created");
+                LOG_INF("Resources: auto-exposure SSBOs created");
             } else {
-                Log::warn("Resources: failed to create exposure SSBOs");
+                LOG_WRN("Resources: failed to create exposure SSBOs");
                 histogram_shader_.reset();
                 exposure_shader_.reset();
             }
@@ -914,7 +914,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 TextureHandle st = r->createFloatTexture(render_w, render_h);
                 if (st != INVALID_TEXTURE) {
                     ssr_tex_.assign(r, st);
-                    Log::info("Resources: SSR compute shader + texture created");
+                    LOG_INF("Resources: SSR compute shader + texture created");
                 }
             }
         }
@@ -930,7 +930,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 TextureHandle dt = r->createFloatTexture(render_w, render_h);
                 if (dt != INVALID_TEXTURE) {
                     dof_tex_.assign(r, dt);
-                    Log::info("Resources: DoF compute shader + texture created");
+                    LOG_INF("Resources: DoF compute shader + texture created");
                 }
             }
         }
@@ -942,7 +942,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         puddle_meshes_[i] = scene_meshes_.add(pd);
     }
     if (puddle_meshes_[0] != MeshHandle()) {
-        Log::info("Resources: %d puddle meshes created", PUDDLE_COUNT);
+        LOG_INF("Resources: %d puddle meshes created", PUDDLE_COUNT);
     }
 
     return true;
@@ -953,12 +953,12 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     renderer_ = r;
 
     if (!loadSharedMeshes(r)) {
-        Log::err("Resources: failed to load shared meshes");
+        LOG_ERR("Resources: failed to load shared meshes");
         return false;
     }
 
     if (!loadSharedTextures(r)) {
-        Log::err("Resources: failed to load shared textures");
+        LOG_ERR("Resources: failed to load shared textures");
         return false;
     }
 
@@ -998,7 +998,7 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     }
 
     prepared_ = true;
-    Log::info("Resources: all resources prepared (max_tier=%d)", max_tier);
+    LOG_INF("Resources: all resources prepared (max_tier=%d)", max_tier);
     return true;
 }
 
@@ -1227,5 +1227,5 @@ void DemoResources::destroy() {
 
     prepared_ = false;
     renderer_ = nullptr;
-    Log::info("Resources: destroyed");
+    LOG_INF("Resources: destroyed");
 }

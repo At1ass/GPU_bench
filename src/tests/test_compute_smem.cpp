@@ -60,7 +60,7 @@ void ComputeSharedMemTest::setupCompute(Renderer& r, ComputeFeatures& comp, int,
     int total_invocations = params_.work_groups * SMEM_LOCAL_SIZE;
     int ssbo_size = total_invocations * 4; // 1 float per invocation
     ssbo_ = comp.createSSBO(ssbo_size);
-    Log::dbg("Test '%s': setup complete (%d workgroups, %d iterations)", name(), params_.work_groups, params_.iterations);
+    LOG_DBG("Test '%s': setup complete (%d workgroups, %d iterations)", name(), params_.work_groups, params_.iterations);
 }
 
 void ComputeSharedMemTest::renderCompute(Renderer& r, ComputeFeatures& comp) {

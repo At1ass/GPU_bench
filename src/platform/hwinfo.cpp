@@ -83,8 +83,8 @@ HWInfo HWInfo::detect() {
     snprintf(ver, sizeof(ver), "(%lu.%lu build %lu)",
              maj, min, osvi.dwBuildNumber);
     info.os_version = ver;
-    Log::dbg("HWInfo: CPU '%s'", info.cpu_name.c_str());
-    Log::dbg("HWInfo: OS '%s %s'", info.os_name.c_str(), info.os_version.c_str());
+    LOG_DBG("HWInfo: CPU '%s'", info.cpu_name.c_str());
+    LOG_DBG("HWInfo: OS '%s %s'", info.os_name.c_str(), info.os_version.c_str());
     return info;
 }
 
@@ -157,8 +157,8 @@ HWInfo HWInfo::detect() {
         info.os_name = have_uname ? u.sysname : "Linux";
     info.os_version = kernel_version;
 #endif
-    Log::dbg("HWInfo: CPU '%s'", info.cpu_name.c_str());
-    Log::dbg("HWInfo: OS '%s %s'", info.os_name.c_str(), info.os_version.c_str());
+    LOG_DBG("HWInfo: CPU '%s'", info.cpu_name.c_str());
+    LOG_DBG("HWInfo: OS '%s %s'", info.os_name.c_str(), info.os_version.c_str());
     return info;
 }
 

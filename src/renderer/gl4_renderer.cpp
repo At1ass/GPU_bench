@@ -10,7 +10,7 @@ GL4Renderer::GL4Renderer() {}
 
 bool GL4Renderer::init(int w, int h) {
     if (!GL3Renderer::init(w, h)) return false;
-    Log::dbg("GL4Renderer::init: GL3 base init done, detecting GL4 features");
+    LOG_DBG("GL4Renderer::init: GL3 base init done, detecting GL4 features");
 
     // Baseline from GL spec
     GLProfile baseline = GLProfile::coreProfile(caps_.gl_major, caps_.gl_minor);
@@ -25,7 +25,7 @@ bool GL4Renderer::init(int w, int h) {
 #ifdef CB_NEED_GL_LOAD
     // Verify function pointers
     if (has_compute_ && !SDL_GL_GetProcAddress("glDispatchCompute")) {
-        Log::warn("GL%d.%d claims compute but glDispatchCompute missing", caps_.gl_major, caps_.gl_minor);
+        LOG_WRN("GL%d.%d claims compute but glDispatchCompute missing", caps_.gl_major, caps_.gl_minor);
         has_compute_ = false;
     }
     if (has_indirect_draw_ && !cb_glMultiDrawElementsIndirect) {
@@ -79,7 +79,7 @@ bool GL4Renderer::init(int w, int h) {
 #endif
 
     // Load GL4 function pointers
-    Log::dbg("GL4Renderer::init: loading GL4 function pointers");
+    LOG_DBG("GL4Renderer::init: loading GL4 function pointers");
     loadGL4Functions();
 
     // Reserve slot 0 as invalid for SSBO handles
@@ -94,7 +94,7 @@ bool GL4Renderer::init(int w, int h) {
     PersistentBuffer invalid_pb;
     persistent_buffers_.push_back(invalid_pb);
 
-    Log::dbg("GL4Renderer: compute=%s, indirect_draw=%s, tessellation=%s, "
+    LOG_DBG("GL4Renderer: compute=%s, indirect_draw=%s, tessellation=%s, "
              "texture_gather=%s, image_load_store=%s, buffer_storage=%s, bindless_texture=%s",
             has_compute_ ? "yes" : "no",
             has_indirect_draw_ ? "yes" : "no",
@@ -168,7 +168,7 @@ ShaderHandle GL4Renderer::createComputeShader(const char* source) {
     if (!ok) {
         char log[512];
         glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
-        Log::err("Compute shader link error: %s", log);
+        LOG_ERR("Compute shader link error: %s", log);
         glDeleteProgram(prog);
         return INVALID_SHADER;
     }
@@ -183,7 +183,7 @@ ShaderHandle GL4Renderer::createComputeShader(const char* source) {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
     }
-    Log::dbg("GL4: createComputeShader -> handle %u", (unsigned)h);
+    LOG_DBG("GL4: createComputeShader -> handle %u", (unsigned)h);
     return h;
 }
 
@@ -226,7 +226,7 @@ BufferHandle GL4Renderer::createSSBO(int size_bytes) {
         h = BufferHandle(static_cast<unsigned int>(ssbos_.size()));
         ssbos_.push_back(buf);
     }
-    Log::dbg("GL4: createSSBO %d bytes -> handle %u", size_bytes, (unsigned)h);
+    LOG_DBG("GL4: createSSBO %d bytes -> handle %u", size_bytes, (unsigned)h);
     return h;
 }
 
@@ -298,7 +298,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
         glDeleteFramebuffers(1, &rt.fbo);
         glDeleteTextures(1, &rt.color_tex);
         glDeleteRenderbuffers(1, &rt.depth_rb);
-        Log::err("Float FBO not complete: 0x%X", status);
+        LOG_ERR("Float FBO not complete: 0x%X", status);
         return INVALID_RENDER_TARGET;
     }
 
@@ -313,7 +313,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
-    Log::dbg("GL4: createFloatRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
+    LOG_DBG("GL4: createFloatRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
@@ -358,7 +358,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
         glDeleteFramebuffers(1, &rt.fbo);
         glDeleteTextures(1, &rt.color_tex);
         glDeleteTextures(1, &rt.depth_tex);
-        Log::err("Float FBO with depth not complete: 0x%X", status);
+        LOG_ERR("Float FBO with depth not complete: 0x%X", status);
         return INVALID_RENDER_TARGET;
     }
 
@@ -397,7 +397,7 @@ BufferHandle GL4Renderer::createIndirectBuffer(int size_bytes, const void* data)
         h = BufferHandle(static_cast<unsigned int>(indirect_buffers_.size()));
         indirect_buffers_.push_back(buf);
     }
-    Log::dbg("GL4: createIndirectBuffer %d bytes -> handle %u", size_bytes, (unsigned)h);
+    LOG_DBG("GL4: createIndirectBuffer %d bytes -> handle %u", size_bytes, (unsigned)h);
     return h;
 }
 
@@ -477,7 +477,7 @@ ShaderHandle GL4Renderer::createTessShader(const char* vs, const char* tcs,
     if (!ok) {
         char log[512];
         glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
-        Log::err("Tessellation shader link error: %s", log);
+        LOG_ERR("Tessellation shader link error: %s", log);
         glDeleteProgram(prog);
         return INVALID_SHADER;
     }
@@ -491,7 +491,7 @@ ShaderHandle GL4Renderer::createTessShader(const char* vs, const char* tcs,
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
     }
-    Log::dbg("GL4: createTessShader -> handle %u", (unsigned)h);
+    LOG_DBG("GL4: createTessShader -> handle %u", (unsigned)h);
     return h;
 }
 
@@ -528,7 +528,7 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(tex);
     }
-    Log::dbg("GL4: createFloatTexture %dx%d -> handle %u", w, h, (unsigned)handle);
+    LOG_DBG("GL4: createFloatTexture %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
@@ -604,7 +604,7 @@ BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {
         h = BufferHandle(static_cast<unsigned int>(persistent_buffers_.size()));
         persistent_buffers_.push_back(pb);
     }
-    Log::dbg("GL4: createPersistentBuffer %d bytes -> handle %u", size_bytes, (unsigned)h);
+    LOG_DBG("GL4: createPersistentBuffer %d bytes -> handle %u", size_bytes, (unsigned)h);
     return h;
 }
 

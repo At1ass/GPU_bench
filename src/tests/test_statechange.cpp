@@ -83,7 +83,7 @@ void StateChangeTest::setup(Renderer* r, int vw, int vh) {
         auto pix = genColorNoise(sz, static_cast<unsigned int>(100 + i));
         textures_[static_cast<size_t>(i)] = r->createTexture(sz, sz, 3, pix.data());
     }
-    Log::dbg("Test '%s': setup complete (%d switches, %d shaders, %d textures)",
+    LOG_DBG("Test '%s': setup complete (%d switches, %d shaders, %d textures)",
              name(), params_.switches, params_.shader_count, params_.tex_count);
 }
 

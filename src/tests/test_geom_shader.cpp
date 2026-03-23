@@ -105,7 +105,7 @@ void GeometryShaderTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh)
         md.indices.push_back(base + 2);
     }
     points_mesh_ = r.createMesh(md);
-    Log::dbg("Test '%s': setup complete (%d input tris, %d tris/point)", name(), params_.input_points, params_.tris_per_point);
+    LOG_DBG("Test '%s': setup complete (%d input tris, %d tris/point)", name(), params_.input_points, params_.tris_per_point);
 }
 
 void GeometryShaderTest::renderGL3(Renderer& r, GL3Features&) {

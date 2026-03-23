@@ -65,7 +65,7 @@ void BindlessTexTest::setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) {
         gl4.makeTextureResident(handle);
         handles_.push_back(handle);
     }
-    Log::dbg("Test '%s': setup complete (%d textures, %d draws/frame)", name(), params_.tex_count, params_.draws_per_frame);
+    LOG_DBG("Test '%s': setup complete (%d textures, %d draws/frame)", name(), params_.tex_count, params_.draws_per_frame);
 }
 
 void BindlessTexTest::renderGL4(Renderer& r, GL4Features& gl4) {

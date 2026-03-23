@@ -71,7 +71,7 @@ std::string getDataPath(const char* relative_path) {
     {
         std::string p = std::string("data/") + relative_path;
         if (fileExists(p)) {
-            Log::dbg("DataPath: '%s' -> '%s'", relative_path, p.c_str());
+            LOG_DBG("DataPath: '%s' -> '%s'", relative_path, p.c_str());
             return p;
         }
     }
@@ -81,19 +81,19 @@ std::string getDataPath(const char* relative_path) {
     if (!exe_dir.empty()) {
         std::string p = exe_dir + "data/" + relative_path;
         if (fileExists(p)) {
-            Log::dbg("DataPath: '%s' -> '%s'", relative_path, p.c_str());
+            LOG_DBG("DataPath: '%s' -> '%s'", relative_path, p.c_str());
             return p;
         }
 
         // 3. <exe_dir>/../share/gpu_benchmark/data/
         std::string p2 = exe_dir + "../share/gpu_benchmark/data/" + relative_path;
         if (fileExists(p2)) {
-            Log::dbg("DataPath: '%s' -> '%s'", relative_path, p2.c_str());
+            LOG_DBG("DataPath: '%s' -> '%s'", relative_path, p2.c_str());
             return p2;
         }
     }
 
-    Log::dbg("DataPath: '%s' not found", relative_path);
+    LOG_DBG("DataPath: '%s' not found", relative_path);
     return std::string();
 }
 

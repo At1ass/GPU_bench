@@ -52,7 +52,7 @@ void GPUTimer::init() {
     }
 
     if (!has_timer) {
-        Log::info("GPUTimer: GL_ARB_timer_query not available");
+        LOG_INF("GPUTimer: GL_ARB_timer_query not available");
         return;
     }
 
@@ -65,18 +65,18 @@ void GPUTimer::init() {
     get_query_iv_ = reinterpret_cast<PFN_glGetQueryObjectiv>(SDL_GL_GetProcAddress("glGetQueryObjectiv"));
 
     if (!gen_queries_ || !delete_queries_ || !begin_query_ || !end_query_ || !get_query_ui64v_) {
-        Log::warn("GPUTimer: failed to load query functions");
+        LOG_WRN("GPUTimer: failed to load query functions");
         return;
     }
 
     gen_queries_(1, &query_);
     if (!query_) {
-        Log::warn("GPUTimer: glGenQueries failed");
+        LOG_WRN("GPUTimer: glGenQueries failed");
         return;
     }
 
     available_ = true;
-    Log::info("GPUTimer: GL_TIME_ELAPSED available");
+    LOG_INF("GPUTimer: GL_TIME_ELAPSED available");
 }
 
 void GPUTimer::begin() {

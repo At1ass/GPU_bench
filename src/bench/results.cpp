@@ -236,8 +236,8 @@ bool writeBenchResults(OutputFormat fmt, const char* output_file,
 
     const char* fmt_name = (fmt == OutputFormat::CSV) ? "CSV" : (fmt == OutputFormat::JSON) ? "JSON" : "Text";
     if (output_file && output_file[0])
-        Log::dbg("Export: wrote %s results to '%s'", fmt_name, output_file);
+        LOG_DBG("Export: wrote %s results to '%s'", fmt_name, output_file);
     else
-        Log::dbg("Export: wrote %s results to stdout", fmt_name);
+        LOG_DBG("Export: wrote %s results to stdout", fmt_name);
     return true;
 }

@@ -158,22 +158,22 @@ protected:
     // Handle validation helpers (debug-log on invalid access)
     bool isValidMesh(MeshHandle h) const {
         bool ok = h != 0 && h < meshes_.size() && meshes_[h].valid;
-        if (!ok && h != 0) Log::dbg("Invalid MeshHandle %u", static_cast<unsigned>(h));
+        if (!ok && h != 0) LOG_DBG("Invalid MeshHandle %u", static_cast<unsigned>(h));
         return ok;
     }
     bool isValidTexture(TextureHandle h) const {
         bool ok = h != 0 && h < textures_.size() && textures_[h].valid;
-        if (!ok && h != 0) Log::dbg("Invalid TextureHandle %u", static_cast<unsigned>(h));
+        if (!ok && h != 0) LOG_DBG("Invalid TextureHandle %u", static_cast<unsigned>(h));
         return ok;
     }
     bool isValidShader(ShaderHandle h) const {
         bool ok = h != 0 && h < custom_shaders_.size() && custom_shaders_[h] != 0;
-        if (!ok && h != 0) Log::dbg("Invalid ShaderHandle %u", static_cast<unsigned>(h));
+        if (!ok && h != 0) LOG_DBG("Invalid ShaderHandle %u", static_cast<unsigned>(h));
         return ok;
     }
     bool isValidRenderTarget(RenderTargetHandle h) const {
         bool ok = h != INVALID_RENDER_TARGET && h < render_targets_.size() && render_targets_[h].valid;
-        if (!ok && h != INVALID_RENDER_TARGET) Log::dbg("Invalid RenderTargetHandle %u", static_cast<unsigned>(h));
+        if (!ok && h != INVALID_RENDER_TARGET) LOG_DBG("Invalid RenderTargetHandle %u", static_cast<unsigned>(h));
         return ok;
     }
 };

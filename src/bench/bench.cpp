@@ -13,7 +13,7 @@
 void GL3BenchTest::setup(Renderer* r, int vw, int vh) {
     gl3_ = r->features<GL3Features>();
     if (!gl3_) {
-        Log::err("GL3BenchTest '%s': renderer lacks GL3 — skipping", name());
+        LOG_ERR("GL3BenchTest '%s': renderer lacks GL3 — skipping", name());
         return;
     }
     setupGL3(*r, *gl3_, vw, vh);
@@ -32,7 +32,7 @@ void GL3BenchTest::cleanup(Renderer* r) {
 void ComputeBenchTest::setup(Renderer* r, int vw, int vh) {
     comp_ = r->features<ComputeFeatures>();
     if (!comp_) {
-        Log::err("ComputeBenchTest '%s': renderer lacks Compute — skipping", name());
+        LOG_ERR("ComputeBenchTest '%s': renderer lacks Compute — skipping", name());
         return;
     }
     setupCompute(*r, *comp_, vw, vh);
@@ -51,7 +51,7 @@ void ComputeBenchTest::cleanup(Renderer* r) {
 void GL4BenchTest::setup(Renderer* r, int vw, int vh) {
     gl4_ = r->features<GL4Features>();
     if (!gl4_) {
-        Log::err("GL4BenchTest '%s': renderer lacks GL4 — skipping", name());
+        LOG_ERR("GL4BenchTest '%s': renderer lacks GL4 — skipping", name());
         return;
     }
     setupGL4(*r, *gl4_, vw, vh);
@@ -146,7 +146,7 @@ BenchResult computeStats(const std::string& name,
     // Mark as invalid if CV is too high
     r.valid = (r.cv <= CV_INVALID_THRESHOLD);
 
-    Log::dbg("Score: '%s' = %.2f %s (avg %.3f ms, CV %.4f)",
+    LOG_DBG("Score: '%s' = %.2f %s (avg %.3f ms, CV %.4f)",
              name.c_str(), score, unit.c_str(), r.avg_ms, r.cv);
     return r;
 }

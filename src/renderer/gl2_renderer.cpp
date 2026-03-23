@@ -182,7 +182,7 @@ GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
     if (!ok) {
         char log[512];
         glGetShaderInfoLog(s, static_cast<GLsizei>(sizeof(log)), nullptr, log);
-        Log::err("Shader compile error: %s", log);
+        LOG_ERR("Shader compile error: %s", log);
         glDeleteShader(s);
         return 0;
     }
@@ -205,7 +205,7 @@ GLuint GL2Renderer::linkProgram(GLuint vs, GLuint fs) {
     if (!ok) {
         char log[512];
         glGetProgramInfoLog(p, static_cast<GLsizei>(sizeof(log)), nullptr, log);
-        Log::err("Program link error: %s", log);
+        LOG_ERR("Program link error: %s", log);
         glDeleteProgram(p);
         return 0;
     }
@@ -323,14 +323,14 @@ void GL2Renderer::detectCaps() {
             GLint kb = 0;
             glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &kb);
             if (kb > 0) caps_.estimated_vram_mb = kb / 1024;
-            Log::dbg("VRAM method 1 (GL_NVX_gpu_memory_info): %d MB", caps_.estimated_vram_mb);
+            LOG_DBG("VRAM method 1 (GL_NVX_gpu_memory_info): %d MB", caps_.estimated_vram_mb);
         }
         // Method 2: AMD proprietary / Mesa RadeonSI (sometimes)
         if (caps_.estimated_vram_mb == 0 && strstr(exts_vram, "GL_ATI_meminfo")) {
             GLint info[4] = {0};
             glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, info);
             if (info[0] > 0) caps_.estimated_vram_mb = info[0] / 1024;
-            Log::dbg("VRAM method 2 (GL_ATI_meminfo): %d MB", caps_.estimated_vram_mb);
+            LOG_DBG("VRAM method 2 (GL_ATI_meminfo): %d MB", caps_.estimated_vram_mb);
         }
     }
 
@@ -342,13 +342,13 @@ void GL2Renderer::detectCaps() {
         typedef int (*PFNGLXQUERYRENDERERMESA)(int, unsigned int*);
         PFNGLXQUERYRENDERERMESA queryRenderer =
             reinterpret_cast<PFNGLXQUERYRENDERERMESA>(SDL_GL_GetProcAddress("glXQueryCurrentRendererIntegerMESA"));
-        Log::dbg("VRAM method 3 (GLX_MESA): func=%s", queryRenderer ? "found" : "NULL");
+        LOG_DBG("VRAM method 3 (GLX_MESA): func=%s", queryRenderer ? "found" : "NULL");
         if (queryRenderer) {
             unsigned int vram_mb = 0;
             if (queryRenderer(GLX_RENDERER_VIDEO_MEMORY_MESA, &vram_mb) && vram_mb > 0) {
                 caps_.estimated_vram_mb = static_cast<int>(vram_mb);
             }
-            Log::dbg("VRAM method 3 (GLX_MESA): %d MB", caps_.estimated_vram_mb);
+            LOG_DBG("VRAM method 3 (GLX_MESA): %d MB", caps_.estimated_vram_mb);
         }
     }
 #endif // !_WIN32
@@ -356,7 +356,7 @@ void GL2Renderer::detectCaps() {
 #ifdef __linux__
     // Method 4: Linux sysfs — scan /sys/class/drm/card*/device/mem_info_vram_total (AMD)
     if (caps_.estimated_vram_mb == 0) {
-        Log::dbg("VRAM method 4 (sysfs): scanning /sys/class/drm/");
+        LOG_DBG("VRAM method 4 (sysfs): scanning /sys/class/drm/");
         DIR* drm_dir = opendir("/sys/class/drm");
         if (drm_dir) {
             struct dirent* entry;
@@ -373,7 +373,7 @@ void GL2Renderer::detectCaps() {
                     unsigned long long bytes = 0;
                     if (fscanf(f, "%llu", &bytes) == 1 && bytes > 0) {
                         caps_.estimated_vram_mb = static_cast<int>(bytes / (1024ULL * 1024ULL));
-                        Log::dbg("VRAM method 4: %s = %d MB", entry->d_name, caps_.estimated_vram_mb);
+                        LOG_DBG("VRAM method 4: %s = %d MB", entry->d_name, caps_.estimated_vram_mb);
                     }
                     fclose(f);
                     if (caps_.estimated_vram_mb > 0) break;
@@ -385,7 +385,7 @@ void GL2Renderer::detectCaps() {
 #endif // __linux__
 #endif // !__APPLE__
 
-    Log::warn("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
+    LOG_WRN("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
             "fbo=%s, timer_q=%s",
             caps_.gl_major, caps_.gl_minor,
             caps_.max_texture_size, caps_.max_vertex_attribs,
@@ -403,11 +403,11 @@ bool GL2Renderer::init(int w, int h) {
     gpu_vendor_   = vendor   ? vendor   : "Unknown";
     gpu_renderer_ = renderer ? renderer : "Unknown";
     gl_version_   = version  ? version  : "Unknown";
-    Log::dbg("GL2Renderer::init: vendor=%s renderer=%s version=%s",
+    LOG_DBG("GL2Renderer::init: vendor=%s renderer=%s version=%s",
              gpu_vendor_.c_str(), gpu_renderer_.c_str(), gl_version_.c_str());
 
     detectCaps();
-    Log::dbg("GL2Renderer::init: detectCaps done");
+    LOG_DBG("GL2Renderer::init: detectCaps done");
 
     // Init GPU timer if available
     gpu_timer_.init();
@@ -429,10 +429,10 @@ bool GL2Renderer::init(int w, int h) {
         core_profile_ = (profile == SDL_GL_CONTEXT_PROFILE_CORE);
     }
 
-    Log::dbg("GL2Renderer::init: core_profile=%s, building shaders (GLSL %s)",
+    LOG_DBG("GL2Renderer::init: core_profile=%s, building shaders (GLSL %s)",
              core_profile_ ? "yes" : "no", core_profile_ ? "1.50" : "1.20");
     if (core_profile_) {
-        Log::info("Core profile detected, using GLSL 1.50 shaders");
+        LOG_INF("Core profile detected, using GLSL 1.50 shaders");
         if (!buildShader(shader_3d_, VS_3D_150, FS_3D_150)) return false;
         if (!buildShader(shader_2d_color_, VS_2D_150, FS_2D_COLOR_150)) return false;
         if (!buildShader(shader_2d_tex_, VS_2D_TEX_150, FS_2D_TEX_150)) return false;
@@ -441,7 +441,7 @@ bool GL2Renderer::init(int w, int h) {
         if (!buildShader(shader_2d_color_, VS_2D_120, FS_2D_COLOR_120)) return false;
         if (!buildShader(shader_2d_tex_, VS_2D_TEX_120, FS_2D_TEX_120)) return false;
     }
-    Log::dbg("GL2Renderer::init: shaders built OK");
+    LOG_DBG("GL2Renderer::init: shaders built OK");
 
     // Slot 0 for all meshes/textures/custom_shaders is reserved as "invalid"
     meshes_.emplace_back();
@@ -563,7 +563,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(data.indices.size() * sizeof(unsigned int)),
                      data.indices.data(), GL_STATIC_DRAW);
     } else if (needs_32bit) {
-        Log::err("ERROR: mesh requires 32-bit indices but hardware doesn't support them");
+        LOG_ERR("ERROR: mesh requires 32-bit indices but hardware doesn't support them");
         glDeleteBuffers(1, &gm.vbo);
         glDeleteBuffers(1, &gm.ibo);
         return INVALID_MESH;
@@ -588,7 +588,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         h = MeshHandle(static_cast<unsigned int>(meshes_.size()));
         meshes_.push_back(gm);
     }
-    Log::dbg("GL2: createMesh %u verts, %u indices -> handle %u",
+    LOG_DBG("GL2: createMesh %u verts, %u indices -> handle %u",
              (unsigned)data.vertices.size(), (unsigned)data.indices.size(), (unsigned)h);
     return h;
 }
@@ -606,7 +606,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         int nw = w, nh = h;
         while (nw > caps_.max_texture_size) nw /= 2;
         while (nh > caps_.max_texture_size) nh /= 2;
-        Log::warn("GL2: texture %dx%d exceeds max %d, clamping to %dx%d",
+        LOG_WRN("GL2: texture %dx%d exceeds max %d, clamping to %dx%d",
                 w, h, caps_.max_texture_size, nw, nh);
 
         std::vector<unsigned char> scaled(static_cast<size_t>(nw) * static_cast<size_t>(nh) * static_cast<size_t>(channels));
@@ -662,7 +662,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
-    Log::dbg("GL2: createTexture %dx%d ch=%d -> handle %u", w, h, channels, (unsigned)th);
+    LOG_DBG("GL2: createTexture %dx%d ch=%d -> handle %u", w, h, channels, (unsigned)th);
     return th;
 }
 
@@ -992,13 +992,13 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
-    Log::dbg("GL2: createRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
+    LOG_DBG("GL2: createRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
 void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return;
-    Log::dbg("GL2: destroyRenderTarget handle %u", (unsigned)rt);
+    LOG_DBG("GL2: destroyRenderTarget handle %u", (unsigned)rt);
     GLFBO& fbo = render_targets_[rt];
     if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
     if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);

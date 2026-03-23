@@ -58,7 +58,7 @@ bool saveConfig(const char* path, const BenchPreset& preset) {
     fprintf(f.get(), "\n[shader_alu]\n");
     fprintf(f.get(), "iterations=%d\n", preset.shader_alu.iterations);
 
-    Log::dbg("Config: saved preset '%s' to '%s'", preset.name, path);
+    LOG_DBG("Config: saved preset '%s' to '%s'", preset.name, path);
     return true;
 }
 
@@ -143,6 +143,6 @@ bool loadConfig(const char* path, BenchPreset& preset) {
         parseLine(line, section, preset);
     }
 
-    Log::dbg("Config: loaded preset '%s' from '%s'", preset.name, path);
+    LOG_DBG("Config: loaded preset '%s' from '%s'", preset.name, path);
     return true;
 }

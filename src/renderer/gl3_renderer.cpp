@@ -11,7 +11,7 @@ GL3Renderer::GL3Renderer() {}
 
 bool GL3Renderer::init(int w, int h) {
     if (!GL2Renderer::init(w, h)) return false;
-    Log::dbg("GL3Renderer::init: GL2 base init done, detecting GL3 features");
+    LOG_DBG("GL3Renderer::init: GL2 base init done, detecting GL3 features");
 
     // Baseline from GL spec
     GLProfile baseline = GLProfile::coreProfile(caps_.gl_major, caps_.gl_minor);
@@ -26,7 +26,7 @@ bool GL3Renderer::init(int w, int h) {
 #ifdef CB_NEED_GL_LOAD
     // Windows: verify function pointers (driver could be broken)
     if (has_vao_ && !imgl3wProcs.gl.GenVertexArrays) {
-        Log::warn("GL%d.%d claims VAO but glGenVertexArrays missing", caps_.gl_major, caps_.gl_minor);
+        LOG_WRN("GL%d.%d claims VAO but glGenVertexArrays missing", caps_.gl_major, caps_.gl_minor);
         has_vao_ = false;
     }
     if (has_instancing_ && !cb_glDrawElementsInstanced) {
@@ -88,9 +88,9 @@ bool GL3Renderer::init(int w, int h) {
     tf_buffers_.push_back(invalid_buf);
 
     if (!has_vao_) {
-        Log::warn("GL3Renderer: VAO not available, falling back to GL2 behavior");
+        LOG_WRN("GL3Renderer: VAO not available, falling back to GL2 behavior");
     }
-    Log::dbg("GL3Renderer: vao=%s, instancing=%s, tex_array=%s, mrt=%s, ubo=%s, tf=%s, gs=%s",
+    LOG_DBG("GL3Renderer: vao=%s, instancing=%s, tex_array=%s, mrt=%s, ubo=%s, tf=%s, gs=%s",
             has_vao_ ? "yes" : "no",
             has_instancing_ ? "yes" : "no",
             has_texture_array_ ? "yes" : "no",
@@ -166,7 +166,7 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    Log::dbg("GL3: createMesh VAO %u for handle %u", gm.vao, (unsigned)h);
+    LOG_DBG("GL3: createMesh VAO %u for handle %u", gm.vao, (unsigned)h);
     return h;
 }
 
@@ -308,7 +308,7 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
         for (int i = 0; i < num_attachments; i++)
             glDeleteTextures(1, &color_textures[i]);
         glDeleteRenderbuffers(1, &rt.depth_rb);
-        Log::err("MRT FBO not complete: 0x%X", status);
+        LOG_ERR("MRT FBO not complete: 0x%X", status);
         return INVALID_RENDER_TARGET;
     }
 
@@ -327,7 +327,7 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
-    Log::dbg("GL3: createMRTRenderTarget %dx%d, %d attachments -> handle %u",
+    LOG_DBG("GL3: createMRTRenderTarget %dx%d, %d attachments -> handle %u",
              w, h, num_attachments, (unsigned)handle);
     return handle;
 }
@@ -361,7 +361,7 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
-    Log::dbg("GL3: createTextureArray %dx%d, %d layers, ch=%d -> handle %u",
+    LOG_DBG("GL3: createTextureArray %dx%d, %d layers, ch=%d -> handle %u",
              w, h, layers, channels, (unsigned)th);
     return th;
 }
@@ -401,7 +401,7 @@ ShaderHandle GL3Renderer::createShaderVGF(const char* vs_src, const char* gs_src
     if (!ok) {
         char log[512];
         glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
-        Log::err("VGF shader link error: %s", log);
+        LOG_ERR("VGF shader link error: %s", log);
         glDeleteProgram(prog);
         return INVALID_SHADER;
     }
@@ -422,7 +422,7 @@ ShaderHandle GL3Renderer::createShaderVGF(const char* vs_src, const char* gs_src
 
 BufferHandle GL3Renderer::createUBO(int size_bytes) {
     if (!has_ubo_) {
-        Log::err("createUBO: UBO not supported");
+        LOG_ERR("createUBO: UBO not supported");
         return INVALID_BUFFER;
     }
 
@@ -477,7 +477,7 @@ void GL3Renderer::setRasterizerDiscard(bool enable) {
 
 BufferHandle GL3Renderer::createTransformFeedbackBuffer(int size_bytes) {
     if (!has_transform_feedback_) {
-        Log::err("createTransformFeedbackBuffer: transform feedback not supported");
+        LOG_ERR("createTransformFeedbackBuffer: transform feedback not supported");
         return INVALID_BUFFER;
     }
 
@@ -537,7 +537,7 @@ ShaderHandle GL3Renderer::createTransformFeedbackShader(const char* vs_src, cons
     if (!ok) {
         char log[512];
         glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
-        Log::err("TF shader link error: %s", log);
+        LOG_ERR("TF shader link error: %s", log);
         glDeleteProgram(prog);
         return INVALID_SHADER;
     }
@@ -558,7 +558,7 @@ void GL3Renderer::beginTransformFeedback(BufferHandle tf_buf) {
     if (!has_transform_feedback_) return;
     if (tf_buf == INVALID_BUFFER || static_cast<size_t>(tf_buf) >= tf_buffers_.size() || !tf_buffers_[tf_buf].valid) return;
 
-    if (tf_active_) { Log::err("Nested beginTransformFeedback"); return; }
+    if (tf_active_) { LOG_ERR("Nested beginTransformFeedback"); return; }
     tf_active_ = true;
     glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_buffers_[tf_buf].id);
     glBeginTransformFeedback(GL_TRIANGLES);
@@ -566,7 +566,7 @@ void GL3Renderer::beginTransformFeedback(BufferHandle tf_buf) {
 
 void GL3Renderer::endTransformFeedback() {
     if (!has_transform_feedback_) return;
-    if (!tf_active_) { Log::err("endTransformFeedback without begin"); return; }
+    if (!tf_active_) { LOG_ERR("endTransformFeedback without begin"); return; }
     tf_active_ = false;
     glEndTransformFeedback();
 }
@@ -608,7 +608,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
     if (status != GL_FRAMEBUFFER_COMPLETE) {
         glDeleteFramebuffers(1, &rt.fbo);
         glDeleteTextures(1, &depth_tex);
-        Log::err("Depth-only FBO not complete: 0x%X", status);
+        LOG_ERR("Depth-only FBO not complete: 0x%X", status);
         return INVALID_RENDER_TARGET;
     }
 
@@ -626,7 +626,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
-    Log::dbg("GL3: createDepthRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
+    LOG_DBG("GL3: createDepthRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
 }
 
@@ -673,7 +673,7 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
         glDeleteFramebuffers(1, &rt.fbo);
         glDeleteTextures(1, &rt.color_tex);
         glDeleteTextures(1, &rt.depth_tex);
-        Log::err("FBO with depth tex not complete: 0x%X", status);
+        LOG_ERR("FBO with depth tex not complete: 0x%X", status);
         return INVALID_RENDER_TARGET;
     }
 

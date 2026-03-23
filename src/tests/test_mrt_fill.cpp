@@ -79,7 +79,7 @@ void MRTFillTest::setupGL3(Renderer& r, GL3Features& gl3, int, int) {
 
     shader_ = r.createCustomShader(MRT_VS, fs);
     rt_ = gl3.createMRTRenderTarget(rt_size_, rt_size_, params_.num_targets);
-    Log::dbg("Test '%s': setup complete (RT %dx%d, %d targets, %d layers)", name(), rt_size_, rt_size_, params_.num_targets, params_.layers);
+    LOG_DBG("Test '%s': setup complete (RT %dx%d, %d targets, %d layers)", name(), rt_size_, rt_size_, params_.num_targets, params_.layers);
 }
 
 void MRTFillTest::renderGL3(Renderer& r, GL3Features&) {

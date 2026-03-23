@@ -16,7 +16,7 @@ bool RenderContext::initSDL(const AppConfig& cfg) {
 #endif
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-        Log::err("SDL_Init failed: %s", SDL_GetError());
+        LOG_ERR("SDL_Init failed: %s", SDL_GetError());
         return false;
     }
 
@@ -32,7 +32,7 @@ bool RenderContext::initSDL(const AppConfig& cfg) {
         win_flags
     );
     if (!window_) {
-        Log::err("SDL_CreateWindow failed: %s", SDL_GetError());
+        LOG_ERR("SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
     return true;

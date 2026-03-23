@@ -86,7 +86,7 @@ void TexArraySampleTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh)
 
     tex_array_ = gl3.createTextureArray(actual_tex_size_, actual_tex_size_,
                                         params_.array_layers, 3, pixels.data());
-    Log::dbg("Test '%s': setup complete (tex %dx%d, %d array layers, %d samples)", name(), actual_tex_size_, actual_tex_size_, params_.array_layers, params_.sample_layers);
+    LOG_DBG("Test '%s': setup complete (tex %dx%d, %d array layers, %d samples)", name(), actual_tex_size_, actual_tex_size_, params_.array_layers, params_.sample_layers);
 }
 
 void TexArraySampleTest::renderGL3(Renderer& r, GL3Features& gl3) {

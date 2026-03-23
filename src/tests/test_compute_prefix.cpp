@@ -67,7 +67,7 @@ void ComputePrefixTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, in
     ssbo_in_ = comp.createSSBO(ssbo_size);
     // ssbo_out_ unused in this scan variant but kept for API consistency
     (void)ssbo_out_;
-    Log::dbg("Test '%s': setup complete (%d elements, %d workgroups)", name(), params_.element_count, params_.work_groups);
+    LOG_DBG("Test '%s': setup complete (%d elements, %d workgroups)", name(), params_.element_count, params_.work_groups);
 }
 
 void ComputePrefixTest::renderCompute(Renderer& r, ComputeFeatures& comp) {

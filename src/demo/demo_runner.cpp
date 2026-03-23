@@ -34,13 +34,13 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     result.target_fps = targetFPS(tier);
 
     DemoTierConfig tcfg = getTierConfig(tier);
-    Log::info("Demo: starting tier %d (%d seconds, fur_shells=%d)",
+    LOG_INF("Demo: starting tier %d (%d seconds, fur_shells=%d)",
               static_cast<int>(tier), duration_sec,
               tcfg.fur_shells);
 
     DemoScene scene;
     if (!scene.setup(r, tier, render_w, render_h, resources)) {
-        Log::warn("Demo: tier %d setup failed, skipping", static_cast<int>(tier));
+        LOG_WRN("Demo: tier %d setup failed, skipping", static_cast<int>(tier));
         return result;
     }
 
@@ -55,12 +55,12 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         rt = r->createRenderTarget(render_w, render_h);
         if (rt == INVALID_RENDER_TARGET) {
             use_fbo = false;
-            Log::warn("Demo: FBO creation failed for %dx%d, falling back to window size",
+            LOG_WRN("Demo: FBO creation failed for %dx%d, falling back to window size",
                       render_w, render_h);
             render_w = window_w;
             render_h = window_h;
         } else {
-            Log::info("Demo: rendering to FBO %dx%d", render_w, render_h);
+            LOG_INF("Demo: rendering to FBO %dx%d", render_w, render_h);
         }
     }
 
@@ -69,7 +69,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
     // Warmup: show loading screen, prime GPU with a few hidden scene renders
     {
-        Log::dbg("Demo: tier %d warmup start", static_cast<int>(tier));
+        LOG_DBG("Demo: tier %d warmup start", static_cast<int>(tier));
         bool headless_warmup = ctx->isHeadless();
         Timer warmup_timer;
         while (warmup_timer.elapsed_sec() < 1.0) {
@@ -112,7 +112,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
             ctx->swapBuffers();
         }
-        Log::dbg("Demo: tier %d warmup complete (%.1f ms)", static_cast<int>(tier),
+        LOG_DBG("Demo: tier %d warmup complete (%.1f ms)", static_cast<int>(tier),
                  warmup_timer.elapsed_ms());
     }
 
@@ -189,7 +189,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     scene.cleanup(r);
     if (use_fbo) {
         r->destroyRenderTarget(rt);
-        Log::dbg("Demo: destroyed FBO");
+        LOG_DBG("Demo: destroyed FBO");
     }
     ctx->setVSync(true);
 
@@ -224,10 +224,10 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     result.normalized_score = result.avg_fps / result.target_fps;
     result.valid = true;
 
-    Log::info("Demo tier %d: avg %.1f FPS (%.2f ms), min %.1f, P1%% %.1f, P99%% %.1f, score %.2f",
+    LOG_INF("Demo tier %d: avg %.1f FPS (%.2f ms), min %.1f, P1%% %.1f, P99%% %.1f, score %.2f",
               static_cast<int>(tier), result.avg_fps, result.avg_ms,
               result.min_fps, result.p99_fps, result.p1_fps, result.normalized_score);
-    Log::dbg("Demo: tier %d measurement: %d frames, avg %.1f fps, score %.2f",
+    LOG_DBG("Demo: tier %d measurement: %d frames, avg %.1f fps, score %.2f",
              static_cast<int>(tier), result.frames, result.avg_fps, result.normalized_score);
 
     return result;
@@ -245,14 +245,14 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
     results.render_h = render_h;
 
     int max_tier = maxSupportedTier(*r);
-    Log::info("Demo mode: max supported tier = %d", max_tier);
+    LOG_INF("Demo mode: max supported tier = %d", max_tier);
 
     std::vector<DemoTier> tiers_to_run;
     if (cfg.tier_override > 0 && cfg.tier_override <= 4) {
         if (cfg.tier_override <= max_tier) {
             tiers_to_run.push_back(static_cast<DemoTier>(cfg.tier_override));
         } else {
-            Log::warn("Demo: requested tier %d but max supported is %d", cfg.tier_override, max_tier);
+            LOG_WRN("Demo: requested tier %d but max supported is %d", cfg.tier_override, max_tier);
             tiers_to_run.push_back(static_cast<DemoTier>(max_tier));
         }
     } else {
@@ -291,7 +291,7 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
     // Preparation stage: load all shared resources once
     DemoResources resources;
     if (!resources.prepare(r, max_tier, render_w, render_h)) {
-        Log::err("Demo: resource preparation failed");
+        LOG_ERR("Demo: resource preparation failed");
         return results;
     }
 
@@ -324,6 +324,6 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
         }
     }
 
-    Log::info("Demo Score: %.0f", results.demo_score);
+    LOG_INF("Demo Score: %.0f", results.demo_score);
     return results;
 }

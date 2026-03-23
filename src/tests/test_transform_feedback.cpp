@@ -108,7 +108,7 @@ void TransformFeedbackTest::setupGL3(Renderer& r, GL3Features& gl3, int, int) {
     int index_count = static_cast<int>(md.indices.size());
     int tf_size = index_count * TF_BYTES_PER_VERTEX;
     tf_buffer_ = gl3.createTransformFeedbackBuffer(tf_size);
-    Log::dbg("Test '%s': setup complete (%d verts, TF buffer %d bytes)", name(), actual_vertex_count_, tf_size);
+    LOG_DBG("Test '%s': setup complete (%d verts, TF buffer %d bytes)", name(), actual_vertex_count_, tf_size);
 }
 
 void TransformFeedbackTest::renderGL3(Renderer& r, GL3Features& gl3) {

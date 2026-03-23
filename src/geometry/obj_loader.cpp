@@ -13,7 +13,7 @@ MeshData ObjLoader::load(const char* filepath) {
 
     FILE* f = fopen(filepath, "r");
     if (!f) {
-        Log::dbg("OBJ: cannot open '%s'", filepath);
+        LOG_DBG("OBJ: cannot open '%s'", filepath);
         return result;
     }
 
@@ -124,7 +124,7 @@ MeshData ObjLoader::load(const char* filepath) {
 
     fclose(f);
 
-    Log::dbg("OBJ: loaded %d verts, %d tris from '%s'",
+    LOG_DBG("OBJ: loaded %d verts, %d tris from '%s'",
              static_cast<int>(result.vertices.size()),
              static_cast<int>(result.indices.size() / 3), filepath);
 
@@ -164,5 +164,5 @@ void ObjLoader::normalize(MeshData& mesh) {
         mesh.vertices[i].pos.z = (mesh.vertices[i].pos.z - center.z) * scale;
     }
 
-    Log::dbg("OBJ: normalized, scale factor %.4f", static_cast<double>(scale));
+    LOG_DBG("OBJ: normalized, scale factor %.4f", static_cast<double>(scale));
 }

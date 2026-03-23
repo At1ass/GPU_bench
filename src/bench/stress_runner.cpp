@@ -130,7 +130,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
     int passes = 1;
     float stress_time = 0.0f;
 
-    Log::info("Stress test: calibrating...");
+    LOG_INF("Stress test: calibrating...");
 
     r->setViewport(0, 0, render_w, render_h);
     r->setDepthTest(false);
@@ -149,7 +149,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
         r->finish();
         double ms = cal_t.elapsed_ms();
 
-        Log::info("  %d passes = %.1f ms", passes, ms);
+        LOG_INF("  %d passes = %.1f ms", passes, ms);
 
         if (ms >= TARGET_FRAME_MS * STRESS_CALIBRATION_RATIO) break;
 
@@ -161,7 +161,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
     }
     ctx->swapBuffers();
 
-    Log::info("Stress test: combined shader (%d iters, %d passes/frame), %d seconds",
+    LOG_INF("Stress test: combined shader (%d iters, %d passes/frame), %d seconds",
             shader_iterations, passes, duration_sec);
 
     // --- Main stress loop ---
@@ -205,19 +205,19 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
 
                 if (interval_num == 1) {
                     baseline_fps = fps;
-                    Log::info("[%3.0fs] Baseline: %.1f FPS (avg %.1f ms)",
+                    LOG_INF("[%3.0fs] Baseline: %.1f FPS (avg %.1f ms)",
                             stress_timer.elapsed_sec(), fps, avg_ms);
                 } else {
                     double degradation = (baseline_fps > 0)
                         ? (baseline_fps - fps) / baseline_fps * 100.0 : 0;
                     if (degradation > STRESS_THROTTLE_WARN) {
-                        Log::warn("[%3.0fs] %.1f FPS (avg %.1f ms) — THROTTLING: %.1f%% degradation",
+                        LOG_WRN("[%3.0fs] %.1f FPS (avg %.1f ms) — THROTTLING: %.1f%% degradation",
                                 stress_timer.elapsed_sec(), fps, avg_ms, degradation);
                     } else if (degradation > STRESS_THROTTLE_SEVERE) {
-                        Log::info("[%3.0fs] %.1f FPS (avg %.1f ms) — minor degradation: %.1f%%",
+                        LOG_INF("[%3.0fs] %.1f FPS (avg %.1f ms) — minor degradation: %.1f%%",
                                 stress_timer.elapsed_sec(), fps, avg_ms, degradation);
                     } else {
-                        Log::info("[%3.0fs] %.1f FPS (avg %.1f ms)",
+                        LOG_INF("[%3.0fs] %.1f FPS (avg %.1f ms)",
                                 stress_timer.elapsed_sec(), fps, avg_ms);
                     }
                 }
@@ -229,7 +229,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
         }
 
         double total_sec = stress_timer.elapsed_sec();
-        Log::info("Stress test completed: %d frames in %.0fs (avg %.1f FPS)",
+        LOG_INF("Stress test completed: %d frames in %.0fs (avg %.1f FPS)",
                 total_frames, total_sec,
                 (total_sec > 0) ? total_frames / total_sec : 0);
     }

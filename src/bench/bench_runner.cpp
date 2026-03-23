@@ -44,7 +44,7 @@ void BenchRunner::runSelected(Renderer* r, RenderContext* ctx,
         if (!test_enabled[i]) continue;
         // Skip tests requiring unsupported capabilities
         if ((g_tests[i].required_caps & available_caps) != g_tests[i].required_caps) {
-            Log::info("Skipping '%s' — requires unsupported capabilities", g_tests[i].display_name);
+            LOG_INF("Skipping '%s' — requires unsupported capabilities", g_tests[i].display_name);
             continue;
         }
         if (cb && !cb->onPoll()) break;
@@ -72,7 +72,7 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
     active_ = true;
     status_ = std::string("Running: ") + test->name();
     progress_ = 0;
-    Log::dbg("BenchRunner: starting test '%s' (%dx%d, timing=%s)",
+    LOG_DBG("BenchRunner: starting test '%s' (%dx%d, timing=%s)",
              test->name(), cfg.render_w, cfg.render_h,
              cfg.timing_mode == TimingMode::GPU ? "gpu" : "sync");
 
@@ -88,14 +88,14 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         bench_rt_ = r->createRenderTarget(cfg.render_w, cfg.render_h);
         if (bench_rt_ == INVALID_RENDER_TARGET) {
             use_fbo = false;
-            Log::warn("Render target creation failed, falling back to viewport-only");
+            LOG_WRN("Render target creation failed, falling back to viewport-only");
         }
     }
 
     if (use_fbo) r->bindRenderTarget(bench_rt_);
 
     r->resetState();
-    Log::dbg("Bench: setting up '%s'", test->name());
+    LOG_DBG("Bench: setting up '%s'", test->name());
     test->setup(r, cfg.render_w, cfg.render_h);
 
     bool use_gpu_timer = (cfg.timing_mode == TimingMode::GPU) && r->hasTimerQueries();
@@ -122,8 +122,8 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
             for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
             if (nonzero == 0) {
                 sanity_ok = false;
-                Log::warn("Sanity check FAILED for '%s' — render output is black", test->name());
-                Log::dbg("Bench: sanity pixel sample at (%d,%d): R=%d G=%d B=%d A=%d",
+                LOG_WRN("Sanity check FAILED for '%s' — render output is black", test->name());
+                LOG_DBG("Bench: sanity pixel sample at (%d,%d): R=%d G=%d B=%d A=%d",
                          cx, cy, px[0], px[1], px[2], px[3]);
             }
         }
@@ -131,7 +131,7 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         progress_ = static_cast<int>(100.0 * i / cfg.warmup_frames * 0.1);
         if (cb && !cb->onFrame(rt)) goto cleanup;
     }
-    Log::dbg("Bench: warmup done for '%s' (%d frames)", test->name(), cfg.warmup_frames);
+    LOG_DBG("Bench: warmup done for '%s' (%d frames)", test->name(), cfg.warmup_frames);
 
     // Measurement
     {
@@ -187,14 +187,14 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         result.sanity_ok = sanity_ok;
         if (!sanity_ok) result.valid = false;
 
-        Log::dbg("Bench: '%s' measured %d frames in %.1fs", test->name(),
+        LOG_DBG("Bench: '%s' measured %d frames in %.1fs", test->name(),
                  result.frames, result.avg_ms * result.frames / 1000.0);
         results_.push_back(result);
     }
 
 cleanup:
     test->cleanup(r);
-    Log::dbg("Bench: cleanup '%s'", test->name());
+    LOG_DBG("Bench: cleanup '%s'", test->name());
     active_ = false;
     status_ = "Done";
     ctx->setVSync(true);
@@ -296,7 +296,7 @@ GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,
     ctx->setVSync(true);
 
     GPUTier tier = classifyGPUTier(r->getCaps(), getAvailableCaps(*r), fill_score, geom_score);
-    Log::info("Quick probe: fill=%.1f Mpix/s, geom=%.1f Mtris/s -> tier=%s",
+    LOG_INF("Quick probe: fill=%.1f Mpix/s, geom=%.1f Mtris/s -> tier=%s",
             fill_score, geom_score, gpuTierName(tier));
     return tier;
 }

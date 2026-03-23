@@ -78,38 +78,38 @@ bool App::init(const AppConfig& cfg) {
         if (loadConfig(cfg.config_path.c_str(), current_preset_)) {
             selected_preset_index_ = -1; // Custom
         } else {
-            Log::warn("Could not load config '%s'", cfg.config_path.c_str());
+            LOG_WRN("Could not load config '%s'", cfg.config_path.c_str());
         }
     } else {
         applyPreset(cfg.preset_index);
     }
 
-    Log::dbg("App::init: creating render context");
+    LOG_DBG("App::init: creating render context");
     ctx_ = createRenderContext(cfg);
     if (!ctx_ || !ctx_->init(cfg)) {
-        Log::err("Failed to initialize render context");
+        LOG_ERR("Failed to initialize render context");
         return false;
     }
 
     // Query actual drawable size (handles tiling WMs and HiDPI scaling)
     SDL_GL_GetDrawableSize(ctx_->window(), &window_w_, &window_h_);
-    Log::dbg("App::init: drawable size %dx%d", window_w_, window_h_);
+    LOG_DBG("App::init: drawable size %dx%d", window_w_, window_h_);
 
     renderer_ = createRenderer(cfg.backend);
     if (!renderer_ || !renderer_->init(window_w_, window_h_)) {
-        Log::err("Renderer init failed");
+        LOG_ERR("Renderer init failed");
         return false;
     }
-    Log::dbg("App::init: renderer initialized");
+    LOG_DBG("App::init: renderer initialized");
 
     hw_info_ = HWInfo::detect();
-    Log::dbg("App::init: CPU=%s, OS=%s %s",
+    LOG_DBG("App::init: CPU=%s, OS=%s %s",
              hw_info_.cpu_name.c_str(), hw_info_.os_name.c_str(), hw_info_.os_version.c_str());
 
     // Fallback to sync timing if GPU timer queries unavailable
     if (config_.timing_mode == TimingMode::GPU && !renderer_->hasTimerQueries()) {
         config_.timing_mode = TimingMode::Sync;
-        Log::warn("GPU timer queries not available, falling back to sync timing");
+        LOG_WRN("GPU timer queries not available, falling back to sync timing");
     }
 
     // Quick probe for GPU tier detection and preset recommendation
@@ -423,7 +423,7 @@ void App::exportDemoResults(const DemoResults& results) {
     if (!writeDemoResults(config_.output_format, path, results, hw_info_,
                           renderer_->getGPURenderer(), renderer_->getGLVersion(),
                           renderer_->getRendererName())) {
-        Log::err("Could not open output file: %s", config_.output_file.c_str());
+        LOG_ERR("Could not open output file: %s", config_.output_file.c_str());
     }
 }
 
@@ -445,12 +445,12 @@ void App::exportResults() {
                            renderer_->getGPURenderer(), renderer_->getGLVersion(),
                            renderer_->getRendererName(), current_preset_.name, ecfg,
                            &bench_runner_.compositeScore(), &bench_runner_.bottleneckInfo())) {
-        Log::err("Could not open output file: %s", config_.output_file.c_str());
+        LOG_ERR("Could not open output file: %s", config_.output_file.c_str());
     }
 }
 
 void App::runDemo() {
-    Log::dbg("App: entering demo mode");
+    LOG_DBG("App: entering demo mode");
     DemoConfig dcfg;
     dcfg.tier_override = config_.demo_tier;
     dcfg.duration_per_tier = config_.demo_duration;
@@ -510,26 +510,26 @@ void App::runDemo() {
 }
 
 void App::runHeadless() {
-    Log::dbg("App: entering headless mode");
+    LOG_DBG("App: entering headless mode");
     if (config_.demo_mode) {
         runDemo();
         return;
     }
 
     if (!validation_error_.empty()) {
-        Log::err("Preset validation failed: %s", validation_error_.c_str());
+        LOG_ERR("Preset validation failed: %s", validation_error_.c_str());
         return;
     }
 
     if (config_.stress_duration_sec > 0) {
-        Log::dbg("App: entering stress mode");
+        LOG_DBG("App: entering stress mode");
         StressRunner stress;
         stress.run(renderer_.get(), ctx_.get(),
                    current_preset_.shader_alu.iterations,
                    render_w_, render_h_,
                    config_.stress_duration_sec, this);
     } else {
-        Log::dbg("App: entering benchmark mode");
+        LOG_DBG("App: entering benchmark mode");
         runSelectedTests();
     }
 
@@ -547,7 +547,7 @@ void App::run() {
         return;
     }
 
-    Log::dbg("App: entering interactive mode");
+    LOG_DBG("App: entering interactive mode");
     frame_timer_.reset();
     while (running_) {
         double dt = frame_timer_.elapsed_sec();

@@ -20,7 +20,7 @@ bool GLRenderContext::createGLESContext() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     gl_context_ = SDL_GL_CreateContext(window_);
     if (gl_context_) {
-        Log::info("Created GLES 3.0 context");
+        LOG_INF("Created GLES 3.0 context");
         return true;
     }
 
@@ -28,7 +28,7 @@ bool GLRenderContext::createGLESContext() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     gl_context_ = SDL_GL_CreateContext(window_);
     if (gl_context_) {
-        Log::info("Created GLES 2.0 context");
+        LOG_INF("Created GLES 2.0 context");
         return true;
     }
     return false;
@@ -44,7 +44,7 @@ bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
         gl_context_ = SDL_GL_CreateContext(window_);
         if (gl_context_) {
-            Log::info("Created GL 4.6 compatibility context");
+            LOG_INF("Created GL 4.6 compatibility context");
             return true;
         }
 
@@ -54,7 +54,7 @@ bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         gl_context_ = SDL_GL_CreateContext(window_);
         if (gl_context_) {
-            Log::info("Created GL 4.1 core context");
+            LOG_INF("Created GL 4.1 core context");
             return true;
         }
     }
@@ -65,7 +65,7 @@ bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
         gl_context_ = SDL_GL_CreateContext(window_);
         if (gl_context_) {
-            Log::info("Created GL 3.2 compatibility context");
+            LOG_INF("Created GL 3.2 compatibility context");
             return true;
         }
 
@@ -75,7 +75,7 @@ bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         gl_context_ = SDL_GL_CreateContext(window_);
         if (gl_context_) {
-            Log::info("Created GL 3.2 core context");
+            LOG_INF("Created GL 3.2 core context");
             return true;
         }
     }
@@ -85,7 +85,7 @@ bool GLRenderContext::createDesktopGLContext(RendererBackend backend) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
     gl_context_ = SDL_GL_CreateContext(window_);
     if (gl_context_) {
-        Log::info("Created GL 2.1 context");
+        LOG_INF("Created GL 2.1 context");
         return true;
     }
     return false;
@@ -121,20 +121,20 @@ bool GLRenderContext::init(const AppConfig& cfg) {
         : createDesktopGLContext(cfg.backend);
 
     if (!ctx_ok) {
-        Log::err("SDL_GL_CreateContext failed: %s", SDL_GetError());
+        LOG_ERR("SDL_GL_CreateContext failed: %s", SDL_GetError());
         return false;
     }
 
     SDL_GL_SetSwapInterval(1);
 
     if (!GLLoader::init()) {
-        Log::err("Failed to load GL functions");
+        LOG_ERR("Failed to load GL functions");
         return false;
     }
 
     if (!headless_) {
         if (!initImGui()) {
-            Log::err("Failed to initialize ImGui");
+            LOG_ERR("Failed to initialize ImGui");
             return false;
         }
     }

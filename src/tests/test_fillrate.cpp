@@ -55,7 +55,7 @@ const char* FillrateTest::description() const {
 void FillrateTest::setup(Renderer* r, int vw, int vh) {
     vw_ = vw; vh_ = vh;
     quad_ = r->createMesh(MeshGen::quad());
-    Log::dbg("Test '%s': setup complete (%d layers, %dx%d)", name(), layers_, vw_, vh_);
+    LOG_DBG("Test '%s': setup complete (%d layers, %dx%d)", name(), layers_, vw_, vh_);
 }
 
 void FillrateTest::render(Renderer* r) {

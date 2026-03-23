@@ -48,7 +48,7 @@ bool loadGL3Functions() {
         total++; if (cb_##name) loaded++;
     CB_GL3_OPTIONAL_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
-    Log::dbg("GL3 funcs: %d/%d loaded", loaded, total);
+    LOG_DBG("GL3 funcs: %d/%d loaded", loaded, total);
     return true;
 }
 
@@ -59,7 +59,7 @@ bool loadGL4Functions() {
         total++; if (cb_##name) loaded++;
     CB_GL4_OPTIONAL_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
-    Log::dbg("GL4 funcs: %d/%d loaded", loaded, total);
+    LOG_DBG("GL4 funcs: %d/%d loaded", loaded, total);
     return true;
 }
 
@@ -70,7 +70,7 @@ bool loadGLExtFunctions() {
         total++; if (cb_##name) loaded++;
     CB_GL_EXT_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
-    Log::dbg("GL ext funcs: %d/%d loaded", loaded, total);
+    LOG_DBG("GL ext funcs: %d/%d loaded", loaded, total);
     return true;
 }
 
@@ -116,7 +116,7 @@ bool loadGLExtFunctions() {
         total++; if (cb_##name) loaded++;
     CB_GL_EXT_FUNCS(CB_LOAD_OPT)
     #undef CB_LOAD_OPT
-    Log::dbg("GL ext funcs: %d/%d loaded", loaded, total);
+    LOG_DBG("GL ext funcs: %d/%d loaded", loaded, total);
     return true;
 }
 

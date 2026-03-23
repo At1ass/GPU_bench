@@ -30,12 +30,12 @@ static std::string processIncludes(const std::string& source, std::set<std::stri
                 included.insert(include_name);
                 std::string include_path = getDataPath(("shaders/common/" + include_name).c_str());
                 if (!include_path.empty()) {
-                    Log::dbg("Shader: include '%s' resolved to '%s'", include_name.c_str(), include_path.c_str());
+                    LOG_DBG("Shader: include '%s' resolved to '%s'", include_name.c_str(), include_path.c_str());
                     std::string inc_content = readTextFile(include_path.c_str());
                     result += processIncludes(inc_content, included);
                     result += '\n';
                 } else {
-                    Log::err("Shader include not found: %s", include_name.c_str());
+                    LOG_ERR("Shader include not found: %s", include_name.c_str());
                 }
                 pos = (eol < source.size()) ? eol + 1 : source.size();
                 continue;
@@ -61,6 +61,6 @@ std::string ShaderLoader::load(const char* relative_path) {
         }
     }
 
-    Log::err("Shader file not found: %s", relative_path);
+    LOG_ERR("Shader file not found: %s", relative_path);
     return std::string();
 }

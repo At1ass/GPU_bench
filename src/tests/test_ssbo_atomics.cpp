@@ -50,7 +50,7 @@ void SSBOAtomicsTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, int)
     // 768 uint counters (3 banks of 256)
     int ssbo_size = 768 * 4;
     ssbo_ = comp.createSSBO(ssbo_size);
-    Log::dbg("Test '%s': setup complete (%d workgroups, %d iterations)", name(), params_.work_groups, params_.iterations);
+    LOG_DBG("Test '%s': setup complete (%d workgroups, %d iterations)", name(), params_.work_groups, params_.iterations);
 }
 
 void SSBOAtomicsTest::renderCompute(Renderer& r, ComputeFeatures& comp) {

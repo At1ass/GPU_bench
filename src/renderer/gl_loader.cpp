@@ -36,25 +36,25 @@ bool GLLoader::init() {
 
     // GL2 — required
     if (!loadGL2Functions()) {
-        Log::err("GLLoader: failed to load GL2 functions");
+        LOG_ERR("GLLoader: failed to load GL2 functions");
         return false;
     }
 
     // Parse version before GL3/GL4 checks (needed on Linux path)
     parseVersion();
-    Log::dbg("GLLoader: GL %d.%d, GLES=%s", gl_major_, gl_minor_, is_gles_ ? "yes" : "no");
+    LOG_DBG("GLLoader: GL %d.%d, GLES=%s", gl_major_, gl_minor_, is_gles_ ? "yes" : "no");
 
     // GL3 — optional, load function pointers
     loadGL3Functions();
-    Log::dbg("GLLoader: GL3 function pointers loaded");
+    LOG_DBG("GLLoader: GL3 function pointers loaded");
 
     // GL4 — optional, load function pointers
     loadGL4Functions();
-    Log::dbg("GLLoader: GL4 function pointers loaded");
+    LOG_DBG("GLLoader: GL4 function pointers loaded");
 
     // Extension-only functions (ARB_bindless_texture etc)
     loadGLExtFunctions();
-    Log::dbg("GLLoader: extension function pointers loaded");
+    LOG_DBG("GLLoader: extension function pointers loaded");
 
     // Cache availability
 #ifdef CB_NEED_GL_LOAD
@@ -67,7 +67,7 @@ bool GLLoader::init() {
     gl4_available_ = checkGL4ByVersion();
 #endif
 
-    Log::dbg("GLLoader: GL3=%s, GL4=%s", gl3_available_ ? "yes" : "no", gl4_available_ ? "yes" : "no");
+    LOG_DBG("GLLoader: GL3=%s, GL4=%s", gl3_available_ ? "yes" : "no", gl4_available_ ? "yes" : "no");
     initialized_ = true;
     return true;
 }

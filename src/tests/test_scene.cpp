@@ -34,7 +34,7 @@ void SceneTest::setup(Renderer* r, int vw, int vh) {
 
     auto opix = genColorNoise(obj_tex_size, 1337);
     obj_tex_ = r->createTexture(obj_tex_size, obj_tex_size, 3, opix.data());
-    Log::dbg("Test '%s': setup complete (terrain %dx%d, sphere %d segs, cube grid %d)",
+    LOG_DBG("Test '%s': setup complete (terrain %dx%d, sphere %d segs, cube grid %d)",
              name(), params_.terrain_res, params_.terrain_res, params_.sphere_segs, params_.cube_grid);
 }
 

@@ -338,7 +338,7 @@ int main(int argc, char* argv[]) {
         const char* preset_names[] = { "light", "medium", "heavy", "ultra", "extreme" };
         const char* preset_name = (cfg.preset_index >= 0 && cfg.preset_index < 5)
                                   ? preset_names[cfg.preset_index] : "custom";
-        Log::dbg("CLI: mode=%s, %dx%d, preset=%s", mode, cfg.width, cfg.height, preset_name);
+        LOG_DBG("CLI: mode=%s, %dx%d, preset=%s", mode, cfg.width, cfg.height, preset_name);
     }
 
     app.run();

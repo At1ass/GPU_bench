@@ -68,7 +68,7 @@ void IndirectDrawTest::setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) {
 
     int buf_size = static_cast<int>(static_cast<size_t>(params_.command_count) * sizeof(DrawElementsIndirectCommand));
     indirect_buf_ = gl4.createIndirectBuffer(buf_size, commands.data());
-    Log::dbg("Test '%s': setup complete (%d commands, %d tris/mesh)", name(), params_.command_count, params_.mesh_tris);
+    LOG_DBG("Test '%s': setup complete (%d commands, %d tris/mesh)", name(), params_.command_count, params_.mesh_tris);
 }
 
 void IndirectDrawTest::renderGL4(Renderer& r, GL4Features& gl4) {

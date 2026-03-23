@@ -59,7 +59,7 @@ void ImageLoadStoreTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, i
     // Output SSBO: one vec4 per pixel
     int ssbo_size = sz * sz * 16; // vec4 = 16 bytes
     ssbo_ = comp.createSSBO(ssbo_size);
-    Log::dbg("Test '%s': setup complete (image %dx%d, %d iterations)", name(), sz, sz, params_.iterations);
+    LOG_DBG("Test '%s': setup complete (image %dx%d, %d iterations)", name(), sz, sz, params_.iterations);
 }
 
 void ImageLoadStoreTest::renderCompute(Renderer& r, ComputeFeatures& comp) {

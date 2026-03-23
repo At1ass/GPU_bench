@@ -19,7 +19,7 @@ void FBOFillrateTest::setupGL3(Renderer& r, GL3Features&, int, int) {
     rt_size_ = clampTexSize(params_.rt_size, r.getCaps().max_texture_size);
     quad_ = r.createMesh(MeshGen::quad());
     rt_ = r.createRenderTarget(rt_size_, rt_size_);
-    Log::dbg("Test '%s': setup complete (RT %dx%d, %d layers)", name(), rt_size_, rt_size_, params_.layers);
+    LOG_DBG("Test '%s': setup complete (RT %dx%d, %d layers)", name(), rt_size_, rt_size_, params_.layers);
 }
 
 void FBOFillrateTest::renderGL3(Renderer& r, GL3Features&) {

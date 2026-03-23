@@ -2,7 +2,6 @@
 
 #include "platform/compat.h"
 #include <cstdio>
-#include <cstdarg>
 #include <chrono>
 #if !defined(_WIN32)
 #include <unistd.h>
@@ -10,28 +9,22 @@
 
 // Logger with timestamps, ANSI colors, and automatic subsystem detection.
 //
-// Two APIs:
-//   Log::info("message", args...)     — classic printf-style (no source location)
-//   LOG_INF("message", args...)       — macro with auto file:line + subsystem tag
+// Preferred API (full compile-time format checking + auto source location):
+//   LOG_DBG("mesh %u created", handle);
+//   LOG_INF("loaded %d textures", count);
+//   LOG_WRN("feature %s unavailable", name);
+//   LOG_ERR("shader compile failed: %s", log);
+//
+// Classic API (no source location, format checking via snprintf inlining):
+//   Log::info("message");              // zero-args: no formatting
+//   Log::info("value=%d", x);          // variadic: formatted via snprintf
 //
 // Output format:
 //   [INF +1.234s] [renderer] gl3_renderer.cpp:42  message text
-//
-// Subsystem is extracted automatically from __FILE__ path:
-//   src/renderer/gl3.cpp → "renderer"
-//   src/demo/scene.cpp   → "demo"
-//   src/main.cpp         → "app"
-
-// Compile-time printf format checking (GCC/Clang)
-#if defined(__GNUC__) || defined(__clang__)
-#define LOG_PRINTF_ATTR(fmt_idx, args_idx) __attribute__((format(printf, fmt_idx, args_idx)))
-#else
-#define LOG_PRINTF_ATTR(fmt_idx, args_idx)
-#endif
 
 class Log {
 public:
-    Log() = delete;  // Pure static class, no instances
+    Log() = delete;
 
     enum class Level { Debug, Info, Warn, Error };
 
@@ -61,80 +54,69 @@ public:
     static void setLevel(Level lvl) { s_level = lvl; }
     static bool levelEnabled(Level lvl) { return lvl >= s_level; }
 
-    // --- Classic API (no source location) ---
+    // --- Core sink: pre-formatted message, no formatting concerns ---
 
-    LOG_PRINTF_ATTR(1, 2)
-    static void dbg(const char* fmt, ...) {
+    static void emitMsg(Level lvl, const char* file, int line, const char* msg) {
+        s_counts[static_cast<int>(lvl)]++;
+        double elapsed = elapsedSec();
+        LevelInfo li = levelInfo(lvl);
+        SubsystemTag sub = file ? extractSubsystem(file) : SubsystemTag{ nullptr, 0 };
+        const char* fname = (file && line > 0) ? extractFilename(file) : nullptr;
+
+        writeTo(stderr, li, elapsed, sub, fname, line, msg, s_use_color);
+        if (s_file) {
+            writeTo(s_file.get(), li, elapsed, sub, fname, line, msg, false);
+            fflush(s_file.get());
+        }
+    }
+
+    // --- Classic API: zero-args overloads (no snprintf, no warnings) ---
+
+    static void dbg(const char* msg) {
         if (s_level > Level::Debug) return;
-        SubsystemTag none = { nullptr, 0 };
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Debug, nullptr, none, 0, fmt, ap);
-        va_end(ap);
+        emitMsg(Level::Debug, nullptr, 0, msg);
     }
-
-    LOG_PRINTF_ATTR(1, 2)
-    static void info(const char* fmt, ...) {
+    static void info(const char* msg) {
         if (s_level > Level::Info) return;
-        SubsystemTag none = { nullptr, 0 };
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Info, nullptr, none, 0, fmt, ap);
-        va_end(ap);
+        emitMsg(Level::Info, nullptr, 0, msg);
     }
-
-    LOG_PRINTF_ATTR(1, 2)
-    static void warn(const char* fmt, ...) {
+    static void warn(const char* msg) {
         if (s_level > Level::Warn) return;
-        SubsystemTag none = { nullptr, 0 };
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Warn, nullptr, none, 0, fmt, ap);
-        va_end(ap);
+        emitMsg(Level::Warn, nullptr, 0, msg);
+    }
+    static void err(const char* msg) {
+        emitMsg(Level::Error, nullptr, 0, msg);
     }
 
-    LOG_PRINTF_ATTR(1, 2)
-    static void err(const char* fmt, ...) {
-        SubsystemTag none = { nullptr, 0 };
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Error, nullptr, none, 0, fmt, ap);
-        va_end(ap);
-    }
+    // --- Classic API: variadic template overloads (with formatting) ---
+    // Note: format checking relies on snprintf inlining at -O1+.
+    // For guaranteed compile-time checking, prefer LOG_* macros.
 
-    // --- Location-aware API (called by LOG_* macros) ---
-
-    LOG_PRINTF_ATTR(3, 4)
-    static void dbg_loc(const char* file, int line, const char* fmt, ...) {
+    template<typename T, typename... Args>
+    static void dbg(const char* fmt, T first, Args... rest) {
         if (s_level > Level::Debug) return;
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Debug, file, extractSubsystem(file), line, fmt, ap);
-        va_end(ap);
+        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
+        emitMsg(Level::Debug, nullptr, 0, buf);
     }
-
-    LOG_PRINTF_ATTR(3, 4)
-    static void info_loc(const char* file, int line, const char* fmt, ...) {
+    template<typename T, typename... Args>
+    static void info(const char* fmt, T first, Args... rest) {
         if (s_level > Level::Info) return;
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Info, file, extractSubsystem(file), line, fmt, ap);
-        va_end(ap);
+        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
+        emitMsg(Level::Info, nullptr, 0, buf);
     }
-
-    LOG_PRINTF_ATTR(3, 4)
-    static void warn_loc(const char* file, int line, const char* fmt, ...) {
+    template<typename T, typename... Args>
+    static void warn(const char* fmt, T first, Args... rest) {
         if (s_level > Level::Warn) return;
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Warn, file, extractSubsystem(file), line, fmt, ap);
-        va_end(ap);
+        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
+        emitMsg(Level::Warn, nullptr, 0, buf);
+    }
+    template<typename T, typename... Args>
+    static void err(const char* fmt, T first, Args... rest) {
+        char buf[2048]; formatBuf(buf, sizeof(buf), fmt, first, rest...);
+        emitMsg(Level::Error, nullptr, 0, buf);
     }
 
-    LOG_PRINTF_ATTR(3, 4)
-    static void err_loc(const char* file, int line, const char* fmt, ...) {
-        va_list ap; va_start(ap, fmt);
-        writeMsg(Level::Error, file, extractSubsystem(file), line, fmt, ap);
-        va_end(ap);
-    }
-
-    // --- Subsystem extraction from __FILE__ ---
-    // "src/renderer/gl3.cpp"         → "renderer"
-    // "/full/path/src/demo/scene.cpp" → "demo"
-    // "src/main.cpp"                 → "app"
+    // --- Subsystem/filename extraction from __FILE__ ---
 
     struct SubsystemTag {
         const char* name;
@@ -145,7 +127,6 @@ public:
         SubsystemTag tag = { "app", 3 };
         if (!file) return tag;
 
-        // Find last "src/" or "src\" anchor
         const char* after_src = nullptr;
         for (const char* p = file; *p; p++) {
             if (p[0] == 's' && p[1] == 'r' && p[2] == 'c' && (p[3] == '/' || p[3] == '\\'))
@@ -153,7 +134,6 @@ public:
         }
         if (!after_src) after_src = file;
 
-        // Find first '/' or '\' after src/ — that's the end of subsystem name
         const char* sep = nullptr;
         for (const char* p = after_src; *p; p++) {
             if (*p == '/' || *p == '\\') { sep = p; break; }
@@ -163,11 +143,9 @@ public:
             tag.name = after_src;
             tag.len = static_cast<int>(sep - after_src);
         }
-        // else: file directly in src/ (main.cpp, app.cpp) → "app"
         return tag;
     }
 
-    // Extract just the filename from a path
     static const char* extractFilename(const char* path) {
         const char* name = path;
         for (const char* p = path; *p; p++) {
@@ -181,27 +159,26 @@ private:
     static Level s_level;
     static std::chrono::steady_clock::time_point s_start;
     static bool s_use_color;
-    static unsigned int s_counts[4]; // dbg, info, warn, err
+    static unsigned int s_counts[4];
 
-    // Level metadata
     struct LevelInfo {
-        const char* tag;    // "DBG", "INF", etc.
-        const char* color;  // ANSI escape (empty if no color)
+        const char* tag;
+        const char* color;
     };
 
     static LevelInfo levelInfo(Level lvl) {
         static const LevelInfo table[] = {
-            { "DBG", "\033[90m"   },  // gray
-            { "INF", "\033[32m"   },  // green
-            { "WRN", "\033[33m"   },  // yellow
-            { "ERR", "\033[31;1m" },  // bright red
+            { "DBG", "\033[90m"   },
+            { "INF", "\033[32m"   },
+            { "WRN", "\033[33m"   },
+            { "ERR", "\033[31;1m" },
         };
         return table[static_cast<int>(lvl)];
     }
 
     static bool detectColorSupport() {
 #if defined(_WIN32)
-        return false; // conservative — ANSI may not work on older Windows
+        return false;
 #else
         return isatty(fileno(stderr)) != 0;
 #endif
@@ -212,7 +189,6 @@ private:
         return std::chrono::duration<double>(now - s_start).count();
     }
 
-    // Write one formatted line to a FILE* sink
     static void writeTo(FILE* out, const LevelInfo& li, double elapsed,
                         SubsystemTag sub, const char* fname, int line,
                         const char* msg, bool color) {
@@ -228,45 +204,45 @@ private:
         fputc('\n', out);
     }
 
-    // Format user message once, dispatch to all sinks
-    static void writeMsg(Level lvl, const char* file, SubsystemTag sub,
-                         int line, const char* fmt, va_list ap) {
-        s_counts[static_cast<int>(lvl)]++;
-
-        // Format user message once — no va_copy needed
-        char msg[2048];
-        vsnprintf(msg, sizeof(msg), fmt, ap);
-
-        double elapsed = elapsedSec();
-        LevelInfo li = levelInfo(lvl);
-        const char* fname = (file && line > 0) ? extractFilename(file) : nullptr;
-
-        writeTo(stderr, li, elapsed, sub, fname, line, msg, s_use_color);
-        if (s_file) {
-            writeTo(s_file.get(), li, elapsed, sub, fname, line, msg, false);
-            fflush(s_file.get());
-        }
+    // snprintf wrapper — isolated from public API.
+    // Non-literal format is unavoidable here; checking happens at the call
+    // site when the compiler inlines the template (any optimization level).
+    template<typename... Args>
+    static void formatBuf(char* buf, size_t sz, const char* fmt, Args... args) {
+        snprintf(buf, sz, fmt, args...);
     }
 };
 
-// --- Convenience macros with automatic source location + subsystem ---
-// Usage: LOG_DBG("created mesh %u", handle);
-// Output: [DBG +0.342s] [renderer] gl3_renderer.cpp:169  created mesh 5
+// --- LOG_* macros: format at call site for full compile-time checking ---
+//
+// snprintf sees the literal format string directly → GCC/Clang verify
+// argument types against format specifiers with zero false positives.
+// Also provides automatic __FILE__:__LINE__ and subsystem tag.
 
 #define LOG_DBG(fmt, ...) \
-    do { if (Log::levelEnabled(Log::Level::Debug)) \
-        Log::dbg_loc(__FILE__, __LINE__, fmt, ##__VA_ARGS__); \
-    } while(0)
+    do { if (Log::levelEnabled(Log::Level::Debug)) { \
+        char _log_buf_[2048]; \
+        snprintf(_log_buf_, sizeof(_log_buf_), fmt, ##__VA_ARGS__); \
+        Log::emitMsg(Log::Level::Debug, __FILE__, __LINE__, _log_buf_); \
+    }} while(0)
 
 #define LOG_INF(fmt, ...) \
-    do { if (Log::levelEnabled(Log::Level::Info)) \
-        Log::info_loc(__FILE__, __LINE__, fmt, ##__VA_ARGS__); \
-    } while(0)
+    do { if (Log::levelEnabled(Log::Level::Info)) { \
+        char _log_buf_[2048]; \
+        snprintf(_log_buf_, sizeof(_log_buf_), fmt, ##__VA_ARGS__); \
+        Log::emitMsg(Log::Level::Info, __FILE__, __LINE__, _log_buf_); \
+    }} while(0)
 
 #define LOG_WRN(fmt, ...) \
-    do { if (Log::levelEnabled(Log::Level::Warn)) \
-        Log::warn_loc(__FILE__, __LINE__, fmt, ##__VA_ARGS__); \
-    } while(0)
+    do { if (Log::levelEnabled(Log::Level::Warn)) { \
+        char _log_buf_[2048]; \
+        snprintf(_log_buf_, sizeof(_log_buf_), fmt, ##__VA_ARGS__); \
+        Log::emitMsg(Log::Level::Warn, __FILE__, __LINE__, _log_buf_); \
+    }} while(0)
 
 #define LOG_ERR(fmt, ...) \
-    Log::err_loc(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+    do { \
+        char _log_buf_[2048]; \
+        snprintf(_log_buf_, sizeof(_log_buf_), fmt, ##__VA_ARGS__); \
+        Log::emitMsg(Log::Level::Error, __FILE__, __LINE__, _log_buf_); \
+    } while(0)

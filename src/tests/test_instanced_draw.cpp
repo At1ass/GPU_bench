@@ -96,7 +96,7 @@ void InstancedDrawTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) 
         u_view_loc_ = r.getCustomUniformLoc(shader_, "u_view");
         u_instance_count_loc_ = r.getCustomUniformLoc(shader_, "u_instance_count");
     }
-    Log::dbg("Test '%s': setup complete (%d instances, %d tris/instance)", name(), params_.instance_count, tri_count_);
+    LOG_DBG("Test '%s': setup complete (%d instances, %d tris/instance)", name(), params_.instance_count, tri_count_);
 }
 
 void InstancedDrawTest::renderGL3(Renderer& r, GL3Features& gl3) {

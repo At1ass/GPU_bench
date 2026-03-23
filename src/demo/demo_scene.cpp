@@ -111,7 +111,7 @@ void DemoScene::buildScene(Renderer* r) {
     placePuddles(r);
 
     int total = static_cast<int>(opaque_objects_.size());
-    Log::info("Demo scene: %d objects, fur shells=%d, particles=%d",
+    LOG_INF("Demo scene: %d objects, fur shells=%d, particles=%d",
               total, config_.fur_shells, config_.particle_count);
 }
 
@@ -247,14 +247,14 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     res_ = resources;
 
     int t = static_cast<int>(tier);
-    Log::info("Demo scene setup: tier %d, viewport %dx%d", t, viewport_w, viewport_h);
+    LOG_INF("Demo scene setup: tier %d, viewport %dx%d", t, viewport_w, viewport_h);
 
     // Build scene objects (cheap -- just fills SceneObject structs)
     buildScene(r);
 
     initialized_ = true;
     int total_obj = static_cast<int>(opaque_objects_.size());
-    Log::info("Demo scene setup complete: %d objects", total_obj);
+    LOG_INF("Demo scene setup complete: %d objects", total_obj);
     return true;
 }
 
@@ -736,7 +736,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     // Log active render passes once per tier setup
     if (!passes_logged_) {
         passes_logged_ = true;
-        Log::dbg("Demo: tier %d passes: shadow=%d ssao=%d bloom=%d pbr=%d tess=%d "
+        LOG_DBG("Demo: tier %d passes: shadow=%d ssao=%d bloom=%d pbr=%d tess=%d "
                  "compute_particles=%d vol_fog=%d hdr=%d",
                  fc.tier_int, fc.has_shadows, fc.has_ssao, fc.has_bloom,
                  fc.has_pbr, fc.has_tessellation, fc.has_compute_particles,
