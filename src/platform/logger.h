@@ -183,38 +183,26 @@ private:
     static bool s_use_color;
     static unsigned int s_counts[4]; // dbg, info, warn, err
 
-    // ANSI color codes
-    static const char* colorForLevel(Level lvl) {
-        if (!s_use_color) return "";
-        switch (lvl) {
-        case Level::Debug: return "\033[90m";   // gray
-        case Level::Info:  return "\033[32m";   // green
-        case Level::Warn:  return "\033[33m";   // yellow
-        case Level::Error: return "\033[31;1m"; // bright red
-        }
-        return "";
-    }
+    // Level metadata
+    struct LevelInfo {
+        const char* tag;    // "DBG", "INF", etc.
+        const char* color;  // ANSI escape (empty if no color)
+    };
 
-    static const char* colorReset() {
-        return s_use_color ? "\033[0m" : "";
-    }
-
-    static const char* prefixForLevel(Level lvl) {
-        switch (lvl) {
-        case Level::Debug: return "DBG";
-        case Level::Info:  return "INF";
-        case Level::Warn:  return "WRN";
-        case Level::Error: return "ERR";
-        }
-        return "???";
+    static LevelInfo levelInfo(Level lvl) {
+        static const LevelInfo table[] = {
+            { "DBG", "\033[90m"   },  // gray
+            { "INF", "\033[32m"   },  // green
+            { "WRN", "\033[33m"   },  // yellow
+            { "ERR", "\033[31;1m" },  // bright red
+        };
+        return table[static_cast<int>(lvl)];
     }
 
     static bool detectColorSupport() {
 #if defined(_WIN32)
-        // Windows: check if stderr is a console and enable VT processing
         return false; // conservative — ANSI may not work on older Windows
 #else
-        // POSIX: check if stderr is a terminal
         return isatty(fileno(stderr)) != 0;
 #endif
     }
@@ -224,46 +212,38 @@ private:
         return std::chrono::duration<double>(now - s_start).count();
     }
 
+    // Write one formatted line to a FILE* sink
+    static void writeTo(FILE* out, const LevelInfo& li, double elapsed,
+                        SubsystemTag sub, const char* fname, int line,
+                        const char* msg, bool color) {
+        const char* c = color ? li.color : "";
+        const char* r = color ? "\033[0m"  : "";
+
+        fprintf(out, "%s[%s %+8.3fs]%s ", c, li.tag, elapsed, r);
+        if (sub.name)
+            fprintf(out, "%s[%-9.*s]%s ", c, sub.len, sub.name, r);
+        if (fname)
+            fprintf(out, "%s%s:%d%s  ", c, fname, line, r);
+        fputs(msg, out);
+        fputc('\n', out);
+    }
+
+    // Format user message once, dispatch to all sinks
     static void writeMsg(Level lvl, const char* file, SubsystemTag sub,
                          int line, const char* fmt, va_list ap) {
         s_counts[static_cast<int>(lvl)]++;
+
+        // Format user message once — no va_copy needed
+        char msg[2048];
+        vsnprintf(msg, sizeof(msg), fmt, ap);
+
         double elapsed = elapsedSec();
+        LevelInfo li = levelInfo(lvl);
+        const char* fname = (file && line > 0) ? extractFilename(file) : nullptr;
 
-        // --- stderr (with optional color) ---
-        const char* color = colorForLevel(lvl);
-        const char* reset = colorReset();
-
-        fprintf(stderr, "%s[%s %+8.3fs]%s ", color, prefixForLevel(lvl), elapsed, reset);
-
-        if (sub.name) {
-            fprintf(stderr, "%s[%-9.*s]%s ", color, sub.len, sub.name, reset);
-        }
-
-        if (file && line > 0) {
-            fprintf(stderr, "%s%s:%d%s  ", color, extractFilename(file), line, reset);
-        }
-
-        va_list ap2;
-        va_copy(ap2, ap);
-        vfprintf(stderr, fmt, ap2);
-        va_end(ap2);
-        fputc('\n', stderr);
-
-        // --- file (no color) ---
+        writeTo(stderr, li, elapsed, sub, fname, line, msg, s_use_color);
         if (s_file) {
-            fprintf(s_file.get(), "[%s %+8.3fs] ", prefixForLevel(lvl), elapsed);
-
-            if (sub.name)
-                fprintf(s_file.get(), "[%-9.*s] ", sub.len, sub.name);
-
-            if (file && line > 0)
-                fprintf(s_file.get(), "%s:%d  ", extractFilename(file), line);
-
-            va_list ap3;
-            va_copy(ap3, ap);
-            vfprintf(s_file.get(), fmt, ap3);
-            va_end(ap3);
-            fputc('\n', s_file.get());
+            writeTo(s_file.get(), li, elapsed, sub, fname, line, msg, false);
             fflush(s_file.get());
         }
     }
