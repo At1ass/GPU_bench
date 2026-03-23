@@ -23,14 +23,14 @@
 #include "demo/passes/dof_pass.h"
 
 // Helper: create, init, push to vector, return raw pointer
+// Create pass, init, transfer ownership to vector, return non-owning observer.
+// Safe: vector is pre-reserved so push_back never invalidates prior elements.
 template<typename T>
-static T* make(std::vector<std::unique_ptr<DemoRenderPass>>& out,
-               const TierResourceView& res) {
-    std::unique_ptr<T> p(new T());
-    p->init(res);
-    T* raw = p.get();
-    out.push_back(std::move(p));
-    return raw;
+static DemoRenderPass* make(std::vector<std::unique_ptr<DemoRenderPass>>& out,
+                            const TierResourceView& res) {
+    out.push_back(std::unique_ptr<DemoRenderPass>(new T()));
+    static_cast<T*>(out.back().get())->init(res);
+    return out.back().get();
 }
 
 DemoPassSet createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
@@ -56,10 +56,10 @@ DemoPassSet createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
 
     // T2/T3 scene-to-FBO wrapper
     {
-        auto p = std::unique_ptr<SceneToFBOPass>(new SceneToFBOPass());
-        p->setSubPasses(s.sky, s.opaque, s.grass, s.fur, s.particle);
-        s.scene_to_fbo = p.get();
-        out.push_back(std::move(p));
+        out.push_back(std::unique_ptr<DemoRenderPass>(new SceneToFBOPass()));
+        static_cast<SceneToFBOPass*>(out.back().get())
+            ->setSubPasses(s.sky, s.opaque, s.grass, s.fur, s.particle);
+        s.scene_to_fbo = out.back().get();
     }
 
     // T4 passes
@@ -68,11 +68,11 @@ DemoPassSet createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
     s.compute_particles_draw = make<ComputeParticlesDrawPass>(out, res);
 
     {
-        auto p = std::unique_ptr<TessellatedModelPass>(new TessellatedModelPass());
-        p->init(res);
-        p->setFurPass(s.fur);
-        s.tess_model = p.get();
-        out.push_back(std::move(p));
+        out.push_back(std::unique_ptr<DemoRenderPass>(new TessellatedModelPass()));
+        auto* tess = static_cast<TessellatedModelPass*>(out.back().get());
+        tess->init(res);
+        tess->setFurPass(s.fur);
+        s.tess_model = out.back().get();
     }
 
     s.gtao           = make<GTAOPass>(out, res);
