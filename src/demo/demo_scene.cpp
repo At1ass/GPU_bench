@@ -281,6 +281,12 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     // Build scene objects (cheap -- just fills SceneObject structs)
     buildScene(r);
 
+    // Populate scene data for render passes
+    scene_data_.opaque_objects = &opaque_objects_;
+    scene_data_.cloud_objects = &cloud_objects_;
+    scene_data_.model_mesh = model_mesh_;
+    scene_data_.model_transform = model_transform_;
+
     initialized_ = true;
     int total_obj = static_cast<int>(opaque_objects_.size());
     LOG_INF("Demo scene setup complete: %d objects", total_obj);
@@ -317,7 +323,7 @@ TechniqueInfo DemoScene::getTechniqueInfo() const {
 // computeLightMatrix: orthographic projection from sun direction
 // ============================================================
 
-void DemoScene::computeLightMatrix(FrameContext& fc) {
+void DemoScene::computeLightMatrix(FrameData& fc) {
     Vec3 light_pos = fc.sun_dir * 15.0f;
     Vec3 up(0.0f, 0.0f, 1.0f);
     if (fabsf(Vec3::dot(fc.sun_dir, up)) > 0.99f)
@@ -331,7 +337,7 @@ void DemoScene::computeLightMatrix(FrameContext& fc) {
 // renderShadowPass: depth-only from sun perspective
 // ============================================================
 
-void DemoScene::renderShadowPass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderShadowPass(Renderer* r, const FrameData& fc) {
     if (!res_.shadow.shader || res_.shadow.rt == INVALID_RENDER_TARGET) return;
 
     r->bindRenderTarget(res_.shadow.rt);
@@ -359,7 +365,7 @@ void DemoScene::renderShadowPass(Renderer* r, const FrameContext& fc) {
 // renderSky
 // ============================================================
 
-void DemoScene::renderSky(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderSky(Renderer* r, const FrameData& fc) {
     if (!res_.core.sky_shader || res_.core.sky_mesh == MeshHandle()) return;
 
     r->setDepthTest(false);
@@ -381,7 +387,7 @@ void DemoScene::renderSky(Renderer* r, const FrameContext& fc) {
 // setPointLightUniforms: T3+ animated point lights
 // ============================================================
 
-void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameContext& fc) {
+void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameData& fc) {
     if (config_.point_light_count <= 0) {
         shader->set1i("u_point_light_count", 0);
         return;
@@ -409,7 +415,7 @@ void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameContext&
 // renderOpaquePass
 // ============================================================
 
-void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderOpaquePass(Renderer* r, const FrameData& fc) {
     if (!res_.core.island_shader) return;
 
     ub_island_.use();
@@ -517,7 +523,7 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
 // renderGrassInstanced: T2+ instanced grass blades
 // ============================================================
 
-void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderGrassInstanced(Renderer* r, const FrameData& fc) {
     if (!res_.grass.shader || res_.grass.blade_mesh == MeshHandle()) return;
     if (config_.instanced_grass_count <= 0) return;
 
@@ -593,7 +599,7 @@ void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
 // renderFurPass: shell-based fur rendering
 // ============================================================
 
-void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderFurPass(Renderer* r, const FrameData& fc) {
     if (!res_.core.fur_shader || model_mesh_ == MeshHandle() || res_.core.fur_tex == INVALID_TEXTURE) return;
 
     ub_fur_.use();
@@ -695,7 +701,7 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
 // renderParticlePass: billboard dust motes
 // ============================================================
 
-void DemoScene::renderParticlePass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderParticlePass(Renderer* r, const FrameData& fc) {
     if (!res_.core.particle_shader || res_.core.particle_mesh == MeshHandle()) return;
 
     ub_particle_.use();
@@ -728,7 +734,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     dest_rt_ = dest_rt;
 
     // Build frame context
-    FrameContext fc;
+    FrameData fc;
     fc.tier_int = static_cast<int>(tier_);
     fc.time = time;
     fc.sun_dir = normalizeSafe(SUN_DIR_RAW);
@@ -907,7 +913,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
 // renderSceneToFBO: render full scene into scene_rt for bloom
 // ============================================================
 
-void DemoScene::renderSceneToFBO(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderSceneToFBO(Renderer* r, const FrameData& fc) {
     r->bindRenderTarget(res_.bloom.scene_rt);
     r->setViewport(0, 0, viewport_w_, viewport_h_);
     r->clear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f);
@@ -928,7 +934,7 @@ void DemoScene::renderSceneToFBO(Renderer* r, const FrameContext& fc) {
 // renderSSAOPass: compute ambient occlusion from scene depth
 // ============================================================
 
-void DemoScene::renderSSAOPass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderSSAOPass(Renderer* r, const FrameData& fc) {
     r->bindRenderTarget(res_.ssao.rt);
     r->setViewport(0, 0, viewport_w_ / 2, viewport_h_ / 2);
     r->clear(1.0f, 1.0f, 1.0f, 1.0f);  // white = no occlusion
@@ -968,7 +974,7 @@ void DemoScene::renderSSAOPass(Renderer* r, const FrameContext& fc) {
 // renderSSAOBlur: blur SSAO to smooth noise artifacts
 // ============================================================
 
-void DemoScene::renderSSAOBlur(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderSSAOBlur(Renderer* r, const FrameData& fc) {
     (void)fc;
     r->bindRenderTarget(res_.ssao.blur_rt);
     r->setViewport(0, 0, viewport_w_ / 2, viewport_h_ / 2);
@@ -992,7 +998,7 @@ void DemoScene::renderSSAOBlur(Renderer* r, const FrameContext& fc) {
 // renderBloomPasses: extract bright, blur H, blur V (ping-pong)
 // ============================================================
 
-void DemoScene::renderBloomPasses(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderBloomPasses(Renderer* r, const FrameData& fc) {
     (void)fc;
     int bw = viewport_w_ / 2;
     int bh = viewport_h_ / 2;
@@ -1038,7 +1044,7 @@ void DemoScene::renderBloomPasses(Renderer* r, const FrameContext& fc) {
 // renderComposite: combine scene + bloom + vignette + color grade
 // ============================================================
 
-void DemoScene::renderComposite(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderComposite(Renderer* r, const FrameData& fc) {
     // Restore destination render target for composite output
     r->bindRenderTarget(dest_rt_);
     r->setViewport(0, 0, viewport_w_, viewport_h_);
@@ -1073,7 +1079,7 @@ void DemoScene::renderComposite(Renderer* r, const FrameContext& fc) {
 // T4: Compute particle physics update
 // ============================================================
 
-void DemoScene::renderComputeParticles(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderComputeParticles(Renderer* r, const FrameData& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!cf) return;
 
@@ -1092,7 +1098,7 @@ void DemoScene::renderComputeParticles(Renderer* r, const FrameContext& fc) {
 // T4: Draw compute particles as billboards
 // ============================================================
 
-void DemoScene::renderComputeParticlesDraw(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderComputeParticlesDraw(Renderer* r, const FrameData& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!cf || !res_.t4.particle_render_shader) return;
 
@@ -1124,7 +1130,7 @@ void DemoScene::renderComputeParticlesDraw(Renderer* r, const FrameContext& fc) 
 // T4: Tessellated model rendering
 // ============================================================
 
-void DemoScene::renderTessellatedModel(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderTessellatedModel(Renderer* r, const FrameData& fc) {
     GL4Features* g4 = r->features<GL4Features>();
     if (!g4 || model_mesh_ == MeshHandle()) return;
 
@@ -1183,7 +1189,7 @@ void DemoScene::renderTessellatedModel(Renderer* r, const FrameContext& fc) {
 // T4: Volumetric fog raymarch
 // ============================================================
 
-void DemoScene::renderVolumetricFog(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderVolumetricFog(Renderer* r, const FrameData& fc) {
     r->bindRenderTarget(res_.t4.fog_rt);
     r->setViewport(0, 0, viewport_w_ / 2, viewport_h_ / 2);
     r->clear(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1229,7 +1235,7 @@ void DemoScene::renderVolumetricFog(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Compute GTAO pass
 // ============================================================
 
-void DemoScene::renderGTAOPass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderGTAOPass(Renderer* r, const FrameData& fc) {
     if (!res_.t4.gtao_shader || res_.t4.gtao_tex == INVALID_TEXTURE) return;
 
     GL4Features* g4 = r->features<GL4Features>();
@@ -1264,7 +1270,7 @@ void DemoScene::renderGTAOPass(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Compute GTAO bilateral blur
 // ============================================================
 
-void DemoScene::renderGTAOBlur(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderGTAOBlur(Renderer* r, const FrameData& fc) {
     (void)fc;
     if (!res_.t4.gtao_blur_shader || res_.t4.gtao_blur_tex == INVALID_TEXTURE) return;
 
@@ -1294,7 +1300,7 @@ void DemoScene::renderGTAOBlur(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Compute Bloom (mip chain downsample + upsample)
 // ============================================================
 
-void DemoScene::renderBloomCompute(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderBloomCompute(Renderer* r, const FrameData& fc) {
     (void)fc;
     if (!res_.t4.bloom_down_compute || !res_.t4.bloom_up_compute) return;
 
@@ -1373,7 +1379,7 @@ void DemoScene::renderBloomCompute(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Compute Auto-Exposure (histogram)
 // ============================================================
 
-void DemoScene::computeAutoExposure(Renderer* r, const FrameContext& fc) {
+void DemoScene::computeAutoExposure(Renderer* r, const FrameData& fc) {
     if (!res_.t4.histogram_shader || !res_.t4.exposure_shader) return;
     if (res_.t4.histogram_ssbo == INVALID_BUFFER || res_.t4.exposure_ssbo == INVALID_BUFFER) return;
 
@@ -1417,7 +1423,7 @@ void DemoScene::computeAutoExposure(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Water pass with screen-space reflections
 // ============================================================
 
-void DemoScene::renderWaterPass(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderWaterPass(Renderer* r, const FrameData& fc) {
     if (!res_.core.island_shader) return;
 
     // Count water objects
@@ -1503,7 +1509,7 @@ void DemoScene::renderWaterPass(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Screen-Space Reflections (compute — legacy)
 // ============================================================
 
-void DemoScene::renderSSR(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderSSR(Renderer* r, const FrameData& fc) {
     if (!res_.t4.ssr_shader || res_.t4.ssr_tex == INVALID_TEXTURE) return;
 
     GL4Features* g4 = r->features<GL4Features>();
@@ -1567,7 +1573,7 @@ void DemoScene::renderSSR(Renderer* r, const FrameContext& fc) {
 // T4 Ultra: Depth of Field
 // ============================================================
 
-void DemoScene::renderDoF(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderDoF(Renderer* r, const FrameData& fc) {
     (void)fc;
     if (!res_.t4.dof_shader || res_.t4.dof_tex == INVALID_TEXTURE) return;
 
@@ -1603,7 +1609,7 @@ void DemoScene::renderDoF(Renderer* r, const FrameContext& fc) {
 // T4: HDR composite with ACES tone mapping
 // ============================================================
 
-void DemoScene::renderHDRComposite(Renderer* r, const FrameContext& fc) {
+void DemoScene::renderHDRComposite(Renderer* r, const FrameData& fc) {
     r->setViewport(0, 0, viewport_w_, viewport_h_);
     r->setDepthTest(false);
     r->setCullFace(false);

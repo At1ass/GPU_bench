@@ -2,7 +2,10 @@
 #include "renderer/renderer.h"
 #include "demo/demo_camera.h"
 #include "demo/demo_debug.h"
+#include "demo/demo_frame_data.h"
+#include "demo/demo_pipeline.h"
 #include "demo/material.h"
+#include "demo/scene_data.h"
 #include "demo/tier_resource_view.h"
 #include "demo/uniform_block.h"
 #include <vector>
@@ -106,36 +109,6 @@ DemoTierConfig getTierConfig(DemoTier tier);
 TechniqueInfo getTierTechniqueInfo(DemoTier tier, int object_count);
 int maxSupportedTier(const Renderer& r);
 
-// A placed object in the scene
-struct SceneObject {
-    MeshHandle mesh;
-    Mat4 transform;
-    MaterialType material;
-    Vec3 color;
-    float specular;
-    Vec3 bounds_center;   // world-space bounding sphere center
-    float bounds_radius;  // world-space bounding sphere radius
-    bool vertex_wind;     // enable wind vertex displacement (grass only)
-    bool two_sided;       // disable backface culling for this object
-    float metallic;       // PBR metallic override (-1 = use default)
-    float roughness;      // PBR roughness override (-1 = use default)
-    bool is_water;        // water material with ripples + Fresnel
-
-    SceneObject() : mesh(), transform(), material(MaterialType::Model),
-        color(0,0,0), specular(0), bounds_center(0,0,0), bounds_radius(0),
-        vertex_wind(false), two_sided(false), metallic(-1.0f), roughness(-1.0f), is_water(false) {}
-};
-
-// Frustum culling planes
-struct FrustumPlanes {
-    float planes[6][4]; // A,B,C,D for each plane
-};
-
-// Camera/projection constants shared across all render passes
-static const float kDemoFovDeg  = 60.0f;
-static const float kDemoNear    = 0.1f;
-static const float kDemoFar     = 50.0f;
-
 // Demo scene: OBJ model with fur, orbiting camera.
 class DemoScene {
 public:
@@ -161,11 +134,12 @@ private:
     DemoTierConfig config_;
     CameraPath camera_;
     TierResourceView res_;
+    SceneData scene_data_;
 
-    // Scene objects
+    // Scene objects (owned, referenced by scene_data_)
     std::vector<SceneObject> opaque_objects_;
     std::vector<SceneObject> cloud_objects_;
-    MeshHandle model_mesh_;        // fur target mesh (for shell rendering)
+    MeshHandle model_mesh_;
 
     // Scene building
     void buildScene(Renderer* r);
@@ -174,66 +148,47 @@ private:
     void placeRocks(Renderer* r);
     void placeGrass(Renderer* r);
 
-    // Model transform (set in placeModel, used in renderFurPass)
     Mat4 model_transform_;
 
-    // Frame context
-    struct FrameContext {
-        Mat4 proj, view;
-        Mat4 light_vp;
-        Vec3 cam_pos, sun_dir;
-        FrustumPlanes frustum;
-        float time;
-        int tier_int;
-        bool has_shadows;
-        bool has_bloom;
-        bool has_ssao;
-        bool has_pbr;
-        bool has_tessellation;
-        bool has_compute_particles;
-        bool has_volumetric_fog;
-        bool has_hdr;
-    };
-
-    // Render passes
-    void computeLightMatrix(FrameContext& fc);
-    void renderShadowPass(Renderer* r, const FrameContext& fc);
-    void renderSky(Renderer* r, const FrameContext& fc);
-    void renderOpaquePass(Renderer* r, const FrameContext& fc);
-    void renderGrassInstanced(Renderer* r, const FrameContext& fc);
-    void renderFurPass(Renderer* r, const FrameContext& fc);
-    void renderParticlePass(Renderer* r, const FrameContext& fc);
+    // Render passes (still inline methods — will be extracted to pass classes later)
+    void computeLightMatrix(FrameData& fd);
+    void renderShadowPass(Renderer* r, const FrameData& fd);
+    void renderSky(Renderer* r, const FrameData& fd);
+    void renderOpaquePass(Renderer* r, const FrameData& fd);
+    void renderGrassInstanced(Renderer* r, const FrameData& fd);
+    void renderFurPass(Renderer* r, const FrameData& fd);
+    void renderParticlePass(Renderer* r, const FrameData& fd);
 
     // T2+ SSAO
-    void renderSSAOPass(Renderer* r, const FrameContext& fc);
-    void renderSSAOBlur(Renderer* r, const FrameContext& fc);
+    void renderSSAOPass(Renderer* r, const FrameData& fd);
+    void renderSSAOBlur(Renderer* r, const FrameData& fd);
 
     // Point light uniform helper
-    void setPointLightUniforms(ShaderProgram* shader, const FrameContext& fc);
+    void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd);
 
     // T4 render passes
-    void renderComputeParticles(Renderer* r, const FrameContext& fc);
-    void renderTessellatedModel(Renderer* r, const FrameContext& fc);
-    void renderComputeParticlesDraw(Renderer* r, const FrameContext& fc);
-    void renderVolumetricFog(Renderer* r, const FrameContext& fc);
-    void renderHDRComposite(Renderer* r, const FrameContext& fc);
+    void renderComputeParticles(Renderer* r, const FrameData& fd);
+    void renderTessellatedModel(Renderer* r, const FrameData& fd);
+    void renderComputeParticlesDraw(Renderer* r, const FrameData& fd);
+    void renderVolumetricFog(Renderer* r, const FrameData& fd);
+    void renderHDRComposite(Renderer* r, const FrameData& fd);
 
     // T4 Ultra compute passes
-    void renderGTAOPass(Renderer* r, const FrameContext& fc);
-    void renderGTAOBlur(Renderer* r, const FrameContext& fc);
-    void renderBloomCompute(Renderer* r, const FrameContext& fc);
-    void computeAutoExposure(Renderer* r, const FrameContext& fc);
-    void renderSSR(Renderer* r, const FrameContext& fc);
-    void renderWaterPass(Renderer* r, const FrameContext& fc);
-    void renderDoF(Renderer* r, const FrameContext& fc);
+    void renderGTAOPass(Renderer* r, const FrameData& fd);
+    void renderGTAOBlur(Renderer* r, const FrameData& fd);
+    void renderBloomCompute(Renderer* r, const FrameData& fd);
+    void computeAutoExposure(Renderer* r, const FrameData& fd);
+    void renderSSR(Renderer* r, const FrameData& fd);
+    void renderWaterPass(Renderer* r, const FrameData& fd);
+    void renderDoF(Renderer* r, const FrameData& fd);
 
     // Puddle placement
     void placePuddles(Renderer* r);
 
     // T2+ bloom post-processing
-    void renderSceneToFBO(Renderer* r, const FrameContext& fc);
-    void renderBloomPasses(Renderer* r, const FrameContext& fc);
-    void renderComposite(Renderer* r, const FrameContext& fc);
+    void renderSceneToFBO(Renderer* r, const FrameData& fd);
+    void renderBloomPasses(Renderer* r, const FrameData& fd);
+    void renderComposite(Renderer* r, const FrameData& fd);
 
     // Cached uniform blocks (one per shader, zero string ops in hot path)
     UniformBlock ub_island_;
@@ -263,11 +218,9 @@ private:
 
     int viewport_w_, viewport_h_;
     bool initialized_;
-    bool passes_logged_;       // log active passes only once per tier
+    bool passes_logged_;
     float prev_exposure_;
     DemoDebugOverrides debug_;
 
-    // Destination render target: the RT that was active when renderFrame was called.
-    // Post-processing composite passes render TO this RT instead of the default framebuffer.
     RenderTargetHandle dest_rt_;
 };
