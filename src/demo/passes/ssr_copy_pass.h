@@ -14,13 +14,15 @@ public:
                  const SceneData& scene) override;
 
     const ResourceDecl* resourceDecls() const override {
+        // Note: SSRCopy reads HDRColor but BEFORE WaterPass writes to it.
+        // Declaring READ HDRColor would create a cycle with WaterPass
+        // (which reads SSRResult). Ordering is by executionOrder (55 < 60).
         static const ResourceDecl d[] = {
-            { ResourceId::HDRColor, ResourceDecl::READ },
             { ResourceId::SSRResult, ResourceDecl::WRITE }
         };
         return d;
     }
-    int resourceDeclCount() const override { return 2; }
+    int resourceDeclCount() const override { return 1; }
     DemoTier minTier() const override { return DemoTier::Ultra; }
     bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides& dbg) const override;
     int executionOrder() const override { return 55; }

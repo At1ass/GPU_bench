@@ -61,7 +61,10 @@ void buildPipeline(DemoPipeline& pipeline,
         }
     }
 
-    // Adjacency: edge[i] = list of passes that must run after pass i
+    // Adjacency: edge[i] = set of passes that must run after pass i
+    // Use a flat bool matrix to deduplicate edges (max 22x22 = 484 entries)
+    std::vector<std::vector<bool> > has_edge(static_cast<size_t>(n),
+                                              std::vector<bool>(static_cast<size_t>(n), false));
     std::vector<std::vector<size_t> > adj(static_cast<size_t>(n));
     std::vector<int> in_degree(static_cast<size_t>(n), 0);
 
@@ -71,8 +74,19 @@ void buildPipeline(DemoPipeline& pipeline,
             for (size_t ri = 0; ri < readers_buf[rid].size(); ri++) {
                 size_t r = readers_buf[rid][ri];
                 if (w == r) continue;
-                adj[w].push_back(r);
-                in_degree[r]++;
+                // Skip edge if reader is also a writer of the same resource.
+                // Co-writers into the same RT are ordered by executionOrder().
+                bool reader_also_writes = false;
+                for (size_t wj = 0; wj < writers_buf[rid].size(); wj++) {
+                    if (writers_buf[rid][wj] == r) { reader_also_writes = true; break; }
+                }
+                if (reader_also_writes) continue;
+                // Deduplicate: only add edge once
+                if (!has_edge[w][r]) {
+                    has_edge[w][r] = true;
+                    adj[w].push_back(r);
+                    in_degree[r]++;
+                }
             }
         }
     }
@@ -116,14 +130,21 @@ void buildPipeline(DemoPipeline& pipeline,
     if (static_cast<int>(sorted.size()) != n) {
         LOG_ERR("Pipeline: topological sort found cycle! %d of %d passes sorted",
                 static_cast<int>(sorted.size()), n);
+        for (size_t i = 0; i < static_cast<size_t>(n); i++) {
+            if (in_degree[i] > 0)
+                LOG_ERR("  stuck: '%s' (in_degree=%d, order=%d)",
+                        enabled[i]->name(), in_degree[i], enabled[i]->executionOrder());
+        }
     }
 
     // ----------------------------------------------------------
     // Step 4: determine pipeline path and emit nodes
     // ----------------------------------------------------------
-    // Detect rendering path based on which resources are written
+    // Detect rendering path: resource writers + actual RT availability
     bool has_hdr_writer = false;
     bool has_scene_writer = false;
+    bool hdr_rt_available = res.t4.hdr_scene_rt != INVALID_RENDER_TARGET;
+    bool scene_rt_available = res.bloom.scene_rt != INVALID_RENDER_TARGET;
     for (size_t i = 0; i < sorted.size(); i++) {
         const ResourceDecl* decls = sorted[i]->resourceDecls();
         int dc = sorted[i]->resourceDeclCount();
@@ -134,6 +155,10 @@ void buildPipeline(DemoPipeline& pipeline,
             }
         }
     }
+
+    // Path selection: resource writers + RT availability
+    has_hdr_writer = has_hdr_writer && hdr_rt_available;
+    has_scene_writer = has_scene_writer && scene_rt_available;
 
     float fogR = FOG_COLOR.x, fogG = FOG_COLOR.y, fogB = FOG_COLOR.z;
     int shadow_size = res.shadow.map_size > 0 ? res.shadow.map_size : 1024;
