@@ -4,31 +4,10 @@
 #include "demo/demo_debug.h"
 #include "demo/demo_frame_data.h"
 #include "demo/demo_pipeline.h"
-#include "demo/material.h"
+#include "demo/pass_factory.h"
 #include "demo/scene_data.h"
 #include "demo/tier_resource_view.h"
-#include "demo/uniform_block.h"
-#include "demo/passes/sky_pass.h"
-#include "demo/passes/shadow_pass.h"
-#include "demo/passes/opaque_pass.h"
-#include "demo/passes/grass_instanced_pass.h"
-#include "demo/passes/fur_pass.h"
-#include "demo/passes/particle_pass.h"
-#include "demo/passes/ssao_pass.h"
-#include "demo/passes/bloom_pass.h"
-#include "demo/passes/composite_pass.h"
-#include "demo/passes/scene_to_fbo_pass.h"
-#include "demo/passes/hdr_composite_pass.h"
-#include "demo/passes/compute_particles_pass.h"
-#include "demo/passes/compute_particles_draw_pass.h"
-#include "demo/passes/tessellated_model_pass.h"
-#include "demo/passes/gtao_pass.h"
-#include "demo/passes/bloom_compute_pass.h"
-#include "demo/passes/auto_exposure_pass.h"
-#include "demo/passes/volumetric_fog_pass.h"
-#include "demo/passes/water_pass.h"
-#include "demo/passes/ssr_pass.h"
-#include "demo/passes/dof_pass.h"
+#include <memory>
 #include <vector>
 
 // Demo tier levels matching GL capability
@@ -57,10 +36,10 @@ struct DemoTierConfig {
     DemoTier tier;
 
     // Fur
-    int fur_shells;              // 16, 24, 48, 64
-    float fur_length;            // world-space fur length
-    float fur_density;           // strands per UV unit
-    float fur_thickness;         // strand radius factor
+    int fur_shells;
+    float fur_length;
+    float fur_density;
+    float fur_thickness;
 
     // Scene
     float fog_density;
@@ -77,14 +56,14 @@ struct DemoTierConfig {
     bool enable_wind;
 
     // Instanced grass (T2+)
-    int instanced_grass_count;  // T2+: number of instanced grass blades (0 = use batched)
-    float grass_area_size;      // area to scatter grass
+    int instanced_grass_count;
+    float grass_area_size;
 
     // Shadow mapping (T2+)
     bool enable_shadows;
     int shadow_map_size;
 
-    // Bloom post-processing (T2+)
+    // Bloom (T2+)
     bool enable_bloom;
     float bloom_strength;
 
@@ -121,9 +100,9 @@ struct DemoTierConfig {
     float grain_strength;
     float dof_focal_distance;
     float dof_strength;
-    float light_size;            // PCSS light size
-    int fog_steps;               // volumetric fog raymarch steps
-    float displacement_strength; // tessellation displacement
+    float light_size;
+    int fog_steps;
+    float displacement_strength;
 };
 
 DemoTierConfig getTierConfig(DemoTier tier);
@@ -131,6 +110,8 @@ TechniqueInfo getTierTechniqueInfo(DemoTier tier, int object_count);
 int maxSupportedTier(const Renderer& r);
 
 // Demo scene: OBJ model with fur, orbiting camera.
+// Render passes are created by pass_factory and accessed through
+// DemoRenderPass* base pointers — no concrete pass types visible here.
 class DemoScene {
 public:
     DemoScene();
@@ -172,28 +153,9 @@ private:
 
     Mat4 model_transform_;
 
-    // Pass objects (owned by DemoScene)
-    SkyPass sky_pass_;
-    ShadowPass shadow_pass_;
-    OpaquePass opaque_pass_;
-    GrassInstancedPass grass_pass_;
-    FurPass fur_pass_;
-    ParticlePass particle_pass_;
-    SSAOPass ssao_pass_;
-    BloomPass bloom_pass_;
-    CompositePass composite_pass_;
-    SceneToFBOPass scene_to_fbo_pass_;
-    HDRCompositePass hdr_composite_pass_;
-    ComputeParticlesPass compute_particles_pass_;
-    ComputeParticlesDrawPass compute_particles_draw_pass_;
-    TessellatedModelPass tess_model_pass_;
-    GTAOPass gtao_pass_;
-    BloomComputePass bloom_compute_pass_;
-    AutoExposurePass auto_exposure_pass_;
-    VolumetricFogPass vol_fog_pass_;
-    WaterPass water_pass_;
-    SSRPass ssr_pass_;
-    DoFPass dof_pass_;
+    // Render passes (owned via unique_ptr, accessed via base pointers)
+    std::vector<std::unique_ptr<DemoRenderPass>> passes_;
+    DemoPassSet pass_;  // named non-owning pointers into passes_
 
     DemoPipeline pipeline_;
 
@@ -204,10 +166,8 @@ private:
 
     RenderTargetHandle dest_rt_;
 
-    // Frame data construction (extracted from renderFrame)
     FrameData buildFrameData(float t, float time, int w, int h, RenderTargetHandle dest_rt);
 
-    // SSR framebuffer copy command (static, used as PipelineCommandFn)
     static void ssrCopyCommand(Renderer* r, FrameData& fd,
                                const TierResourceView& res,
                                const DemoTierConfig& cfg,

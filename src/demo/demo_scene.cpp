@@ -188,31 +188,8 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     scene_data_.model_mesh = model_mesh_;
     scene_data_.model_transform = model_transform_;
 
-    // Initialize pass objects
-    sky_pass_.init(res_);
-    shadow_pass_.init(res_);
-    opaque_pass_.init(res_);
-    grass_pass_.init(res_);
-    fur_pass_.init(res_);
-    particle_pass_.init(res_);
-    ssao_pass_.init(res_);
-    bloom_pass_.init(res_);
-    composite_pass_.init(res_);
-    hdr_composite_pass_.init(res_);
-    compute_particles_pass_.init(res_);
-    compute_particles_draw_pass_.init(res_);
-    tess_model_pass_.init(res_);
-    gtao_pass_.init(res_);
-    bloom_compute_pass_.init(res_);
-    auto_exposure_pass_.init(res_);
-    vol_fog_pass_.init(res_);
-    water_pass_.init(res_);
-    ssr_pass_.init(res_);
-    dof_pass_.init(res_);
-
-    // Wire sub-pass dependencies
-    tess_model_pass_.setFurPass(&fur_pass_);
-    scene_to_fbo_pass_.setSubPasses(&sky_pass_, &opaque_pass_, &grass_pass_, &fur_pass_, &particle_pass_);
+    // Create all render passes via factory (DemoScene only sees DemoRenderPass*)
+    pass_ = createPasses(passes_, res_, config_);
 
     // Build render pipeline for this tier
     pipeline_.clear();
@@ -225,74 +202,74 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
 
         // Pre-scene passes
         if (config_.enable_shadows)
-            pipeline_.addPass(&shadow_pass_);
+            pipeline_.addPass(pass_.shadow);
         if (config_.enable_compute_particles)
-            pipeline_.addPass(&compute_particles_pass_);
+            pipeline_.addPass(pass_.compute_particles);
 
         // Scene to HDR FBO
-        pipeline_.addPassWithRT(&sky_pass_, res_.t4.hdr_scene_rt,
+        pipeline_.addPassWithRT(pass_.sky, res_.t4.hdr_scene_rt,
                                 true, FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
                                 viewport_w_, viewport_h_);
-        pipeline_.addPass(&opaque_pass_);
-        pipeline_.addPass(&grass_pass_);
-        pipeline_.addPass(&tess_model_pass_, config_.enable_tessellation);
-        pipeline_.addPass(&fur_pass_, !config_.enable_tessellation);
-        pipeline_.addPass(&compute_particles_draw_pass_, config_.enable_compute_particles);
-        pipeline_.addPass(&particle_pass_, !config_.enable_compute_particles);
+        pipeline_.addPass(pass_.opaque);
+        pipeline_.addPass(pass_.grass);
+        pipeline_.addPass(pass_.tess_model, config_.enable_tessellation);
+        pipeline_.addPass(pass_.fur, !config_.enable_tessellation);
+        pipeline_.addPass(pass_.compute_particles_draw, config_.enable_compute_particles);
+        pipeline_.addPass(pass_.particle, !config_.enable_compute_particles);
 
         // SSR copy + water
         pipeline_.addCommand(&DemoScene::ssrCopyCommand,
                              config_.enable_ssr && res_.t4.ssr_tex != INVALID_TEXTURE);
-        pipeline_.addPass(&water_pass_);
+        pipeline_.addPass(pass_.water);
 
         // Unbind scene FBO
         pipeline_.addRTSwitch(INVALID_RENDER_TARGET);
 
         // Post-processing
-        pipeline_.addPass(&auto_exposure_pass_,
+        pipeline_.addPass(pass_.auto_exposure,
                           config_.enable_auto_exposure && !debug_.skip_auto_exposure);
 
         bool use_gtao = !debug_.skip_gtao && config_.enable_gtao
                         && res_.t4.gtao_shader != nullptr && res_.t4.gtao_tex != INVALID_TEXTURE;
-        pipeline_.addPass(&gtao_pass_, use_gtao);
-        pipeline_.addPass(&ssao_pass_, config_.enable_ssao && !use_gtao);
+        pipeline_.addPass(pass_.gtao, use_gtao);
+        pipeline_.addPass(pass_.ssao, config_.enable_ssao && !use_gtao);
 
-        pipeline_.addPass(&vol_fog_pass_,
+        pipeline_.addPass(pass_.vol_fog,
                           config_.enable_volumetric_fog && !debug_.skip_vol_fog);
 
         bool use_compute_bloom = !debug_.skip_compute_bloom && config_.enable_compute_bloom
                                  && res_.t4.bloom_down_compute != nullptr
                                  && res_.t4.bloom_mips[0] != INVALID_TEXTURE;
-        pipeline_.addPass(&bloom_compute_pass_, use_compute_bloom);
-        pipeline_.addPass(&bloom_pass_, config_.enable_bloom && !use_compute_bloom);
+        pipeline_.addPass(pass_.bloom_compute, use_compute_bloom);
+        pipeline_.addPass(pass_.bloom, config_.enable_bloom && !use_compute_bloom);
 
-        pipeline_.addPass(&dof_pass_,
+        pipeline_.addPass(pass_.dof,
                           config_.enable_dof && res_.t4.dof_shader != nullptr && !debug_.skip_dof);
 
         // Barrier + final composite
         pipeline_.addBarrier(4);
-        pipeline_.addPassToDest(&hdr_composite_pass_, false, 0.0f, 0.0f, 0.0f, 0.0f,
+        pipeline_.addPassToDest(pass_.hdr_composite, false, 0.0f, 0.0f, 0.0f, 0.0f,
                                 viewport_w_, viewport_h_);
     } else if (is_t2t3_bloom) {
         // T2/T3 pipeline
         if (config_.enable_shadows)
-            pipeline_.addPass(&shadow_pass_);
-        pipeline_.addPass(&scene_to_fbo_pass_);
+            pipeline_.addPass(pass_.shadow);
+        pipeline_.addPass(pass_.scene_to_fbo);
         if (config_.enable_ssao)
-            pipeline_.addPass(&ssao_pass_);
-        pipeline_.addPass(&bloom_pass_);
-        pipeline_.addPass(&composite_pass_);
+            pipeline_.addPass(pass_.ssao);
+        pipeline_.addPass(pass_.bloom);
+        pipeline_.addPass(pass_.composite);
     } else {
         // T1 Basic pipeline
         if (config_.enable_shadows)
-            pipeline_.addPass(&shadow_pass_);
+            pipeline_.addPass(pass_.shadow);
         pipeline_.addDefaultFBWithClear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
                                         viewport_w_, viewport_h_);
-        pipeline_.addPass(&sky_pass_);
-        pipeline_.addPass(&opaque_pass_);
-        pipeline_.addPass(&grass_pass_);
-        pipeline_.addPass(&fur_pass_);
-        pipeline_.addPass(&particle_pass_);
+        pipeline_.addPass(pass_.sky);
+        pipeline_.addPass(pass_.opaque);
+        pipeline_.addPass(pass_.grass);
+        pipeline_.addPass(pass_.fur);
+        pipeline_.addPass(pass_.particle);
     }
 
     LOG_DBG("Pipeline: %d passes (%d enabled) for tier %d",
