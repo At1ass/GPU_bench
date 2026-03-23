@@ -204,6 +204,7 @@ set(SOURCES
     src/demo/passes/volumetric_fog_pass.cpp
     src/demo/passes/water_pass.cpp
     src/demo/passes/ssr_pass.cpp
+    src/demo/passes/ssr_copy_pass.cpp
     src/demo/passes/dof_pass.cpp
 
     # UI

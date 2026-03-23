@@ -20,6 +20,7 @@
 #include "demo/passes/volumetric_fog_pass.h"
 #include "demo/passes/water_pass.h"
 #include "demo/passes/ssr_pass.h"
+#include "demo/passes/ssr_copy_pass.h"
 #include "demo/passes/dof_pass.h"
 
 // Helper: create, init, push to vector, return raw pointer
@@ -37,7 +38,7 @@ DemoPassSet createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
                          const TierResourceView& res,
                          const DemoTierConfig& cfg) {
     out.clear();
-    out.reserve(21);
+    out.reserve(22);
 
     DemoPassSet s;
 
@@ -81,6 +82,7 @@ DemoPassSet createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
     s.vol_fog        = make<VolumetricFogPass>(out, res);
     s.water          = make<WaterPass>(out, res);
     s.ssr            = make<SSRPass>(out, res);
+    s.ssr_copy       = make<SSRCopyPass>(out, res);
     s.dof            = make<DoFPass>(out, res);
 
     (void)cfg; // cfg available for future conditional pass creation

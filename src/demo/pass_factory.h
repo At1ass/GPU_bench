@@ -30,6 +30,7 @@ struct DemoPassSet {
     DemoRenderPass* vol_fog;
     DemoRenderPass* water;
     DemoRenderPass* ssr;
+    DemoRenderPass* ssr_copy;
     DemoRenderPass* dof;
 
     DemoPassSet() : sky(nullptr), shadow(nullptr), opaque(nullptr),
@@ -38,7 +39,7 @@ struct DemoPassSet {
         hdr_composite(nullptr), compute_particles(nullptr),
         compute_particles_draw(nullptr), tess_model(nullptr),
         gtao(nullptr), bloom_compute(nullptr), auto_exposure(nullptr),
-        vol_fog(nullptr), water(nullptr), ssr(nullptr), dof(nullptr) {}
+        vol_fog(nullptr), water(nullptr), ssr(nullptr), ssr_copy(nullptr), dof(nullptr) {}
 };
 
 // Create all render passes for a given tier. Returns owned pointers

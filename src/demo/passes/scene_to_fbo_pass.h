@@ -1,5 +1,6 @@
 #pragma once
 #include "demo/render_pass.h"
+#include "demo/demo_scene.h"
 
 // Renders the full scene (sky, opaque, grass, fur, particles) into the bloom scene FBO.
 // Sub-passes are invoked via stored pointers set by setSubPasses().
@@ -24,6 +25,22 @@ public:
 
     void execute(Renderer* r, FrameData& fd, const TierResourceView& res,
                  const DemoTierConfig& cfg, const SceneData& scene) override;
+
+    const ResourceDecl* resourceDecls() const override {
+        static const ResourceDecl d[] = {
+            { ResourceId::ShadowMap,   ResourceDecl::READ },
+            { ResourceId::SceneColor,  ResourceDecl::WRITE },
+            { ResourceId::SceneDepth,  ResourceDecl::WRITE }
+        };
+        return d;
+    }
+    int resourceDeclCount() const override { return 3; }
+    DemoTier minTier() const override { return DemoTier::Enhanced; }
+    bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides&) const override {
+        return cfg.enable_bloom && !cfg.enable_hdr;
+    }
+    int executionOrder() const override { return 70; }
+    QueueType queueType() const override { return QueueType::Graphics; }
 
 private:
     DemoRenderPass* sky_pass_;
