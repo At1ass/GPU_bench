@@ -4,6 +4,7 @@
 #include "demo/demo_debug.h"
 #include "demo/material.h"
 #include "demo/tier_resource_view.h"
+#include "demo/uniform_block.h"
 #include <vector>
 
 // Demo tier levels matching GL capability
@@ -233,6 +234,32 @@ private:
     void renderSceneToFBO(Renderer* r, const FrameContext& fc);
     void renderBloomPasses(Renderer* r, const FrameContext& fc);
     void renderComposite(Renderer* r, const FrameContext& fc);
+
+    // Cached uniform blocks (one per shader, zero string ops in hot path)
+    UniformBlock ub_island_;
+    UniformBlock ub_fur_;
+    UniformBlock ub_grass_;
+    UniformBlock ub_sky_;
+    UniformBlock ub_particle_;
+    UniformBlock ub_shadow_;
+    UniformBlock ub_ssao_;
+    UniformBlock ub_ssao_blur_;
+    UniformBlock ub_bloom_extract_;
+    UniformBlock ub_bloom_blur_;
+    UniformBlock ub_bloom_composite_;
+    UniformBlock ub_tess_;
+    UniformBlock ub_compute_particle_;
+    UniformBlock ub_particle_render_;
+    UniformBlock ub_vol_fog_;
+    UniformBlock ub_tone_map_;
+    UniformBlock ub_gtao_;
+    UniformBlock ub_gtao_blur_;
+    UniformBlock ub_bloom_down_;
+    UniformBlock ub_bloom_up_;
+    UniformBlock ub_histogram_;
+    UniformBlock ub_exposure_;
+    UniformBlock ub_ssr_;
+    UniformBlock ub_dof_;
 
     int viewport_w_, viewport_h_;
     bool initialized_;

@@ -1,6 +1,7 @@
 #include "demo/demo_scene.h"
 #include "demo/tier_config_validate.h"
 #include "demo/shader_loader.h"
+#include "demo/uniform_id.h"
 #include "renderer/features.h"
 #include "renderer/gl_funcs.h"
 #include "geometry/mesh_gen.h"
@@ -248,6 +249,32 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     viewport_h_ = viewport_h;
     res_ = resources;
 
+    // Init uniform blocks (resolve locations lazily on first set())
+    ub_island_.init(res_.core.island_shader);
+    ub_fur_.init(res_.core.fur_shader);
+    ub_sky_.init(res_.core.sky_shader);
+    ub_particle_.init(res_.core.particle_shader);
+    ub_shadow_.init(res_.shadow.shader);
+    ub_grass_.init(res_.grass.shader);
+    ub_ssao_.init(res_.ssao.shader);
+    ub_ssao_blur_.init(res_.ssao.blur_shader);
+    ub_bloom_extract_.init(res_.bloom.extract_shader);
+    ub_bloom_blur_.init(res_.bloom.blur_shader);
+    ub_bloom_composite_.init(res_.bloom.composite_shader);
+    ub_tess_.init(res_.t4.tess_shader);
+    ub_compute_particle_.init(res_.t4.compute_particle_shader);
+    ub_particle_render_.init(res_.t4.particle_render_shader);
+    ub_vol_fog_.init(res_.t4.volumetric_fog_shader);
+    ub_tone_map_.init(res_.t4.tone_map_shader);
+    ub_gtao_.init(res_.t4.gtao_shader);
+    ub_gtao_blur_.init(res_.t4.gtao_blur_shader);
+    ub_bloom_down_.init(res_.t4.bloom_down_compute);
+    ub_bloom_up_.init(res_.t4.bloom_up_compute);
+    ub_histogram_.init(res_.t4.histogram_shader);
+    ub_exposure_.init(res_.t4.exposure_shader);
+    ub_ssr_.init(res_.t4.ssr_shader);
+    ub_dof_.init(res_.t4.dof_shader);
+
     int t = static_cast<int>(tier);
     LOG_INF("Demo scene setup: tier %d, viewport %dx%d", t, viewport_w, viewport_h);
 
@@ -314,14 +341,14 @@ void DemoScene::renderShadowPass(Renderer* r, const FrameContext& fc) {
     r->setDepthMask(true);
     r->setCullFace(true);
 
-    res_.shadow.shader->use();
-    res_.shadow.shader->setMat4("u_light_vp", fc.light_vp);
+    ub_shadow_.use();
+    ub_shadow_.set(U::LightVP, fc.light_vp);
 
     // Render all opaque objects into shadow map
     // (model base mesh is already in opaque_objects_, so fur also casts shadow)
     for (size_t i = 0; i < opaque_objects_.size(); i++) {
         const SceneObject& obj = opaque_objects_[i];
-        res_.shadow.shader->setMat4("u_model", obj.transform);
+        ub_shadow_.set(U::Model, obj.transform);
         r->drawMesh(obj.mesh);
     }
 
@@ -338,11 +365,11 @@ void DemoScene::renderSky(Renderer* r, const FrameContext& fc) {
     r->setDepthTest(false);
     r->setCullFace(false);
 
-    res_.core.sky_shader->use();
-    res_.core.sky_shader->setMat4("u_proj", fc.proj);
-    res_.core.sky_shader->setMat4("u_view", fc.view);
-    res_.core.sky_shader->set3f("u_sun_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.core.sky_shader->set1f("u_time", fc.time);
+    ub_sky_.use();
+    ub_sky_.set(U::Proj, fc.proj);
+    ub_sky_.set(U::View, fc.view);
+    ub_sky_.set(U::SunDir, fc.sun_dir);
+    ub_sky_.set(U::Time, fc.time);
 
     r->drawMesh(res_.core.sky_mesh);
 
@@ -385,67 +412,67 @@ void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameContext&
 void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
     if (!res_.core.island_shader) return;
 
-    res_.core.island_shader->use();
+    ub_island_.use();
 
-    res_.core.island_shader->setMat4("u_proj", fc.proj);
-    res_.core.island_shader->setMat4("u_view", fc.view);
-    res_.core.island_shader->set3f("u_light_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.core.island_shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
-    res_.core.island_shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
-    res_.core.island_shader->set1f("u_fog_density", config_.fog_density);
-    res_.core.island_shader->set1f("u_time", fc.time);
-    res_.core.island_shader->set1f("u_normal_strength", config_.enable_normal_maps ? config_.normal_map_strength : 0.0f);
+    ub_island_.set(U::Proj, fc.proj);
+    ub_island_.set(U::View, fc.view);
+    ub_island_.set(U::LightDir, fc.sun_dir);
+    ub_island_.set(U::CamPos, fc.cam_pos);
+    ub_island_.set(U::FogColor, FOG_COLOR);
+    ub_island_.set(U::FogDensity, config_.fog_density);
+    ub_island_.set(U::Time, fc.time);
+    ub_island_.set(U::NormalStrength, config_.enable_normal_maps ? config_.normal_map_strength : 0.0f);
 
     // Wind direction (same as fur pass for consistency)
     if (config_.enable_wind) {
         float wind_x = sinf(fc.time * 0.7f) * 1.8f;
         float wind_z = cosf(fc.time * 0.5f) * 1.2f;
-        res_.core.island_shader->set3f("u_wind_dir", wind_x, 0.0f, wind_z);
+        ub_island_.set(U::WindDir, wind_x, 0.0f, wind_z);
     } else {
-        res_.core.island_shader->set3f("u_wind_dir", 0.0f, 0.0f, 0.0f);
+        ub_island_.set(U::WindDir, 0.0f, 0.0f, 0.0f);
     }
 
     // Viewport size for vignette + color grading
-    res_.core.island_shader->set2f("u_viewport_size",
+    ub_island_.set(U::ViewportSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
     // PBR default uniforms (T4) — overridden per-object if set
     float default_metallic = 0.0f;
     float default_roughness = 0.6f;
     if (config_.enable_pbr) {
-        res_.core.island_shader->set1f("u_metallic", default_metallic);
-        res_.core.island_shader->set1f("u_roughness", default_roughness);
+        ub_island_.set(U::Metallic, default_metallic);
+        ub_island_.set(U::Roughness, default_roughness);
     }
 
     // PCSS / SSS uniforms (T4 Ultra)
     if (config_.enable_pcss) {
         float texel = 1.0f / static_cast<float>(config_.shadow_map_size);
-        res_.core.island_shader->set2f("u_shadow_texel_size", texel, texel);
-        res_.core.island_shader->set1f("u_light_size", config_.light_size);
+        ub_island_.set(U::ShadowTexelSize, texel, texel);
+        ub_island_.set(U::LightSize, config_.light_size);
     }
     if (config_.enable_sss) {
-        res_.core.island_shader->set1f("u_sss_strength", config_.sss_strength);
+        ub_island_.set(U::SssStrength, config_.sss_strength);
     } else {
-        res_.core.island_shader->set1f("u_sss_strength", 0.0f);
+        ub_island_.set(U::SssStrength, 0.0f);
     }
 
     // Shadow uniforms (T2+)
     if (fc.has_shadows) {
-        res_.core.island_shader->setMat4("u_light_vp", fc.light_vp);
+        ub_island_.set(U::LightVP, fc.light_vp);
         r->bindTextureUnit(3, res_.shadow.depth_tex);
-        res_.core.island_shader->set1i("u_shadow_map", 3);
-        res_.core.island_shader->set1f("u_has_shadow", 1.0f);
+        ub_island_.set(U::ShadowMap, 3);
+        ub_island_.set(U::HasShadow, 1.0f);
     } else {
-        res_.core.island_shader->set1f("u_has_shadow", 0.0f);
+        ub_island_.set(U::HasShadow, 0.0f);
     }
 
     // Normal map texture (T3+)
     if (res_.normal_map_tex != INVALID_TEXTURE) {
         r->bindTextureUnit(4, res_.normal_map_tex);
-        res_.core.island_shader->set1i("u_normal_map", 4);
-        res_.core.island_shader->set1f("u_has_normal_map", 1.0f);
+        ub_island_.set(U::NormalMap, 4);
+        ub_island_.set(U::HasNormalMap, 1.0f);
     } else {
-        res_.core.island_shader->set1f("u_has_normal_map", 0.0f);
+        ub_island_.set(U::HasNormalMap, 0.0f);
     }
 
     // Point lights (T3+)
@@ -458,21 +485,21 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
         if (!sphereInFrustum(fc.frustum, obj.bounds_center, obj.bounds_radius))
             continue;
 
-        res_.core.island_shader->setMat4("u_model", obj.transform);
-        res_.core.island_shader->set3f("u_mat_color", obj.color.x, obj.color.y, obj.color.z);
-        res_.core.island_shader->set1f("u_mat_spec", obj.specular);
-        res_.core.island_shader->set1f("u_alpha", 1.0f);
-        res_.core.island_shader->set1f("u_proc_tex", obj.material == MaterialType::Island ? 1.0f : 0.0f);
-        res_.core.island_shader->set1f("u_vertex_wind", obj.vertex_wind ? 1.0f : 0.0f);
+        ub_island_.set(U::Model, obj.transform);
+        ub_island_.set(U::MatColor, obj.color);
+        ub_island_.set(U::MatSpec, obj.specular);
+        ub_island_.set(U::Alpha, 1.0f);
+        ub_island_.set(U::ProcTex, obj.material == MaterialType::Island ? 1.0f : 0.0f);
+        ub_island_.set(U::VertexWind, obj.vertex_wind ? 1.0f : 0.0f);
 
         // Per-object PBR overrides
         if (config_.enable_pbr && obj.metallic >= 0.0f) {
-            res_.core.island_shader->set1f("u_metallic", obj.metallic);
-            res_.core.island_shader->set1f("u_roughness", obj.roughness);
+            ub_island_.set(U::Metallic, obj.metallic);
+            ub_island_.set(U::Roughness, obj.roughness);
         }
 
         // Water flag
-        res_.core.island_shader->set1f("u_is_water", 0.0f);
+        ub_island_.set(U::IsWater, 0.0f);
 
         if (obj.two_sided) r->setCullFace(false);
         r->drawMesh(obj.mesh);
@@ -480,8 +507,8 @@ void DemoScene::renderOpaquePass(Renderer* r, const FrameContext& fc) {
 
         // Restore defaults after per-object override
         if (config_.enable_pbr && obj.metallic >= 0.0f) {
-            res_.core.island_shader->set1f("u_metallic", default_metallic);
-            res_.core.island_shader->set1f("u_roughness", default_roughness);
+            ub_island_.set(U::Metallic, default_metallic);
+            ub_island_.set(U::Roughness, default_roughness);
         }
     }
 }
@@ -497,37 +524,37 @@ void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
     GL3Features* g3 = r->features<GL3Features>();
     if (!g3 || !g3->hasInstancing()) return;
 
-    res_.grass.shader->use();
-    res_.grass.shader->setMat4("u_proj", fc.proj);
-    res_.grass.shader->setMat4("u_view", fc.view);
-    res_.grass.shader->setMat4("u_model", Mat4());
-    res_.grass.shader->set3f("u_light_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.grass.shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
-    res_.grass.shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
-    res_.grass.shader->set1f("u_fog_density", config_.fog_density);
-    res_.grass.shader->set1f("u_time", fc.time);
-    res_.grass.shader->set1i("u_grass_count", config_.instanced_grass_count);
-    res_.grass.shader->set1f("u_area_size", config_.grass_area_size);
+    ub_grass_.use();
+    ub_grass_.set(U::Proj, fc.proj);
+    ub_grass_.set(U::View, fc.view);
+    ub_grass_.set(U::Model, Mat4());
+    ub_grass_.set(U::LightDir, fc.sun_dir);
+    ub_grass_.set(U::CamPos, fc.cam_pos);
+    ub_grass_.set(U::FogColor, FOG_COLOR);
+    ub_grass_.set(U::FogDensity, config_.fog_density);
+    ub_grass_.set(U::Time, fc.time);
+    ub_grass_.set(U::GrassCount, config_.instanced_grass_count);
+    ub_grass_.set(U::AreaSize, config_.grass_area_size);
 
     // Wind (same as fur)
     if (config_.enable_wind) {
         float wind_x = sinf(fc.time * 0.7f) * 1.8f;
         float wind_z = cosf(fc.time * 0.5f) * 1.2f;
-        res_.grass.shader->set3f("u_wind_dir", wind_x, 0.0f, wind_z);
+        ub_grass_.set(U::WindDir, wind_x, 0.0f, wind_z);
     } else {
-        res_.grass.shader->set3f("u_wind_dir", 0.0f, 0.0f, 0.0f);
+        ub_grass_.set(U::WindDir, 0.0f, 0.0f, 0.0f);
     }
 
     // PCSS uniforms (T4 Ultra)
     if (config_.enable_pcss) {
         float texel = 1.0f / static_cast<float>(config_.shadow_map_size);
-        res_.grass.shader->set2f("u_shadow_texel_size", texel, texel);
-        res_.grass.shader->set1f("u_light_size", config_.light_size);
+        ub_grass_.set(U::ShadowTexelSize, texel, texel);
+        ub_grass_.set(U::LightSize, config_.light_size);
     }
 
-    // Puddle exclusion zones (T4 Ultra)
+    // Puddle exclusion zones (T4 Ultra) — array uniforms, keep string-based
     if (config_.enable_ssr) {
-        res_.grass.shader->set1i("u_puddle_count", 3);
+        ub_grass_.set(U::PuddleCount, 3);
         res_.grass.shader->set3f("u_puddle_pos[0]", 2.5f, 0.0f, 0.8f);
         res_.grass.shader->set3f("u_puddle_pos[1]", -1.8f, 0.0f, 2.2f);
         res_.grass.shader->set3f("u_puddle_pos[2]", 0.5f, 0.0f, -2.5f);
@@ -535,17 +562,17 @@ void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
         res_.grass.shader->set1f("u_puddle_radius[1]", 1.2f);
         res_.grass.shader->set1f("u_puddle_radius[2]", 1.0f);
     } else {
-        res_.grass.shader->set1i("u_puddle_count", 0);
+        ub_grass_.set(U::PuddleCount, 0);
     }
 
     // Shadow
     if (fc.has_shadows) {
-        res_.grass.shader->setMat4("u_light_vp", fc.light_vp);
+        ub_grass_.set(U::LightVP, fc.light_vp);
         r->bindTextureUnit(3, res_.shadow.depth_tex);
-        res_.grass.shader->set1i("u_shadow_map", 3);
-        res_.grass.shader->set1f("u_has_shadow", 1.0f);
+        ub_grass_.set(U::ShadowMap, 3);
+        ub_grass_.set(U::HasShadow, 1.0f);
     } else {
-        res_.grass.shader->set1f("u_has_shadow", 0.0f);
+        ub_grass_.set(U::HasShadow, 0.0f);
     }
 
     // Point lights (T3+)
@@ -569,42 +596,42 @@ void DemoScene::renderGrassInstanced(Renderer* r, const FrameContext& fc) {
 void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
     if (!res_.core.fur_shader || model_mesh_ == MeshHandle() || res_.core.fur_tex == INVALID_TEXTURE) return;
 
-    res_.core.fur_shader->use();
-    res_.core.fur_shader->setMat4("u_proj", fc.proj);
-    res_.core.fur_shader->setMat4("u_view", fc.view);
-    res_.core.fur_shader->setMat4("u_model", model_transform_);
-    res_.core.fur_shader->set3f("u_light_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.core.fur_shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
-    res_.core.fur_shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
-    res_.core.fur_shader->set1f("u_fog_density", config_.fog_density);
-    res_.core.fur_shader->set1f("u_fur_length", config_.fur_length);
-    res_.core.fur_shader->set1f("u_fur_ao_power", 1.5f);
-    res_.core.fur_shader->set1f("u_time", fc.time);
+    ub_fur_.use();
+    ub_fur_.set(U::Proj, fc.proj);
+    ub_fur_.set(U::View, fc.view);
+    ub_fur_.set(U::Model, model_transform_);
+    ub_fur_.set(U::LightDir, fc.sun_dir);
+    ub_fur_.set(U::CamPos, fc.cam_pos);
+    ub_fur_.set(U::FogColor, FOG_COLOR);
+    ub_fur_.set(U::FogDensity, config_.fog_density);
+    ub_fur_.set(U::FurLength, config_.fur_length);
+    ub_fur_.set(U::FurAoPower, 1.5f);
+    ub_fur_.set(U::Time, fc.time);
 
     // Breeze: slowly varying direction
     float wind_x = sinf(fc.time * 0.7f) * 1.8f;
     float wind_z = cosf(fc.time * 0.5f) * 1.2f;
-    res_.core.fur_shader->set3f("u_wind_dir", wind_x, 0.0f, wind_z);
+    ub_fur_.set(U::WindDir, wind_x, 0.0f, wind_z);
 
     // Viewport size for vignette + color grading
-    res_.core.fur_shader->set2f("u_viewport_size",
+    ub_fur_.set(U::ViewportSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
     // PCSS uniforms (T4 Ultra)
     if (config_.enable_pcss) {
         float texel = 1.0f / static_cast<float>(config_.shadow_map_size);
-        res_.core.fur_shader->set2f("u_shadow_texel_size", texel, texel);
-        res_.core.fur_shader->set1f("u_light_size", config_.light_size);
+        ub_fur_.set(U::ShadowTexelSize, texel, texel);
+        ub_fur_.set(U::LightSize, config_.light_size);
     }
 
     // Shadow uniforms (T2+)
     if (fc.has_shadows) {
-        res_.core.fur_shader->setMat4("u_light_vp", fc.light_vp);
+        ub_fur_.set(U::LightVP, fc.light_vp);
         r->bindTextureUnit(3, res_.shadow.depth_tex);
-        res_.core.fur_shader->set1i("u_shadow_map", 3);
-        res_.core.fur_shader->set1f("u_has_shadow", 1.0f);
+        ub_fur_.set(U::ShadowMap, 3);
+        ub_fur_.set(U::HasShadow, 1.0f);
     } else {
-        res_.core.fur_shader->set1f("u_has_shadow", 0.0f);
+        ub_fur_.set(U::HasShadow, 0.0f);
     }
 
     // Point lights (T3+)
@@ -612,26 +639,26 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
 
     // Fur strand texture: unit 0
     r->bindTextureUnit(0, res_.core.fur_tex);
-    res_.core.fur_shader->set1i("u_fur_tex", 0);
+    ub_fur_.set(U::FurTex, 0);
 
     // Fur intensity mask: unit 1
     if (res_.core.fur_mask_tex != INVALID_TEXTURE) {
         r->bindTextureUnit(1, res_.core.fur_mask_tex);
-        res_.core.fur_shader->set1i("u_fur_mask", 1);
-        res_.core.fur_shader->set1f("u_has_fur_mask", 1.0f);
+        ub_fur_.set(U::FurMask, 1);
+        ub_fur_.set(U::HasFurMask, 1.0f);
     } else {
-        res_.core.fur_shader->set1f("u_has_fur_mask", 0.0f);
+        ub_fur_.set(U::HasFurMask, 0.0f);
     }
 
     float tex_scale = config_.fur_density * 0.05f;
-    res_.core.fur_shader->set1f("u_fur_tex_scale", tex_scale);
+    ub_fur_.set(U::FurTexScale, tex_scale);
 
     // PBR material: fur should be rough and non-metallic
-    res_.core.fur_shader->set1f("u_metallic", 0.0f);
-    res_.core.fur_shader->set1f("u_roughness", 0.85f);
+    ub_fur_.set(U::Metallic, 0.0f);
+    ub_fur_.set(U::Roughness, 0.85f);
 
-    res_.core.fur_shader->set3f("u_fur_color_root", 0.30f, 0.18f, 0.08f);
-    res_.core.fur_shader->set3f("u_fur_color_tip", 0.72f, 0.55f, 0.32f);
+    ub_fur_.set(U::FurColorRoot, 0.30f, 0.18f, 0.08f);
+    ub_fur_.set(U::FurColorTip, 0.72f, 0.55f, 0.32f);
 
     r->setDepthTest(true);
     r->setDepthMask(false); // fur shells don't write depth (opaque pass already did)
@@ -647,14 +674,14 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
     bool use_instancing = (tier_ >= DemoTier::Enhanced) && g3 && g3->hasInstancing();
 
     if (use_instancing) {
-        res_.core.fur_shader->set1i("u_use_instancing", 1);
-        res_.core.fur_shader->set1i("u_fur_shells", num_shells);
+        ub_fur_.set(U::UseInstancing, 1.0f);
+        ub_fur_.set(U::FurShells, static_cast<float>(num_shells));
         g3->drawMeshInstanced(model_mesh_, num_shells - 1);
     } else {
-        res_.core.fur_shader->set1i("u_use_instancing", 0);
+        ub_fur_.set(U::UseInstancing, 0.0f);
         for (int i = 1; i < num_shells; i++) {
             float shell_index = static_cast<float>(i) / static_cast<float>(num_shells - 1);
-            res_.core.fur_shader->set1f("u_shell_index", shell_index);
+            ub_fur_.set(U::ShellIndex, shell_index);
             r->drawMesh(model_mesh_);
         }
     }
@@ -671,10 +698,10 @@ void DemoScene::renderFurPass(Renderer* r, const FrameContext& fc) {
 void DemoScene::renderParticlePass(Renderer* r, const FrameContext& fc) {
     if (!res_.core.particle_shader || res_.core.particle_mesh == MeshHandle()) return;
 
-    res_.core.particle_shader->use();
-    res_.core.particle_shader->setMat4("u_proj", fc.proj);
-    res_.core.particle_shader->setMat4("u_view", fc.view);
-    res_.core.particle_shader->set1f("u_time", fc.time);
+    ub_particle_.use();
+    ub_particle_.set(U::Proj, fc.proj);
+    ub_particle_.set(U::View, fc.view);
+    ub_particle_.set(U::Time, fc.time);
 
     r->setDepthTest(true);
     r->setDepthMask(false);  // don't write depth
@@ -908,29 +935,29 @@ void DemoScene::renderSSAOPass(Renderer* r, const FrameContext& fc) {
     r->setDepthTest(false);
     r->setCullFace(false);
 
-    res_.ssao.shader->use();
+    ub_ssao_.use();
 
     // Bind depth texture from scene FBO
     r->bindTextureUnit(0, res_.ssao.scene_depth_tex);
-    res_.ssao.shader->set1i("u_depth_tex", 0);
+    ub_ssao_.set(U::DepthTex, 0);
 
     // Bind noise texture
     r->bindTextureUnit(1, res_.ssao.noise_tex);
-    res_.ssao.shader->set1i("u_noise_tex", 1);
+    ub_ssao_.set(U::NoiseTex, 1);
 
     // Projection parameters (perspective: fov=60, near=0.1, far=50)
     float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
-    res_.ssao.shader->set2f("u_screen_size",
-                            static_cast<float>(viewport_w_),
-                            static_cast<float>(viewport_h_));
-    res_.ssao.shader->set1f("u_near", kDemoNear);
-    res_.ssao.shader->set1f("u_far", kDemoFar);
-    res_.ssao.shader->set1f("u_aspect", aspect);
-    res_.ssao.shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
-    res_.ssao.shader->set1f("u_radius", config_.ssao_radius);
-    res_.ssao.shader->set1f("u_bias", 0.025f);
-    res_.ssao.shader->set1f("u_intensity", config_.ssao_intensity);
+    ub_ssao_.set(U::ScreenSize,
+                 static_cast<float>(viewport_w_),
+                 static_cast<float>(viewport_h_));
+    ub_ssao_.set(U::Near, kDemoNear);
+    ub_ssao_.set(U::Far, kDemoFar);
+    ub_ssao_.set(U::Aspect, aspect);
+    ub_ssao_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
+    ub_ssao_.set(U::Radius, config_.ssao_radius);
+    ub_ssao_.set(U::Bias, 0.025f);
+    ub_ssao_.set(U::Intensity, config_.ssao_intensity);
 
     r->drawMesh(res_.bloom.fullscreen_quad);
 
@@ -948,13 +975,13 @@ void DemoScene::renderSSAOBlur(Renderer* r, const FrameContext& fc) {
     r->setDepthTest(false);
     r->setCullFace(false);
 
-    res_.ssao.blur_shader->use();
+    ub_ssao_blur_.use();
 
     r->bindRenderTargetTexture(res_.ssao.rt, 0);
-    res_.ssao.blur_shader->set1i("u_ssao_tex", 0);
-    res_.ssao.blur_shader->set2f("u_texel_size",
-                                 2.0f / static_cast<float>(viewport_w_),
-                                 2.0f / static_cast<float>(viewport_h_));
+    ub_ssao_blur_.set(U::SsaoTex, 0);
+    ub_ssao_blur_.set(U::TexelSize,
+                      2.0f / static_cast<float>(viewport_w_),
+                      2.0f / static_cast<float>(viewport_h_));
 
     r->drawMesh(res_.bloom.fullscreen_quad);
 
@@ -979,28 +1006,28 @@ void DemoScene::renderBloomPasses(Renderer* r, const FrameContext& fc) {
     // Extract bright pixels (use HDR FBO if available, otherwise scene FBO)
     r->bindRenderTarget(res_.bloom.bright_rt);
     r->setViewport(0, 0, bw, bh);
-    res_.bloom.extract_shader->use();
+    ub_bloom_extract_.use();
     RenderTargetHandle bloom_source = (res_.t4.hdr_scene_rt != INVALID_RENDER_TARGET)
                                        ? res_.t4.hdr_scene_rt : res_.bloom.scene_rt;
     r->bindRenderTargetTexture(bloom_source, 0);
-    res_.bloom.extract_shader->set1i("u_scene_tex", 0);
-    res_.bloom.extract_shader->set1f("u_threshold", 0.8f);
+    ub_bloom_extract_.set(U::SceneTex, 0);
+    ub_bloom_extract_.set(U::Threshold, 0.8f);
     r->drawMesh(res_.bloom.fullscreen_quad);
 
     // Horizontal blur -> blur_rt
     r->bindRenderTarget(res_.bloom.blur_rt);
-    res_.bloom.blur_shader->use();
+    ub_bloom_blur_.use();
     r->bindRenderTargetTexture(res_.bloom.bright_rt, 0);
-    res_.bloom.blur_shader->set1i("u_tex", 0);
-    res_.bloom.blur_shader->set1f("u_horizontal", 1.0f);
-    res_.bloom.blur_shader->set2f("u_texel_size", 1.0f / static_cast<float>(bw),
-                                                   1.0f / static_cast<float>(bh));
+    ub_bloom_blur_.set(U::Tex, 0);
+    ub_bloom_blur_.set(U::Horizontal, 1);
+    ub_bloom_blur_.set(U::TexelSize, 1.0f / static_cast<float>(bw),
+                                      1.0f / static_cast<float>(bh));
     r->drawMesh(res_.bloom.fullscreen_quad);
 
     // Vertical blur -> bright_rt (ping-pong back)
     r->bindRenderTarget(res_.bloom.bright_rt);
     r->bindRenderTargetTexture(res_.bloom.blur_rt, 0);
-    res_.bloom.blur_shader->set1f("u_horizontal", 0.0f);
+    ub_bloom_blur_.set(U::Horizontal, 0);
     r->drawMesh(res_.bloom.fullscreen_quad);
 
     r->bindRenderTarget(INVALID_RENDER_TARGET);
@@ -1018,22 +1045,22 @@ void DemoScene::renderComposite(Renderer* r, const FrameContext& fc) {
     r->setDepthTest(false);
     r->setCullFace(false);
 
-    res_.bloom.composite_shader->use();
+    ub_bloom_composite_.use();
     r->bindRenderTargetTexture(res_.bloom.scene_rt, 0);
-    res_.bloom.composite_shader->set1i("u_scene_tex", 0);
+    ub_bloom_composite_.set(U::SceneTex, 0);
     r->bindRenderTargetTexture(res_.bloom.bright_rt, 1);
-    res_.bloom.composite_shader->set1i("u_bloom_tex", 1);
-    res_.bloom.composite_shader->set1f("u_bloom_strength", res_.bloom.strength);
-    res_.bloom.composite_shader->set2f("u_viewport_size",
+    ub_bloom_composite_.set(U::BloomTex, 1);
+    ub_bloom_composite_.set(U::BloomStrength, res_.bloom.strength);
+    ub_bloom_composite_.set(U::ViewportSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
     // SSAO: bind blurred AO texture
     if (fc.has_ssao) {
         r->bindRenderTargetTexture(res_.ssao.blur_rt, 2);
-        res_.bloom.composite_shader->set1i("u_ssao_tex", 2);
-        res_.bloom.composite_shader->set1f("u_has_ssao", 1.0f);
+        ub_bloom_composite_.set(U::SsaoTex, 2);
+        ub_bloom_composite_.set(U::HasSsao, 1.0f);
     } else {
-        res_.bloom.composite_shader->set1f("u_has_ssao", 0.0f);
+        ub_bloom_composite_.set(U::HasSsao, 0.0f);
     }
 
     r->drawMesh(res_.bloom.fullscreen_quad);
@@ -1050,11 +1077,11 @@ void DemoScene::renderComputeParticles(Renderer* r, const FrameContext& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!cf) return;
 
-    res_.t4.compute_particle_shader->use();
+    ub_compute_particle_.use();
     cf->bindSSBO(res_.t4.particle_ssbo, 0);
-    res_.t4.compute_particle_shader->set1f("u_time", fc.time);
-    res_.t4.compute_particle_shader->set1f("u_dt", 1.0f / 60.0f);
-    res_.t4.compute_particle_shader->set3f("u_emitter_pos", 0.0f, -0.5f, 0.0f);
+    ub_compute_particle_.set(U::Time, fc.time);
+    ub_compute_particle_.set(U::Dt, 1.0f / 60.0f);
+    ub_compute_particle_.set(U::EmitterPos, 0.0f, -0.5f, 0.0f);
 
     int groups = (res_.t4.compute_particle_count + 255) / 256;
     cf->dispatchCompute(groups, 1, 1);
@@ -1069,16 +1096,16 @@ void DemoScene::renderComputeParticlesDraw(Renderer* r, const FrameContext& fc) 
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!cf || !res_.t4.particle_render_shader) return;
 
-    res_.t4.particle_render_shader->use();
+    ub_particle_render_.use();
     cf->bindSSBO(res_.t4.particle_ssbo, 0);
-    res_.t4.particle_render_shader->setMat4("u_proj", fc.proj);
-    res_.t4.particle_render_shader->setMat4("u_view", fc.view);
+    ub_particle_render_.set(U::Proj, fc.proj);
+    ub_particle_render_.set(U::View, fc.view);
 
     // Camera right/up vectors from view matrix
     Vec3 cam_right(fc.view.m[0], fc.view.m[4], fc.view.m[8]);
     Vec3 cam_up(fc.view.m[1], fc.view.m[5], fc.view.m[9]);
-    res_.t4.particle_render_shader->set3f("u_cam_right", cam_right.x, cam_right.y, cam_right.z);
-    res_.t4.particle_render_shader->set3f("u_cam_up", cam_up.x, cam_up.y, cam_up.z);
+    ub_particle_render_.set(U::CamRight, cam_right);
+    ub_particle_render_.set(U::CamUp, cam_up);
 
     r->setDepthTest(true);
     r->setDepthMask(false);
@@ -1101,47 +1128,47 @@ void DemoScene::renderTessellatedModel(Renderer* r, const FrameContext& fc) {
     GL4Features* g4 = r->features<GL4Features>();
     if (!g4 || model_mesh_ == MeshHandle()) return;
 
-    res_.t4.tess_shader->use();
-    res_.t4.tess_shader->setMat4("u_proj", fc.proj);
-    res_.t4.tess_shader->setMat4("u_view", fc.view);
-    res_.t4.tess_shader->setMat4("u_model", model_transform_);
-    res_.t4.tess_shader->set3f("u_light_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.t4.tess_shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
-    res_.t4.tess_shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
-    res_.t4.tess_shader->set1f("u_fog_density", config_.fog_density);
-    res_.t4.tess_shader->set1f("u_time", fc.time);
-    res_.t4.tess_shader->set1i("u_tess_inner", config_.tess_level);
-    res_.t4.tess_shader->set1i("u_tess_outer", config_.tess_level);
-    res_.t4.tess_shader->set1f("u_displacement_strength", config_.displacement_strength);
-    res_.t4.tess_shader->set1f("u_metallic", 0.0f);
-    res_.t4.tess_shader->set1f("u_roughness", 0.6f);
-    res_.t4.tess_shader->set3f("u_mat_color", 0.55f, 0.35f, 0.20f);
-    res_.t4.tess_shader->set1f("u_proc_tex", 0.0f);
-    res_.t4.tess_shader->set1f("u_normal_strength", 0.0f);
+    ub_tess_.use();
+    ub_tess_.set(U::Proj, fc.proj);
+    ub_tess_.set(U::View, fc.view);
+    ub_tess_.set(U::Model, model_transform_);
+    ub_tess_.set(U::LightDir, fc.sun_dir);
+    ub_tess_.set(U::CamPos, fc.cam_pos);
+    ub_tess_.set(U::FogColor, FOG_COLOR);
+    ub_tess_.set(U::FogDensity, config_.fog_density);
+    ub_tess_.set(U::Time, fc.time);
+    ub_tess_.set(U::TessInner, static_cast<float>(config_.tess_level));
+    ub_tess_.set(U::TessOuter, static_cast<float>(config_.tess_level));
+    ub_tess_.set(U::DisplacementStr, config_.displacement_strength);
+    ub_tess_.set(U::Metallic, 0.0f);
+    ub_tess_.set(U::Roughness, 0.6f);
+    ub_tess_.set(U::MatColor, 0.55f, 0.35f, 0.20f);
+    ub_tess_.set(U::ProcTex, 0.0f);
+    ub_tess_.set(U::NormalStrength, 0.0f);
 
     // PCSS / SSS uniforms
     if (config_.enable_pcss) {
         float texel = 1.0f / static_cast<float>(config_.shadow_map_size);
-        res_.t4.tess_shader->set2f("u_shadow_texel_size", texel, texel);
-        res_.t4.tess_shader->set1f("u_light_size", config_.light_size);
+        ub_tess_.set(U::ShadowTexelSize, texel, texel);
+        ub_tess_.set(U::LightSize, config_.light_size);
     }
     if (config_.enable_sss) {
-        res_.t4.tess_shader->set1f("u_sss_strength", config_.sss_strength);
+        ub_tess_.set(U::SssStrength, config_.sss_strength);
     } else {
-        res_.t4.tess_shader->set1f("u_sss_strength", 0.0f);
+        ub_tess_.set(U::SssStrength, 0.0f);
     }
 
     if (fc.has_shadows) {
-        res_.t4.tess_shader->setMat4("u_light_vp", fc.light_vp);
+        ub_tess_.set(U::LightVP, fc.light_vp);
         r->bindTextureUnit(3, res_.shadow.depth_tex);
-        res_.t4.tess_shader->set1i("u_shadow_map", 3);
-        res_.t4.tess_shader->set1f("u_has_shadow", 1.0f);
+        ub_tess_.set(U::ShadowMap, 3);
+        ub_tess_.set(U::HasShadow, 1.0f);
     } else {
-        res_.t4.tess_shader->set1f("u_has_shadow", 0.0f);
+        ub_tess_.set(U::HasShadow, 0.0f);
     }
 
     setPointLightUniforms(res_.t4.tess_shader, fc);
-    res_.t4.tess_shader->set1f("u_has_normal_map", 0.0f);
+    ub_tess_.set(U::HasNormalMap, 0.0f);
 
     g4->setPatchVertices(3);
     r->setDepthTest(true);
@@ -1163,23 +1190,23 @@ void DemoScene::renderVolumetricFog(Renderer* r, const FrameContext& fc) {
     r->setDepthTest(false);
     r->setCullFace(false);
 
-    res_.t4.volumetric_fog_shader->use();
+    ub_vol_fog_.use();
 
     r->bindTextureUnit(0, res_.t4.hdr_depth_tex);
-    res_.t4.volumetric_fog_shader->set1i("u_depth_tex", 0);
+    ub_vol_fog_.set(U::DepthTex, 0);
 
     float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
-    res_.t4.volumetric_fog_shader->set1f("u_near", kDemoNear);
-    res_.t4.volumetric_fog_shader->set1f("u_far", kDemoFar);
-    res_.t4.volumetric_fog_shader->set1f("u_aspect", aspect);
-    res_.t4.volumetric_fog_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
-    res_.t4.volumetric_fog_shader->set3f("u_sun_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.t4.volumetric_fog_shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
-    res_.t4.volumetric_fog_shader->set1f("u_time", fc.time);
-    res_.t4.volumetric_fog_shader->set1f("u_fog_density", config_.fog_density * 0.5f);
-    res_.t4.volumetric_fog_shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
-    res_.t4.volumetric_fog_shader->set1i("u_fog_steps", config_.fog_steps);
+    ub_vol_fog_.set(U::Near, kDemoNear);
+    ub_vol_fog_.set(U::Far, kDemoFar);
+    ub_vol_fog_.set(U::Aspect, aspect);
+    ub_vol_fog_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
+    ub_vol_fog_.set(U::SunDir, fc.sun_dir);
+    ub_vol_fog_.set(U::CamPos, fc.cam_pos);
+    ub_vol_fog_.set(U::Time, fc.time);
+    ub_vol_fog_.set(U::FogDensity, config_.fog_density * 0.5f);
+    ub_vol_fog_.set(U::FogColor, FOG_COLOR);
+    ub_vol_fog_.set(U::FogSteps, config_.fog_steps);
 
     // Inverse view matrix (column-major: rotation = transpose, translation = -R^T * t)
     Mat4 vi;
@@ -1192,7 +1219,7 @@ void DemoScene::renderVolumetricFog(Renderer* r, const FrameContext& fc) {
     vi.m[13] = -(vi.m[1]*fc.view.m[12] + vi.m[5]*fc.view.m[13] + vi.m[9]*fc.view.m[14]);
     vi.m[14] = -(vi.m[2]*fc.view.m[12] + vi.m[6]*fc.view.m[13] + vi.m[10]*fc.view.m[14]);
     vi.m[15] = 1;
-    res_.t4.volumetric_fog_shader->setMat4("u_view_inv", vi);
+    ub_vol_fog_.set(U::ViewInv, vi);
 
     r->drawMesh(res_.bloom.fullscreen_quad);
     r->bindRenderTarget(INVALID_RENDER_TARGET);
@@ -1209,23 +1236,23 @@ void DemoScene::renderGTAOPass(Renderer* r, const FrameContext& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!g4 || !cf) return;
 
-    res_.t4.gtao_shader->use();
+    ub_gtao_.use();
 
     r->bindTextureUnit(0, res_.t4.hdr_depth_tex);
-    res_.t4.gtao_shader->set1i("u_depth_tex", 0);
+    ub_gtao_.set(U::DepthTex, 0);
 
     g4->bindImageTexture(res_.t4.gtao_tex, 0, false, true); // write-only
 
     float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
-    res_.t4.gtao_shader->set2f("u_screen_size",
+    ub_gtao_.set(U::ScreenSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.t4.gtao_shader->set1f("u_near", kDemoNear);
-    res_.t4.gtao_shader->set1f("u_far", kDemoFar);
-    res_.t4.gtao_shader->set1f("u_aspect", aspect);
-    res_.t4.gtao_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
-    res_.t4.gtao_shader->set1f("u_ao_radius", config_.ssao_radius);
-    res_.t4.gtao_shader->set1f("u_ao_intensity", config_.ssao_intensity);
+    ub_gtao_.set(U::Near, kDemoNear);
+    ub_gtao_.set(U::Far, kDemoFar);
+    ub_gtao_.set(U::Aspect, aspect);
+    ub_gtao_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
+    ub_gtao_.set(U::AoRadius, config_.ssao_radius);
+    ub_gtao_.set(U::AoIntensity, config_.ssao_intensity);
 
     int gx = (viewport_w_ + 15) / 16;
     int gy = (viewport_h_ + 15) / 16;
@@ -1245,17 +1272,17 @@ void DemoScene::renderGTAOBlur(Renderer* r, const FrameContext& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!g4 || !cf) return;
 
-    res_.t4.gtao_blur_shader->use();
+    ub_gtao_blur_.use();
 
     g4->bindImageTexture(res_.t4.gtao_tex, 0, true, false);      // read-only input
     g4->bindImageTexture(res_.t4.gtao_blur_tex, 1, false, true);  // write-only output
 
     r->bindTextureUnit(0, res_.t4.hdr_depth_tex);
-    res_.t4.gtao_blur_shader->set1i("u_depth_tex", 0);
-    res_.t4.gtao_blur_shader->set2f("u_screen_size",
+    ub_gtao_blur_.set(U::DepthTex, 0);
+    ub_gtao_blur_.set(U::ScreenSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.t4.gtao_blur_shader->set1f("u_near", kDemoNear);
-    res_.t4.gtao_blur_shader->set1f("u_far", kDemoFar);
+    ub_gtao_blur_.set(U::Near, kDemoNear);
+    ub_gtao_blur_.set(U::Far, kDemoFar);
 
     int gx = (viewport_w_ + 15) / 16;
     int gy = (viewport_h_ + 15) / 16;
@@ -1283,27 +1310,27 @@ void DemoScene::renderBloomCompute(Renderer* r, const FrameContext& fc) {
     }
 
     // --- Downsample chain ---
-    res_.t4.bloom_down_compute->use();
+    ub_bloom_down_.use();
 
     for (int i = 0; i < MIP_COUNT; i++) {
         // Source: either HDR scene texture (level 0) or previous mip
         if (i == 0) {
             r->bindRenderTargetTexture(res_.t4.hdr_scene_rt, 0);
-            res_.t4.bloom_down_compute->set2f("u_src_size",
+            ub_bloom_down_.set(U::SrcSize,
                 static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-            res_.t4.bloom_down_compute->set1i("u_first_pass", 1); // Karis average
-            res_.t4.bloom_down_compute->set1f("u_bloom_threshold", 1.5f);
+            ub_bloom_down_.set(U::FirstPass, 1); // Karis average
+            ub_bloom_down_.set(U::BloomThreshold, 1.5f);
         } else {
             r->bindTextureUnit(0, res_.t4.bloom_mips[i - 1]);
             int prev_w = viewport_w_ >> i;
             int prev_h = viewport_h_ >> i;
             if (prev_w < 1) prev_w = 1;
             if (prev_h < 1) prev_h = 1;
-            res_.t4.bloom_down_compute->set2f("u_src_size",
+            ub_bloom_down_.set(U::SrcSize,
                 static_cast<float>(prev_w), static_cast<float>(prev_h));
-            res_.t4.bloom_down_compute->set1i("u_first_pass", 0);
+            ub_bloom_down_.set(U::FirstPass, 0);
         }
-        res_.t4.bloom_down_compute->set1i("u_src_tex", 0);
+        ub_bloom_down_.set(U::SrcTex, 0);
 
         g4->bindImageTexture(res_.t4.bloom_mips[i], 0, false, true); // write-only
 
@@ -1319,13 +1346,13 @@ void DemoScene::renderBloomCompute(Renderer* r, const FrameContext& fc) {
     }
 
     // --- Upsample chain (bottom-up, additive) ---
-    res_.t4.bloom_up_compute->use();
-    res_.t4.bloom_up_compute->set1f("u_bloom_radius", 1.0f);
+    ub_bloom_up_.use();
+    ub_bloom_up_.set(U::BloomRadius, 1.0f);
 
     for (int i = MIP_COUNT - 2; i >= 0; i--) {
         // Source: lower (smaller) mip
         r->bindTextureUnit(0, res_.t4.bloom_mips[i + 1]);
-        res_.t4.bloom_up_compute->set1i("u_src_tex", 0);
+        ub_bloom_up_.set(U::SrcTex, 0);
 
         // Destination: current mip (read-write for additive blend)
         g4->bindImageTexture(res_.t4.bloom_mips[i], 0, true, true);
@@ -1355,16 +1382,15 @@ void DemoScene::computeAutoExposure(Renderer* r, const FrameContext& fc) {
 
     float min_log_lum = -8.0f;
     float log_lum_range = 12.0f;
-    float total_pixels = static_cast<float>(viewport_w_ * viewport_h_);
 
     // Step 1: Build histogram
-    res_.t4.histogram_shader->use();
+    ub_histogram_.use();
     r->bindRenderTargetTexture(res_.t4.hdr_scene_rt, 0);
-    res_.t4.histogram_shader->set1i("u_scene_tex", 0);
-    res_.t4.histogram_shader->set2f("u_screen_size",
+    ub_histogram_.set(U::SceneTex, 0);
+    ub_histogram_.set(U::ScreenSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.t4.histogram_shader->set1f("u_min_log_lum", min_log_lum);
-    res_.t4.histogram_shader->set1f("u_log_lum_range", log_lum_range);
+    ub_histogram_.set(U::MinLogLum, min_log_lum);
+    ub_histogram_.set(U::LogLumRange, log_lum_range);
 
     cf->bindSSBO(res_.t4.histogram_ssbo, 1);
 
@@ -1374,14 +1400,14 @@ void DemoScene::computeAutoExposure(Renderer* r, const FrameContext& fc) {
     cf->computeMemoryBarrier();
 
     // Step 2: Reduce histogram to exposure value
-    res_.t4.exposure_shader->use();
+    ub_exposure_.use();
     cf->bindSSBO(res_.t4.histogram_ssbo, 1);
     cf->bindSSBO(res_.t4.exposure_ssbo, 2);
-    res_.t4.exposure_shader->set1f("u_min_log_lum", min_log_lum);
-    res_.t4.exposure_shader->set1f("u_log_lum_range", log_lum_range);
-    res_.t4.exposure_shader->set1f("u_total_pixels", total_pixels);
-    res_.t4.exposure_shader->set1f("u_adapt_speed", 2.0f);
-    res_.t4.exposure_shader->set1f("u_dt", 1.0f / 60.0f);
+    ub_exposure_.set(U::MinLogLum, min_log_lum);
+    ub_exposure_.set(U::LogLumRange, log_lum_range);
+    ub_exposure_.set(U::TotalPixels, static_cast<float>(viewport_w_ * viewport_h_));
+    ub_exposure_.set(U::AdaptSpeed, 2.0f);
+    ub_exposure_.set(U::Dt, 1.0f / 60.0f);
 
     cf->dispatchCompute(1, 1, 1);
     cf->computeMemoryBarrier();
@@ -1401,55 +1427,55 @@ void DemoScene::renderWaterPass(Renderer* r, const FrameContext& fc) {
     }
     if (!has_water) return;
 
-    res_.core.island_shader->use();
+    ub_island_.use();
 
     // Set all standard uniforms (same as renderOpaquePass)
-    res_.core.island_shader->setMat4("u_proj", fc.proj);
-    res_.core.island_shader->setMat4("u_view", fc.view);
-    res_.core.island_shader->set3f("u_light_dir", fc.sun_dir.x, fc.sun_dir.y, fc.sun_dir.z);
-    res_.core.island_shader->set3f("u_cam_pos", fc.cam_pos.x, fc.cam_pos.y, fc.cam_pos.z);
-    res_.core.island_shader->set3f("u_fog_color", FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z);
-    res_.core.island_shader->set1f("u_fog_density", config_.fog_density);
-    res_.core.island_shader->set1f("u_time", fc.time);
-    res_.core.island_shader->set1f("u_normal_strength", 0.0f);
+    ub_island_.set(U::Proj, fc.proj);
+    ub_island_.set(U::View, fc.view);
+    ub_island_.set(U::LightDir, fc.sun_dir);
+    ub_island_.set(U::CamPos, fc.cam_pos);
+    ub_island_.set(U::FogColor, FOG_COLOR);
+    ub_island_.set(U::FogDensity, config_.fog_density);
+    ub_island_.set(U::Time, fc.time);
+    ub_island_.set(U::NormalStrength, 0.0f);
 
     if (config_.enable_pbr) {
-        res_.core.island_shader->set1f("u_metallic", 0.0f);
-        res_.core.island_shader->set1f("u_roughness", 0.02f);
+        ub_island_.set(U::Metallic, 0.0f);
+        ub_island_.set(U::Roughness, 0.02f);
     }
     if (config_.enable_pcss) {
         float texel = 1.0f / static_cast<float>(config_.shadow_map_size);
-        res_.core.island_shader->set2f("u_shadow_texel_size", texel, texel);
-        res_.core.island_shader->set1f("u_light_size", config_.light_size);
+        ub_island_.set(U::ShadowTexelSize, texel, texel);
+        ub_island_.set(U::LightSize, config_.light_size);
     }
-    res_.core.island_shader->set1f("u_sss_strength", 0.0f);
+    ub_island_.set(U::SssStrength, 0.0f);
 
     if (fc.has_shadows) {
-        res_.core.island_shader->setMat4("u_light_vp", fc.light_vp);
+        ub_island_.set(U::LightVP, fc.light_vp);
         r->bindTextureUnit(3, res_.shadow.depth_tex);
-        res_.core.island_shader->set1i("u_shadow_map", 3);
-        res_.core.island_shader->set1f("u_has_shadow", 1.0f);
+        ub_island_.set(U::ShadowMap, 3);
+        ub_island_.set(U::HasShadow, 1.0f);
     } else {
-        res_.core.island_shader->set1f("u_has_shadow", 0.0f);
+        ub_island_.set(U::HasShadow, 0.0f);
     }
-    res_.core.island_shader->set1f("u_has_normal_map", 0.0f);
-    res_.core.island_shader->set1i("u_point_light_count", 0);
+    ub_island_.set(U::HasNormalMap, 0.0f);
+    ub_island_.set(U::PointLightCount, 0);
 
     // Bind scene copy for water reflections (ssr_tex_ has the scene before water)
     bool has_reflection = (res_.t4.ssr_tex != INVALID_TEXTURE);
     if (has_reflection) {
         r->bindTextureUnit(5, res_.t4.ssr_tex);
-        res_.core.island_shader->set1i("u_reflection_tex", 5);
+        ub_island_.set(U::ReflectionTex, 5);
         r->bindTextureUnit(6, res_.t4.hdr_depth_tex);
-        res_.core.island_shader->set1i("u_depth_tex", 6);
-        res_.core.island_shader->set1f("u_has_reflection", 1.0f);
-        res_.core.island_shader->set2f("u_screen_size",
+        ub_island_.set(U::DepthTex, 6);
+        ub_island_.set(U::HasReflection, 1.0f);
+        ub_island_.set(U::ScreenSize,
             static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
 
-        res_.core.island_shader->set1f("u_near", kDemoNear);
-        res_.core.island_shader->set1f("u_far", kDemoFar);
+        ub_island_.set(U::Near, kDemoNear);
+        ub_island_.set(U::Far, kDemoFar);
     } else {
-        res_.core.island_shader->set1f("u_has_reflection", 0.0f);
+        ub_island_.set(U::HasReflection, 0.0f);
     }
 
     // Render only water objects
@@ -1459,13 +1485,13 @@ void DemoScene::renderWaterPass(Renderer* r, const FrameContext& fc) {
         if (!sphereInFrustum(fc.frustum, obj.bounds_center, obj.bounds_radius))
             continue;
 
-        res_.core.island_shader->setMat4("u_model", obj.transform);
-        res_.core.island_shader->set3f("u_mat_color", obj.color.x, obj.color.y, obj.color.z);
-        res_.core.island_shader->set1f("u_mat_spec", obj.specular);
-        res_.core.island_shader->set1f("u_alpha", 1.0f);
-        res_.core.island_shader->set1f("u_proc_tex", 0.0f);
-        res_.core.island_shader->set1f("u_vertex_wind", 0.0f);
-        res_.core.island_shader->set1f("u_is_water", 1.0f);
+        ub_island_.set(U::Model, obj.transform);
+        ub_island_.set(U::MatColor, obj.color);
+        ub_island_.set(U::MatSpec, obj.specular);
+        ub_island_.set(U::Alpha, 1.0f);
+        ub_island_.set(U::ProcTex, 0.0f);
+        ub_island_.set(U::VertexWind, 0.0f);
+        ub_island_.set(U::IsWater, 1.0f);
 
         if (obj.two_sided) r->setCullFace(false);
         r->drawMesh(obj.mesh);
@@ -1484,16 +1510,16 @@ void DemoScene::renderSSR(Renderer* r, const FrameContext& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!g4 || !cf) return;
 
-    res_.t4.ssr_shader->use();
+    ub_ssr_.use();
 
     r->bindRenderTargetTexture(res_.t4.hdr_scene_rt, 0);
-    res_.t4.ssr_shader->set1i("u_scene_tex", 0);
+    ub_ssr_.set(U::SceneTex, 0);
     r->bindTextureUnit(1, res_.t4.hdr_depth_tex);
-    res_.t4.ssr_shader->set1i("u_depth_tex", 1);
+    ub_ssr_.set(U::DepthTex, 1);
 
     g4->bindImageTexture(res_.t4.ssr_tex, 0, false, true); // write-only
 
-    res_.t4.ssr_shader->setMat4("u_proj", fc.proj);
+    ub_ssr_.set(U::Proj, fc.proj);
 
     // Inverse view matrix (column-major: rotation = transpose, translation = -R^T * t)
     Mat4 vi;
@@ -1506,20 +1532,21 @@ void DemoScene::renderSSR(Renderer* r, const FrameContext& fc) {
     vi.m[13] = -(vi.m[1]*fc.view.m[12] + vi.m[5]*fc.view.m[13] + vi.m[9]*fc.view.m[14]);
     vi.m[14] = -(vi.m[2]*fc.view.m[12] + vi.m[6]*fc.view.m[13] + vi.m[10]*fc.view.m[14]);
     vi.m[15] = 1;
-    res_.t4.ssr_shader->setMat4("u_view_inv", vi);
+    ub_ssr_.set(U::ViewInv, vi);
 
     float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(viewport_w_) / static_cast<float>(viewport_h_ > 0 ? viewport_h_ : 1);
-    res_.t4.ssr_shader->set2f("u_screen_size",
+    ub_ssr_.set(U::ScreenSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.t4.ssr_shader->set1f("u_near", kDemoNear);
-    res_.t4.ssr_shader->set1f("u_far", kDemoFar);
-    res_.t4.ssr_shader->set1f("u_aspect", aspect);
-    res_.t4.ssr_shader->set1f("u_tan_half_fov", tanf(fov_rad * 0.5f));
+    ub_ssr_.set(U::Near, kDemoNear);
+    ub_ssr_.set(U::Far, kDemoFar);
+    ub_ssr_.set(U::Aspect, aspect);
+    ub_ssr_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
 
     // Pass puddle positions so SSR skips water (water has its own reflections)
+    // Array uniforms kept as string-based calls
     if (config_.enable_ssr) {
-        res_.t4.ssr_shader->set1i("u_puddle_count", 3);
+        ub_ssr_.set(U::PuddleCount, 3);
         res_.t4.ssr_shader->set3f("u_puddle_pos[0]", 2.5f, 0.0f, 0.8f);
         res_.t4.ssr_shader->set3f("u_puddle_pos[1]", -1.8f, 0.0f, 2.2f);
         res_.t4.ssr_shader->set3f("u_puddle_pos[2]", 0.5f, 0.0f, -2.5f);
@@ -1527,7 +1554,7 @@ void DemoScene::renderSSR(Renderer* r, const FrameContext& fc) {
         res_.t4.ssr_shader->set1f("u_puddle_radius[1]", 1.2f);
         res_.t4.ssr_shader->set1f("u_puddle_radius[2]", 1.0f);
     } else {
-        res_.t4.ssr_shader->set1i("u_puddle_count", 0);
+        ub_ssr_.set(U::PuddleCount, 0);
     }
 
     int gx = (viewport_w_ + 15) / 16;
@@ -1548,23 +1575,23 @@ void DemoScene::renderDoF(Renderer* r, const FrameContext& fc) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!g4 || !cf) return;
 
-    res_.t4.dof_shader->use();
+    ub_dof_.use();
 
     r->bindRenderTargetTexture(res_.t4.hdr_scene_rt, 0);
-    res_.t4.dof_shader->set1i("u_scene_tex", 0);
+    ub_dof_.set(U::SceneTex, 0);
     r->bindTextureUnit(1, res_.t4.hdr_depth_tex);
-    res_.t4.dof_shader->set1i("u_depth_tex", 1);
+    ub_dof_.set(U::DepthTex, 1);
 
     g4->bindImageTexture(res_.t4.dof_tex, 0, false, true); // write-only
 
-    res_.t4.dof_shader->set2f("u_screen_size",
+    ub_dof_.set(U::ScreenSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.t4.dof_shader->set1f("u_near", kDemoNear);
-    res_.t4.dof_shader->set1f("u_far", kDemoFar);
-    res_.t4.dof_shader->set1f("u_focal_distance", config_.dof_focal_distance);
-    res_.t4.dof_shader->set1f("u_focal_range", 5.0f);
-    res_.t4.dof_shader->set1f("u_max_blur", 5.0f);
-    res_.t4.dof_shader->set1f("u_dof_strength", config_.dof_strength);
+    ub_dof_.set(U::Near, kDemoNear);
+    ub_dof_.set(U::Far, kDemoFar);
+    ub_dof_.set(U::FocalDistance, config_.dof_focal_distance);
+    ub_dof_.set(U::FocalRange, 5.0f);
+    ub_dof_.set(U::MaxBlur, 5.0f);
+    ub_dof_.set(U::DofStrength, config_.dof_strength);
 
     int gx = (viewport_w_ + 15) / 16;
     int gy = (viewport_h_ + 15) / 16;
@@ -1582,10 +1609,10 @@ void DemoScene::renderHDRComposite(Renderer* r, const FrameContext& fc) {
     r->setCullFace(false);
     r->setBlending(false);
 
-    res_.t4.tone_map_shader->use();
+    ub_tone_map_.use();
 
     r->bindRenderTargetTexture(res_.t4.hdr_scene_rt, 0);
-    res_.t4.tone_map_shader->set1i("u_scene_tex", 0);
+    ub_tone_map_.set(U::SceneTex, 0);
 
     // Bloom: prefer compute bloom mip[0], otherwise fragment bloom
     if (config_.enable_compute_bloom && res_.t4.bloom_mips[0] != INVALID_TEXTURE) {
@@ -1593,51 +1620,51 @@ void DemoScene::renderHDRComposite(Renderer* r, const FrameContext& fc) {
     } else {
         r->bindRenderTargetTexture(res_.bloom.bright_rt, 1);
     }
-    res_.t4.tone_map_shader->set1i("u_bloom_tex", 1);
-    res_.t4.tone_map_shader->set1f("u_bloom_strength", res_.bloom.strength);
+    ub_tone_map_.set(U::BloomTex, 1);
+    ub_tone_map_.set(U::BloomStrength, res_.bloom.strength);
 
     // AO: prefer compute GTAO, otherwise fragment SSAO
     if (config_.enable_gtao && res_.t4.gtao_blur_tex != INVALID_TEXTURE) {
         r->bindTextureUnit(2, res_.t4.gtao_blur_tex);
-        res_.t4.tone_map_shader->set1i("u_ssao_tex", 2);
-        res_.t4.tone_map_shader->set1f("u_has_ssao", 1.0f);
+        ub_tone_map_.set(U::SsaoTex, 2);
+        ub_tone_map_.set(U::HasSsao, 1.0f);
     } else if (fc.has_ssao) {
         r->bindRenderTargetTexture(res_.ssao.blur_rt, 2);
-        res_.t4.tone_map_shader->set1i("u_ssao_tex", 2);
-        res_.t4.tone_map_shader->set1f("u_has_ssao", 1.0f);
+        ub_tone_map_.set(U::SsaoTex, 2);
+        ub_tone_map_.set(U::HasSsao, 1.0f);
     } else {
-        res_.t4.tone_map_shader->set1f("u_has_ssao", 0.0f);
+        ub_tone_map_.set(U::HasSsao, 0.0f);
     }
 
     if (fc.has_volumetric_fog) {
         r->bindRenderTargetTexture(res_.t4.fog_rt, 3);
-        res_.t4.tone_map_shader->set1i("u_fog_tex", 3);
-        res_.t4.tone_map_shader->set1f("u_has_fog", 1.0f);
+        ub_tone_map_.set(U::FogTex, 3);
+        ub_tone_map_.set(U::HasFog, 1.0f);
     } else {
-        res_.t4.tone_map_shader->set1f("u_has_fog", 0.0f);
+        ub_tone_map_.set(U::HasFog, 0.0f);
     }
 
     // SSR texture
     if (config_.enable_ssr && res_.t4.ssr_tex != INVALID_TEXTURE) {
         r->bindTextureUnit(4, res_.t4.ssr_tex);
-        res_.t4.tone_map_shader->set1i("u_ssr_tex", 4);
-        res_.t4.tone_map_shader->set1f("u_has_ssr", 1.0f);
+        ub_tone_map_.set(U::SsrTex, 4);
+        ub_tone_map_.set(U::HasSsr, 1.0f);
     } else {
-        res_.t4.tone_map_shader->set1f("u_has_ssr", 0.0f);
+        ub_tone_map_.set(U::HasSsr, 0.0f);
     }
 
     // DoF texture
     if (config_.enable_dof && res_.t4.dof_tex != INVALID_TEXTURE) {
         r->bindTextureUnit(5, res_.t4.dof_tex);
-        res_.t4.tone_map_shader->set1i("u_dof_tex", 5);
-        res_.t4.tone_map_shader->set1f("u_has_dof", 1.0f);
+        ub_tone_map_.set(U::DofTex, 5);
+        ub_tone_map_.set(U::HasDof, 1.0f);
     } else {
-        res_.t4.tone_map_shader->set1f("u_has_dof", 0.0f);
+        ub_tone_map_.set(U::HasDof, 0.0f);
     }
 
-    res_.t4.tone_map_shader->set2f("u_viewport_size",
+    ub_tone_map_.set(U::ViewportSize,
         static_cast<float>(viewport_w_), static_cast<float>(viewport_h_));
-    res_.t4.tone_map_shader->set1f("u_time", fc.time);
+    ub_tone_map_.set(U::Time, fc.time);
 
     // Auto-exposure: read exposure from SSBO
     float exposure = 1.0f;
@@ -1648,9 +1675,9 @@ void DemoScene::renderHDRComposite(Renderer* r, const FrameContext& fc) {
             if (exposure < 0.01f) exposure = 1.0f;
         }
     }
-    res_.t4.tone_map_shader->set1f("u_exposure", exposure);
-    res_.t4.tone_map_shader->set1f("u_chromatic_strength", config_.chromatic_strength);
-    res_.t4.tone_map_shader->set1f("u_grain_strength", config_.grain_strength);
+    ub_tone_map_.set(U::Exposure, exposure);
+    ub_tone_map_.set(U::ChromaticStrength, config_.chromatic_strength);
+    ub_tone_map_.set(U::GrainStrength, config_.grain_strength);
 
     r->drawMesh(res_.bloom.fullscreen_quad);
 
