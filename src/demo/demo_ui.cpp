@@ -76,16 +76,16 @@ void DemoUI::drawOverlay(RenderContext* ctx,
         if (count > 120) count = 120;
         float max_val = 0;
         for (int i = 0; i < count; i++) {
-            values[i] = static_cast<float>(frame_history[frame_history.size() - count + i]);
+            values[i] = static_cast<float>(frame_history[frame_history.size() - static_cast<size_t>(count) + static_cast<size_t>(i)]);
             if (values[i] > max_val) max_val = values[i];
         }
         if (max_val < 16.67f) max_val = 16.67f;
-        ImGui::PlotLines("##frametime", values, count, 0, nullptr, 0, max_val * 1.2f, ImVec2(-1, 40));
+        ImGui::PlotLines("##frametime", values, count, 0, nullptr, 0.0f, max_val * 1.2f, ImVec2(-1.0f, 40.0f));
     }
 
     // Overall progress
     float overall = (total_tiers > 0)
-        ? (tier_index + tier_progress) / total_tiers : 0;
+        ? (static_cast<float>(tier_index) + tier_progress) / static_cast<float>(total_tiers) : 0.0f;
     ImGui::Separator();
     ImGui::Text("Overall:");
     ImGui::SameLine();

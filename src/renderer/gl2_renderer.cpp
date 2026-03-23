@@ -181,7 +181,7 @@ GLuint GL2Renderer::compileShader(GLenum type, const char* src) {
     glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
     if (!ok) {
         char log[512];
-        glGetShaderInfoLog(s, sizeof(log), nullptr, log);
+        glGetShaderInfoLog(s, static_cast<GLsizei>(sizeof(log)), nullptr, log);
         Log::err("Shader compile error: %s", log);
         glDeleteShader(s);
         return 0;
@@ -204,7 +204,7 @@ GLuint GL2Renderer::linkProgram(GLuint vs, GLuint fs) {
     glGetProgramiv(p, GL_LINK_STATUS, &ok);
     if (!ok) {
         char log[512];
-        glGetProgramInfoLog(p, sizeof(log), nullptr, log);
+        glGetProgramInfoLog(p, static_cast<GLsizei>(sizeof(log)), nullptr, log);
         Log::err("Program link error: %s", log);
         glDeleteProgram(p);
         return 0;
@@ -240,7 +240,7 @@ void GL2Renderer::detectCaps() {
 
     // Query max vertex attributes
     #ifndef GL_MAX_VERTEX_ATTRIBS
-    #define GL_MAX_VERTEX_ATTRIBS 0x8869
+    #define GL_MAX_VERTEX_ATTRIBS 0x8869u
     #endif
     caps_.max_vertex_attribs = 8;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &caps_.max_vertex_attribs);
@@ -309,8 +309,12 @@ void GL2Renderer::detectCaps() {
     // Try to detect VRAM. Multiple fallback methods for different drivers.
     caps_.estimated_vram_mb = 0;
 #ifndef __APPLE__
-    #define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
-    #define GL_TEXTURE_FREE_MEMORY_ATI 0x87FC
+    #ifndef GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX
+    #define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048u
+    #endif
+    #ifndef GL_TEXTURE_FREE_MEMORY_ATI
+    #define GL_TEXTURE_FREE_MEMORY_ATI 0x87FCu
+    #endif
 
     const char* exts_vram = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     if (exts_vram) {
@@ -581,7 +585,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
         free_mesh_slots_.pop_back();
         meshes_[h] = gm;
     } else {
-        h = static_cast<MeshHandle>(meshes_.size());
+        h = MeshHandle(static_cast<unsigned int>(meshes_.size()));
         meshes_.push_back(gm);
     }
     return h;
@@ -603,7 +607,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         while (nw > caps_.max_texture_size) nw /= 2;
         while (nh > caps_.max_texture_size) nh /= 2;
 
-        std::vector<unsigned char> scaled(static_cast<size_t>(nw) * nh * channels);
+        std::vector<unsigned char> scaled(static_cast<size_t>(nw) * static_cast<size_t>(nh) * static_cast<size_t>(channels));
         for (int sy = 0; sy < nh; sy++) {
             for (int sx = 0; sx < nw; sx++) {
                 int src_x = sx * w / nw;
@@ -611,7 +615,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
                 int dst_idx = (sy * nw + sx) * channels;
                 int src_idx = (src_y * w + src_x) * channels;
                 for (int c = 0; c < channels; c++)
-                    scaled[dst_idx + c] = pixels[src_idx + c];
+                    scaled[static_cast<size_t>(dst_idx + c)] = pixels[static_cast<size_t>(src_idx + c)];
             }
         }
         return createTexture(nw, nh, channels, scaled.data());
@@ -625,7 +629,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
     // Mipmap generation: use glGenerateMipmap on GL3+, legacy GL_GENERATE_MIPMAP on GL2
     if (!caps_.has_generate_mipmap_func) {
         #ifndef GL_GENERATE_MIPMAP
-        #define GL_GENERATE_MIPMAP 0x8191
+        #define GL_GENERATE_MIPMAP 0x8191u
         #endif
         glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
     }
@@ -639,7 +643,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
     if (channels == 4) fmt = GL_RGBA;
     else if (channels == 3) fmt = GL_RGB;
     else fmt = (caps_.gl_major >= 3) ? GL_RED : GL_LUMINANCE;
-    glTexImage2D(GL_TEXTURE_2D, 0, fmt, w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(fmt), w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
 
     if (caps_.has_generate_mipmap_func) {
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -653,7 +657,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = static_cast<TextureHandle>(textures_.size());
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
     return th;
@@ -661,8 +665,10 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
 
 void GL2Renderer::destroyTexture(TextureHandle h) {
     if (!isValidTexture(h)) return;
-    glDeleteTextures(1, &textures_[h].id);
+    if (!textures_[h].rt_owned)
+        glDeleteTextures(1, &textures_[h].id);
     textures_[h].valid = false;
+    textures_[h].rt_owned = false;
     free_tex_slots_.push_back(h);
 }
 
@@ -695,7 +701,7 @@ ShaderHandle GL2Renderer::createCustomShader(const char* vs_src, const char* fs_
         free_custom_slots_.pop_back();
         custom_shaders_[h] = prog;
     } else {
-        h = static_cast<ShaderHandle>(custom_shaders_.size());
+        h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
     }
     return h;
@@ -791,7 +797,7 @@ void GL2Renderer::bindTexture(TextureHandle h) {
 }
 
 void GL2Renderer::bindTextureUnit(int unit, TextureHandle h) {
-    glActiveTexture(GL_TEXTURE0 + unit);
+    glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit));
     if (isValidTexture(h))
         glBindTexture(GL_TEXTURE_2D, textures_[h].id);
     else
@@ -813,7 +819,7 @@ void GL2Renderer::drawMesh(MeshHandle h) {
         glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gm.ibo);
 
-        GLsizei stride = sizeof(Vertex);
+        GLsizei stride = static_cast<GLsizei>(sizeof(Vertex));
 
         // For custom shaders, use fixed attribute locations 0, 1, 2
         GLint loc_pos = 0, loc_normal = 1, loc_uv = 2;
@@ -824,16 +830,16 @@ void GL2Renderer::drawMesh(MeshHandle h) {
         }
 
         if (loc_pos >= 0) {
-            glEnableVertexAttribArray(loc_pos);
-            glVertexAttribPointer(loc_pos, 3, GL_FLOAT, GL_FALSE, stride, nullptr);
+            glEnableVertexAttribArray(static_cast<GLuint>(loc_pos));
+            glVertexAttribPointer(static_cast<GLuint>(loc_pos), 3, GL_FLOAT, GL_FALSE, stride, nullptr);
         }
         if (loc_normal >= 0) {
-            glEnableVertexAttribArray(loc_normal);
-            glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
+            glEnableVertexAttribArray(static_cast<GLuint>(loc_normal));
+            glVertexAttribPointer(static_cast<GLuint>(loc_normal), 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
         }
         if (loc_uv >= 0) {
-            glEnableVertexAttribArray(loc_uv);
-            glVertexAttribPointer(loc_uv, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
+            glEnableVertexAttribArray(static_cast<GLuint>(loc_uv));
+            glVertexAttribPointer(static_cast<GLuint>(loc_uv), 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
         }
 
         last_drawn_mesh_ = h;
@@ -926,6 +932,13 @@ void GL2Renderer::readPixels(int x, int y, int w, int h, unsigned char* rgba_out
     glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba_out);
 }
 
+void GL2Renderer::copyFramebufferToTexture(TextureHandle tex, int w, int h) {
+    if (!isValidTexture(tex)) return;
+    glBindTexture(GL_TEXTURE_2D, textures_[tex].id);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 // --- Render targets ---
 bool GL2Renderer::supportsRenderTargets() const {
     return caps_.has_fbo;
@@ -942,7 +955,7 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
     glBindTexture(GL_TEXTURE_2D, rt.color_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA), w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenRenderbuffers(1, &rt.depth_rb);
@@ -973,7 +986,7 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
     return handle;
@@ -984,6 +997,8 @@ void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
     GLFBO& fbo = render_targets_[rt];
     if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
     if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);
+    for (int i = 0; i < fbo.num_extra_color; i++)
+        if (fbo.extra_color_tex[i]) glDeleteTextures(1, &fbo.extra_color_tex[i]);
     if (fbo.depth_rb)  glDeleteRenderbuffers(1, &fbo.depth_rb);
     if (fbo.depth_tex) glDeleteTextures(1, &fbo.depth_tex);
     fbo = GLFBO();
@@ -995,14 +1010,14 @@ void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
     }
-    if (rt < render_targets_.size() && render_targets_[rt].valid) {
+    if (static_cast<size_t>(rt) < render_targets_.size() && render_targets_[rt].valid) {
         glBindFramebuffer(GL_FRAMEBUFFER, render_targets_[rt].fbo);
     }
 }
 
 void GL2Renderer::bindRenderTargetTexture(RenderTargetHandle rt, int unit) {
     if (!isValidRenderTarget(rt)) return;
-    glActiveTexture(GL_TEXTURE0 + unit);
+    glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit));
     glBindTexture(GL_TEXTURE_2D, render_targets_[rt].color_tex);
     glActiveTexture(GL_TEXTURE0);
 }

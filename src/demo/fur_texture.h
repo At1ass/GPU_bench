@@ -16,17 +16,17 @@ struct FurRNG {
 // The same texture is reused for all shell layers -- the shader checks
 // shellIndex < alpha to determine visibility (as per classic shell fur).
 inline std::vector<unsigned char> generateFurTexture(int size, float coverage) {
-    std::vector<unsigned char> pixels(static_cast<size_t>(size) * size * 4, 0);
+    std::vector<unsigned char> pixels(static_cast<size_t>(size) * static_cast<size_t>(size) * 4, 0);
     FurRNG rng(42u);
 
     // Scatter 2x2 strand dots (survive GL_LINEAR filtering better than 1x1)
     // Coverage formula: 1 - exp(-num_strands * 4 / total_pixels)
     // For 75% coverage on 128x128: num_strands ~ size*size*0.35
-    int num_strands = static_cast<int>(size * size * coverage * 0.35f);
+    int num_strands = static_cast<int>(static_cast<float>(size * size) * coverage * 0.35f);
 
     for (int i = 0; i < num_strands; i++) {
-        int cx = static_cast<int>(rng.next() * size) % size;
-        int cy = static_cast<int>(rng.next() * size) % size;
+        int cx = static_cast<int>(rng.next() * static_cast<float>(size)) % size;
+        int cy = static_cast<int>(rng.next() * static_cast<float>(size)) % size;
 
         // Strand height: biased high [0.3, 1.0]
         float height = 0.3f + 0.7f * rng.next();
@@ -41,7 +41,7 @@ inline std::vector<unsigned char> generateFurTexture(int size, float coverage) {
             for (int dx = 0; dx < 2; dx++) {
                 int px = (cx + dx) % size;
                 int py = (cy + dy) % size;
-                int idx = (py * size + px) * 4;
+                size_t idx = static_cast<size_t>((py * size + px) * 4);
                 // Keep the tallest strand at each pixel
                 if (pixels[idx + 3] < h_byte) {
                     pixels[idx + 0] = c_byte;

@@ -16,8 +16,8 @@ void DrawCallRawTest::setup(Renderer* r, int vw, int vh) {
     vw_ = vw; vh_ = vh;
 
     MeshData unit = MeshGen::cube();
-    meshes_.resize(params_.mesh_count);
-    for (int i = 0; i < params_.mesh_count; i++) {
+    meshes_.resize(static_cast<size_t>(params_.mesh_count));
+    for (size_t i = 0; i < static_cast<size_t>(params_.mesh_count); i++) {
         meshes_[i] = r->createMesh(unit);
     }
 }
@@ -27,7 +27,7 @@ void DrawCallRawTest::render(Renderer* r) {
     r->setBlending(false);
     r->useShader(Renderer::ShaderType::Scene3D);
 
-    float aspect = static_cast<float>(vw_) / vh_;
+    float aspect = static_cast<float>(vw_) / static_cast<float>(vh_);
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 500.0f));
     r->setView(Mat4::lookAt(Vec3(0, 20, 40), Vec3(0, 0, 0), Vec3(0, 1, 0)));
     r->setColor(0.6f, 0.7f, 0.8f, 1.0f);
@@ -37,9 +37,9 @@ void DrawCallRawTest::render(Renderer* r) {
     // Set model matrix ONCE before the loop
     r->setModel(Mat4::translate(0.0f, 0.0f, 0.0f) * Mat4::scale(0.3f, 0.3f, 0.3f));
 
-    int mesh_count = static_cast<int>(meshes_.size());
+    size_t mesh_count = meshes_.size();
     for (int i = 0; i < params_.draws_per_frame; i++) {
-        int idx = i % mesh_count;
+        size_t idx = static_cast<size_t>(i) % mesh_count;
         r->drawMesh(meshes_[idx]);
     }
 }

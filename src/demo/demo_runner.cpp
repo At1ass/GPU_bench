@@ -119,7 +119,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     // Measurement loop
     bool headless = ctx->isHeadless();
     std::vector<double> frame_times;
-    frame_times.reserve(duration_sec * 120);
+    frame_times.reserve(static_cast<size_t>(duration_sec) * 120);
 
     std::vector<double> frame_history;
     frame_history.reserve(120);
@@ -129,7 +129,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     Timer frame_t;
 
     Timer total_timer;
-    while (total_timer.elapsed_sec() < duration_sec) {
+    while (total_timer.elapsed_sec() < static_cast<double>(duration_sec)) {
         if (poll_cb && !poll_cb->onPoll()) break;
 
         double ms = frame_t.elapsed_ms();
@@ -137,7 +137,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
 
         if (prev_ms > 0) {
             frame_times.push_back(prev_ms);
-            if (frame_history.size() >= 120)
+            if (frame_history.size() >= 120u)
                 frame_history.erase(frame_history.begin());
             frame_history.push_back(prev_ms);
         }
@@ -147,7 +147,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         if (use_fbo) r->bindRenderTarget(rt);
         r->setViewport(0, 0, render_w, render_h);
 
-        float t = static_cast<float>(total_timer.elapsed_sec() / duration_sec);
+        float t = static_cast<float>(total_timer.elapsed_sec() / static_cast<double>(duration_sec));
         float time = static_cast<float>(total_timer.elapsed_sec());
 
         RenderTargetHandle dest = use_fbo ? rt : INVALID_RENDER_TARGET;
@@ -161,7 +161,7 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         }
 
         // Demo overlay (drawn to screen, not FBO)
-        float tier_progress = static_cast<float>(total_timer.elapsed_sec() / duration_sec);
+        float tier_progress = static_cast<float>(total_timer.elapsed_sec() / static_cast<double>(duration_sec));
         if (demo_cb) {
             if (!demo_cb->onDemoFrame(tier, tier_index, total_tiers,
                                        tier_progress, prev_fps, prev_ms, frame_history,
@@ -199,17 +199,17 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
     std::sort(sorted.begin(), sorted.end());
 
     double sum = std::accumulate(sorted.begin(), sorted.end(), 0.0);
-    result.avg_ms = sum / sorted.size();
+    result.avg_ms = sum / static_cast<double>(sorted.size());
     result.avg_fps = (result.avg_ms > 0) ? 1000.0 / result.avg_ms : 0;
 
     result.min_fps = (sorted.back() > 0) ? 1000.0 / sorted.back() : 0;
 
     auto percentile = [&](double p) -> double {
-        double idx = p * (sorted.size() - 1);
-        int lo = static_cast<int>(floor(idx));
-        int hi = static_cast<int>(ceil(idx));
+        double idx = p * static_cast<double>(sorted.size() - 1);
+        size_t lo = static_cast<size_t>(floor(idx));
+        size_t hi = static_cast<size_t>(ceil(idx));
         if (lo == hi) return sorted[lo];
-        double frac = idx - lo;
+        double frac = idx - static_cast<double>(lo);
         return sorted[lo] * (1.0 - frac) + sorted[hi] * frac;
     };
 
@@ -293,8 +293,8 @@ DemoResults DemoRunner::run(Renderer* r, RenderContext* ctx,
     for (int i = 0; i < total_tiers; i++) {
         if (poll_cb && !poll_cb->onPoll()) break;
 
-        TierResourceView view = resources.viewForTier(tiers_to_run[i]);
-        DemoTierResult tr = runTier(r, ctx, tiers_to_run[i], cfg.duration_per_tier,
+        TierResourceView view = resources.viewForTier(tiers_to_run[static_cast<size_t>(i)]);
+        DemoTierResult tr = runTier(r, ctx, tiers_to_run[static_cast<size_t>(i)], cfg.duration_per_tier,
                                      render_w, render_h, window_w, window_h,
                                      poll_cb, demo_cb,
                                      i, total_tiers, view);

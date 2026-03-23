@@ -189,9 +189,9 @@ ShaderHandle GL4Renderer::createComputeShader(const char* source) {
 void GL4Renderer::dispatchCompute(int groups_x, int groups_y, int groups_z) {
 #ifdef CB_NEED_GL_LOAD
     if (cb_glDispatchCompute)
-        cb_glDispatchCompute(groups_x, groups_y, groups_z);
+        cb_glDispatchCompute(static_cast<GLuint>(groups_x), static_cast<GLuint>(groups_y), static_cast<GLuint>(groups_z));
 #else
-    glDispatchCompute(groups_x, groups_y, groups_z);
+    glDispatchCompute(static_cast<GLuint>(groups_x), static_cast<GLuint>(groups_y), static_cast<GLuint>(groups_z));
 #endif
 }
 
@@ -229,26 +229,33 @@ BufferHandle GL4Renderer::createSSBO(int size_bytes) {
 }
 
 void GL4Renderer::destroySSBO(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= ssbos_.size() || !ssbos_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid) return;
     glDeleteBuffers(1, &ssbos_[h].id);
     ssbos_[h].valid = false;
     free_ssbo_slots_.push_back(h);
 }
 
 void GL4Renderer::bindSSBO(BufferHandle h, int binding) {
-    if (h == INVALID_BUFFER || h >= ssbos_.size() || !ssbos_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid) return;
 #ifdef CB_NEED_GL_LOAD
     if (cb_glBindBufferBase)
-        cb_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, ssbos_[h].id);
+        cb_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(binding), ssbos_[h].id);
 #else
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, ssbos_[h].id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(binding), ssbos_[h].id);
 #endif
 }
 
 void GL4Renderer::updateSSBO(BufferHandle h, const void* data, int size_bytes) {
-    if (h == INVALID_BUFFER || h >= ssbos_.size() || !ssbos_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid) return;
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h].id);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, size_bytes, data);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void GL4Renderer::readSSBO(BufferHandle h, void* data, int offset, int size_bytes) {
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid || !data) return;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h].id);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, size_bytes, data);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
@@ -271,7 +278,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA16F), w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt.color_tex, 0);
 
     // Depth renderbuffer
@@ -301,7 +308,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
     return handle;
@@ -324,7 +331,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA16F), w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt.color_tex, 0);
 
     // Sampleable depth texture
@@ -334,7 +341,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0,
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH_COMPONENT24), w, h, 0,
                  GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rt.depth_tex, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -360,7 +367,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
     return handle;
@@ -391,7 +398,7 @@ BufferHandle GL4Renderer::createIndirectBuffer(int size_bytes, const void* data)
 }
 
 void GL4Renderer::destroyIndirectBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= indirect_buffers_.size() || !indirect_buffers_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= indirect_buffers_.size() || !indirect_buffers_[h].valid) return;
     glDeleteBuffers(1, &indirect_buffers_[h].id);
     indirect_buffers_[h].valid = false;
     free_indirect_slots_.push_back(h);
@@ -400,7 +407,7 @@ void GL4Renderer::destroyIndirectBuffer(BufferHandle h) {
 void GL4Renderer::multiDrawMeshIndirect(MeshHandle mesh, BufferHandle indirect,
                                          int draw_count, int stride) {
     if (!isValidMesh(mesh)) return;
-    if (indirect == INVALID_BUFFER || indirect >= indirect_buffers_.size()
+    if (indirect == INVALID_BUFFER || static_cast<size_t>(indirect) >= indirect_buffers_.size()
         || !indirect_buffers_[indirect].valid) return;
 
     const GLMesh& gm = meshes_[mesh];
@@ -498,8 +505,8 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
     glGenTextures(1, &tex.id);
     glBindTexture(GL_TEXTURE_2D, tex.id);
     // Zero-initialize to prevent flicker from undefined texture data on first frame
-    std::vector<float> zeros(w * h * 4, 0.0f);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, zeros.data());
+    std::vector<float> zeros(static_cast<size_t>(w) * static_cast<size_t>(h) * 4, 0.0f);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA32F), w, h, 0, GL_RGBA, GL_FLOAT, zeros.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -523,13 +530,13 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
 
 void GL4Renderer::bindImageTexture(TextureHandle h, int unit,
                                     bool read, bool write) {
-    if (h == INVALID_TEXTURE || h >= textures_.size() || !textures_[h].valid) {
+    if (h == INVALID_TEXTURE || static_cast<size_t>(h) >= textures_.size() || !textures_[h].valid) {
         // Unbind: bind texture 0 to release the image unit
 #ifdef CB_NEED_GL_LOAD
         if (cb_glBindImageTexture)
-            cb_glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+            cb_glBindImageTexture(static_cast<GLuint>(unit), 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 #else
-        glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(static_cast<GLuint>(unit), 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 #endif
         return;
     }
@@ -539,9 +546,9 @@ void GL4Renderer::bindImageTexture(TextureHandle h, int unit,
 
 #ifdef CB_NEED_GL_LOAD
     if (cb_glBindImageTexture)
-        cb_glBindImageTexture(unit, textures_[h].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
+        cb_glBindImageTexture(static_cast<GLuint>(unit), textures_[h].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
 #else
-    glBindImageTexture(unit, textures_[h].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
+    glBindImageTexture(static_cast<GLuint>(unit), textures_[h].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
 #endif
 }
 
@@ -578,6 +585,7 @@ BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     pb.valid = true;
+    pb.size = size_bytes;
     pb.fence = nullptr;
     pb.mapped = nullptr;
 
@@ -594,7 +602,7 @@ BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {
 }
 
 void* GL4Renderer::mapPersistentBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= persistent_buffers_.size()
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= persistent_buffers_.size()
         || !persistent_buffers_[h].valid) return nullptr;
 
     PersistentBuffer& pb = persistent_buffers_[h];
@@ -604,16 +612,16 @@ void* GL4Renderer::mapPersistentBuffer(BufferHandle h) {
     GLbitfield access = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 #ifdef CB_NEED_GL_LOAD
     if (cb_glMapBufferRange)
-        pb.mapped = cb_glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0, access);
+        pb.mapped = cb_glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, pb.size, access);
 #else
-    pb.mapped = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0, access);
+    pb.mapped = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, pb.size, access);
 #endif
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     return pb.mapped;
 }
 
 void GL4Renderer::persistentBufferFence(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= persistent_buffers_.size()
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= persistent_buffers_.size()
         || !persistent_buffers_[h].valid) return;
 
     PersistentBuffer& pb = persistent_buffers_[h];
@@ -641,7 +649,7 @@ void GL4Renderer::persistentBufferFence(BufferHandle h) {
 }
 
 void GL4Renderer::destroyPersistentBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= persistent_buffers_.size()
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= persistent_buffers_.size()
         || !persistent_buffers_[h].valid) return;
 
     PersistentBuffer& pb = persistent_buffers_[h];
@@ -663,7 +671,7 @@ void GL4Renderer::destroyPersistentBuffer(BufferHandle h) {
 
 uint64_t GL4Renderer::getBindlessHandle(TextureHandle h) {
     if (!has_bindless_texture_) return 0;
-    if (h == INVALID_TEXTURE || h >= textures_.size() || !textures_[h].valid) return 0;
+    if (h == INVALID_TEXTURE || static_cast<size_t>(h) >= textures_.size() || !textures_[h].valid) return 0;
     if (cb_glGetTextureHandleARB)
         return cb_glGetTextureHandleARB(textures_[h].id);
     return 0;

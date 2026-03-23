@@ -5,12 +5,12 @@
 // ---- Shared texture generation helpers ----
 
 std::vector<unsigned char> genCheckerboard(int size, int check_size) {
-    std::vector<unsigned char> pixels(size * size * 3);
+    std::vector<unsigned char> pixels(static_cast<size_t>(size) * static_cast<size_t>(size) * 3);
     for (int y = 0; y < size; y++) {
         for (int x = 0; x < size; x++) {
             bool white = ((x / check_size) + (y / check_size)) % 2 == 0;
             unsigned char c = white ? 220 : 40;
-            int idx = (y * size + x) * 3;
+            size_t idx = static_cast<size_t>((y * size + x) * 3);
             pixels[idx] = c;
             pixels[idx + 1] = c;
             pixels[idx + 2] = c;
@@ -20,9 +20,10 @@ std::vector<unsigned char> genCheckerboard(int size, int check_size) {
 }
 
 std::vector<unsigned char> genColorNoise(int size, unsigned int seed) {
-    std::vector<unsigned char> pixels(size * size * 3);
+    size_t total = static_cast<size_t>(size) * static_cast<size_t>(size) * 3;
+    std::vector<unsigned char> pixels(total);
     unsigned int s = seed;
-    for (int i = 0; i < size * size * 3; i++) {
+    for (size_t i = 0; i < total; i++) {
         s = s * 1664525u + 1013904223u;
         pixels[i] = static_cast<unsigned char>(s >> 24);
     }
@@ -61,7 +62,7 @@ void FillrateTest::render(Renderer* r) {
     r->useShader(Renderer::ShaderType::Color2D);
 
     for (int i = 0; i < layers_; i++) {
-        float t = static_cast<float>(i) / layers_;
+        float t = static_cast<float>(i) / static_cast<float>(layers_);
         r->setColor(
             0.5f + 0.5f * sinf(t * 6.28f),
             0.5f + 0.5f * sinf(t * 6.28f + 2.09f),

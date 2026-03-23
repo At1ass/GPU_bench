@@ -65,7 +65,7 @@ void UBOSwitchTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) {
 
     // Create UBOs with different colors
     for (int i = 0; i < params_.ubo_count; i++) {
-        float t = static_cast<float>(i) / params_.ubo_count;
+        float t = static_cast<float>(i) / static_cast<float>(params_.ubo_count);
         float color[4] = {
             0.5f + 0.5f * sinf(t * 6.28f),
             0.5f + 0.5f * sinf(t * 6.28f + 2.09f),
@@ -90,7 +90,7 @@ void UBOSwitchTest::renderGL3(Renderer& r, GL3Features& gl3) {
 
     int num_ubos = static_cast<int>(ubos_.size());
     for (int i = 0; i < params_.switches_per_frame; i++) {
-        gl3.bindUBO(ubos_[i % num_ubos], 0);
+        gl3.bindUBO(ubos_[static_cast<size_t>(i % num_ubos)], 0);
         r.drawMesh(quad_);
     }
 

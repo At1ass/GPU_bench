@@ -235,6 +235,12 @@
   #ifndef GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
   #define GL_SHADER_IMAGE_ACCESS_BARRIER_BIT 0x00000020
   #endif
+  #ifndef GL_TEXTURE_FETCH_BARRIER_BIT
+  #define GL_TEXTURE_FETCH_BARRIER_BIT    0x00000008
+  #endif
+  #ifndef GL_RGBA16F
+  #define GL_RGBA16F                      0x881A
+  #endif
 
   // Buffer storage / persistent mapping (GL 4.4+)
   #ifndef GL_MAP_READ_BIT
@@ -329,6 +335,8 @@
   using PFNCB_glDepthMask      = void   (APIENTRY *)(GLboolean);
   using PFNCB_glDrawArrays     = void   (APIENTRY *)(GLenum, GLint, GLsizei);
   using PFNCB_glTexSubImage2D  = void   (APIENTRY *)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void*);
+  using PFNCB_glCopyTexSubImage2D = void (APIENTRY *)(GLenum, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei);
+  using PFNCB_glGetBufferSubData  = void (APIENTRY *)(GLenum, GLintptr, GLsizeiptr, void*);
 
   // GL 2.0 extras
   using PFNCB_glUniform1f           = void   (APIENTRY *)(GLint, GLfloat);
@@ -427,7 +435,9 @@
 
   // GL 2.0 soft-required — loaded but not fatal if missing
   #define CB_GL_SOFTREQ_FUNCS(X) \
-      X(glTexSubImage2D)
+      X(glTexSubImage2D) \
+      X(glCopyTexSubImage2D) \
+      X(glGetBufferSubData)
 
   // GL 3.0+ optional functions (loaded in loadGL3Functions)
   #define CB_GL3_OPTIONAL_FUNCS(X) \
@@ -495,6 +505,8 @@
   #define glDepthMask                     cb_glDepthMask
   #define glDrawArrays                    cb_glDrawArrays
   #define glTexSubImage2D                 cb_glTexSubImage2D
+  #define glCopyTexSubImage2D             cb_glCopyTexSubImage2D
+  #define glGetBufferSubData              cb_glGetBufferSubData
 
   // GL 2.0 extras
   #define glUniform1f                     cb_glUniform1f

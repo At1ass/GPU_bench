@@ -28,7 +28,7 @@ void TexUploadTest::render(Renderer* r) {
     // Re-upload texture data N times per frame
     for (int i = 0; i < params_.uploads_per_frame; i++) {
         // Modify a few bytes to prevent driver optimization
-        int offset = (i * 1024) % static_cast<int>(upload_data_.size());
+        size_t offset = static_cast<size_t>(i * 1024) % upload_data_.size();
         upload_data_[offset] = static_cast<unsigned char>(upload_data_[offset] + 1);
         r->uploadTextureData(texture_, actual_tex_size_, actual_tex_size_, 3, upload_data_.data());
     }

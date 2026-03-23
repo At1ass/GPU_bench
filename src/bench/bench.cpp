@@ -7,6 +7,7 @@
 #include <numeric>
 #include <cmath>
 #include <cstring>
+#include <unordered_map>
 
 // GL3BenchTest
 void GL3BenchTest::setup(Renderer* r, int vw, int vh) {
@@ -98,11 +99,11 @@ static constexpr double ALU_FMA_DIVERGENCE_RATIO     = 3.0;
 
 static double percentile(std::vector<double>& sorted, double p) {
     if (sorted.empty()) return 0;
-    double idx = p * (sorted.size() - 1);
-    int lo = static_cast<int>(floor(idx));
-    int hi = static_cast<int>(ceil(idx));
+    double idx = p * static_cast<double>(sorted.size() - 1);
+    size_t lo = static_cast<size_t>(floor(idx));
+    size_t hi = static_cast<size_t>(ceil(idx));
     if (lo == hi) return sorted[lo];
-    double frac = idx - lo;
+    double frac = idx - static_cast<double>(lo);
     return sorted[lo] * (1.0 - frac) + sorted[hi] * frac;
 }
 
@@ -125,7 +126,7 @@ BenchResult computeStats(const std::string& name,
     std::sort(sorted.begin(), sorted.end());
 
     double sum = std::accumulate(sorted.begin(), sorted.end(), 0.0);
-    r.avg_ms    = sum / sorted.size();
+    r.avg_ms    = sum / static_cast<double>(sorted.size());
     r.min_ms    = sorted.front();
     r.max_ms    = sorted.back();
     r.median_ms = percentile(sorted, 0.5);
@@ -138,7 +139,7 @@ BenchResult computeStats(const std::string& name,
         double diff = val - r.avg_ms;
         variance += diff * diff;
     }
-    double stddev = sqrt(variance / sorted.size());
+    double stddev = sqrt(variance / static_cast<double>(sorted.size() > 1 ? sorted.size() - 1 : 1));
     r.cv = (r.avg_ms > 0) ? stddev / r.avg_ms : 0;
     r.p99_median_ratio = (r.median_ms > 0) ? r.p99_ms / r.median_ms : 0;
 
@@ -147,12 +148,19 @@ BenchResult computeStats(const std::string& name,
     return r;
 }
 
-// Helper: find a result by name
-static const BenchResult* findResult(const std::vector<BenchResult>& results, const char* name) {
-    for (const auto& r : results) {
-        if (r.name == name) return &r;
-    }
-    return nullptr;
+// Build index for O(1) result lookup by name
+typedef std::unordered_map<std::string, const BenchResult*> ResultIndex;
+
+static ResultIndex buildResultIndex(const std::vector<BenchResult>& results) {
+    ResultIndex idx;
+    idx.reserve(results.size());
+    for (const auto& r : results) idx[r.name] = &r;
+    return idx;
+}
+
+static const BenchResult* findResult(const ResultIndex& idx, const char* name) {
+    auto it = idx.find(name);
+    return (it != idx.end()) ? it->second : nullptr;
 }
 
 // Geometric mean of non-zero values
@@ -171,6 +179,7 @@ static double geomean(const double* vals, int count) {
 
 CompositeScore computeCompositeScores(const std::vector<BenchResult>& results) {
     CompositeScore cs;
+    auto idx = buildResultIndex(results);
 
     // Data-driven: collect scores per category from registry
     double cat_vals[static_cast<int>(TestCategory::Count)][NUM_TESTS];
@@ -180,7 +189,8 @@ CompositeScore computeCompositeScores(const std::vector<BenchResult>& results) {
         int ci = static_cast<int>(g_tests[i].category);
         cat_vals[ci][cat_count[ci]] = 0;
 
-        const BenchResult* r = findResult(results, g_tests[i].display_name);
+        auto it = idx.find(g_tests[i].display_name);
+        const BenchResult* r = (it != idx.end()) ? it->second : nullptr;
         if (r && r->score > 0)
             cat_vals[ci][cat_count[ci]] = r->score;
 
@@ -264,6 +274,7 @@ int tierToPresetIndex(GPUTier tier) {
 BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
                                 const CompositeScore& scores) {
     BottleneckInfo info;
+    auto idx = buildResultIndex(results);
 
     // Find weakest category relative to others
     struct { const char* name; double score; } cats[] = {
@@ -337,8 +348,8 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     }
 
     // Compare DrawCall vs DrawCallRaw if both present
-    const BenchResult* dc = findResult(results, "DrawCall");
-    const BenchResult* dcr = findResult(results, "DrawCallRaw");
+    const BenchResult* dc = findResult(idx, "DrawCall");
+    const BenchResult* dcr = findResult(idx, "DrawCallRaw");
     if (dc && dcr && dc->valid && dcr->valid && dc->score > 0) {
         double ratio = dcr->score / dc->score;
         if (ratio > DRAWCALL_OVERHEAD_RATIO) {
@@ -350,8 +361,8 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     }
 
     // Compare ShaderALU vs ShaderFMA
-    const BenchResult* alu = findResult(results, "ShaderALU");
-    const BenchResult* fma = findResult(results, "ShaderFMA");
+    const BenchResult* alu = findResult(idx, "ShaderALU");
+    const BenchResult* fma = findResult(idx, "ShaderFMA");
     if (alu && fma && alu->valid && fma->valid && alu->score > 0) {
         double ratio = fma->score / alu->score;
         if (ratio > ALU_FMA_DIVERGENCE_RATIO) {
@@ -360,8 +371,8 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     }
 
     // Compare FBOFillrate vs Fillrate → FBO overhead
-    const BenchResult* fill = findResult(results, "Fillrate");
-    const BenchResult* fbo_fill = findResult(results, "FBOFillrate");
+    const BenchResult* fill = findResult(idx, "Fillrate");
+    const BenchResult* fbo_fill = findResult(idx, "FBOFillrate");
     if (fill && fbo_fill && fill->valid && fbo_fill->valid && fill->score > 0) {
         double ratio = fbo_fill->score / fill->score;
         if (ratio < BOTTLENECK_WEAKNESS_RATIO) {
@@ -373,7 +384,7 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     }
 
     // Compare IndirectDraw vs DrawCallRaw → indirect vs direct
-    const BenchResult* indirect = findResult(results, "IndirectDraw");
+    const BenchResult* indirect = findResult(idx, "IndirectDraw");
     if (dcr && indirect && dcr->valid && indirect->valid && indirect->score > 0) {
         double ratio = indirect->score / dcr->score;
         if (ratio > DRAWCALL_OVERHEAD_RATIO) {
@@ -385,8 +396,8 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     }
 
     // Compare ComputeBandwidth vs ComputeFMA → bandwidth vs ALU bound
-    const BenchResult* cbw = findResult(results, "ComputeBW");
-    const BenchResult* cfma = findResult(results, "ComputeFMA");
+    const BenchResult* cbw = findResult(idx, "ComputeBW");
+    const BenchResult* cfma = findResult(idx, "ComputeFMA");
     if (cbw && cfma && cbw->valid && cfma->valid) {
         // Both valid — report which is the bottleneck
         // (different units, so we note presence rather than ratio)
@@ -394,7 +405,7 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     }
 
     // Compare ComputeSharedMem vs ComputeBandwidth → shared vs global
-    const BenchResult* csmem = findResult(results, "ComputeSMem");
+    const BenchResult* csmem = findResult(idx, "ComputeSMem");
     if (cbw && csmem && cbw->valid && csmem->valid && cbw->score > 0) {
         double ratio = csmem->score / cbw->score;
         if (ratio > 2.0) {

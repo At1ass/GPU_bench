@@ -6,19 +6,19 @@
 #include <vector>
 #include <algorithm>
 
-static const float PI = 3.14159265358979323846f;
+static const float PI = CB_PI;
 
 MeshData MeshGen::quad() {
     MeshData m;
     // Vertex layout: pos(xyz), normal(xyz), uv(xy)
     // For 2D shaders, only xy of pos and uv are used
     Vertex v;
-    v.normal = Vec3(0, 0, 1);
+    v.normal = Vec3(0.0f, 0.0f, 1.0f);
 
-    v.pos = Vec3(-1, -1, 0); v.uv = Vec2(0, 0); m.vertices.push_back(v);
-    v.pos = Vec3( 1, -1, 0); v.uv = Vec2(1, 0); m.vertices.push_back(v);
-    v.pos = Vec3( 1,  1, 0); v.uv = Vec2(1, 1); m.vertices.push_back(v);
-    v.pos = Vec3(-1,  1, 0); v.uv = Vec2(0, 1); m.vertices.push_back(v);
+    v.pos = Vec3(-1.0f, -1.0f, 0.0f); v.uv = Vec2(0.0f, 0.0f); m.vertices.push_back(v);
+    v.pos = Vec3( 1.0f, -1.0f, 0.0f); v.uv = Vec2(1.0f, 0.0f); m.vertices.push_back(v);
+    v.pos = Vec3( 1.0f,  1.0f, 0.0f); v.uv = Vec2(1.0f, 1.0f); m.vertices.push_back(v);
+    v.pos = Vec3(-1.0f,  1.0f, 0.0f); v.uv = Vec2(0.0f, 1.0f); m.vertices.push_back(v);
 
     m.indices = {0, 1, 2, 0, 2, 3};
     return m;
@@ -29,27 +29,27 @@ MeshData MeshGen::cube() {
     // 6 faces, 4 vertices each, with normals
     struct Face { Vec3 n; Vec3 u; Vec3 v; }; // normal, right, up
     Face faces[6] = {
-        { Vec3( 0, 0, 1), Vec3( 1, 0, 0), Vec3(0, 1, 0) },  // front
-        { Vec3( 0, 0,-1), Vec3(-1, 0, 0), Vec3(0, 1, 0) },  // back
-        { Vec3( 1, 0, 0), Vec3( 0, 0,-1), Vec3(0, 1, 0) },  // right
-        { Vec3(-1, 0, 0), Vec3( 0, 0, 1), Vec3(0, 1, 0) },  // left
-        { Vec3( 0, 1, 0), Vec3( 1, 0, 0), Vec3(0, 0,-1) },  // top
-        { Vec3( 0,-1, 0), Vec3( 1, 0, 0), Vec3(0, 0, 1) },  // bottom
+        { Vec3( 0.0f, 0.0f, 1.0f), Vec3( 1.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f) },  // front
+        { Vec3( 0.0f, 0.0f,-1.0f), Vec3(-1.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f) },  // back
+        { Vec3( 1.0f, 0.0f, 0.0f), Vec3( 0.0f, 0.0f,-1.0f), Vec3(0.0f, 1.0f, 0.0f) },  // right
+        { Vec3(-1.0f, 0.0f, 0.0f), Vec3( 0.0f, 0.0f, 1.0f), Vec3(0.0f, 1.0f, 0.0f) },  // left
+        { Vec3( 0.0f, 1.0f, 0.0f), Vec3( 1.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f,-1.0f) },  // top
+        { Vec3( 0.0f,-1.0f, 0.0f), Vec3( 1.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f, 1.0f) },  // bottom
     };
 
     for (int f = 0; f < 6; f++) {
         Vec3 n = faces[f].n;
         Vec3 r = faces[f].u;
         Vec3 u = faces[f].v;
-        unsigned int base = (unsigned int)m.vertices.size();
+        unsigned int base = static_cast<unsigned int>(m.vertices.size());
 
         Vertex vt;
         vt.normal = n;
 
-        vt.pos = (n + r * (-1) + u * (-1)) * 0.5f; vt.uv = Vec2(0, 0); m.vertices.push_back(vt);
-        vt.pos = (n + r *   1  + u * (-1)) * 0.5f; vt.uv = Vec2(1, 0); m.vertices.push_back(vt);
-        vt.pos = (n + r *   1  + u *   1 ) * 0.5f; vt.uv = Vec2(1, 1); m.vertices.push_back(vt);
-        vt.pos = (n + r * (-1) + u *   1 ) * 0.5f; vt.uv = Vec2(0, 1); m.vertices.push_back(vt);
+        vt.pos = (n + r * (-1.0f) + u * (-1.0f)) * 0.5f; vt.uv = Vec2(0.0f, 0.0f); m.vertices.push_back(vt);
+        vt.pos = (n + r *   1.0f + u * (-1.0f)) * 0.5f; vt.uv = Vec2(1.0f, 0.0f); m.vertices.push_back(vt);
+        vt.pos = (n + r *   1.0f + u *   1.0f)  * 0.5f; vt.uv = Vec2(1.0f, 1.0f); m.vertices.push_back(vt);
+        vt.pos = (n + r * (-1.0f) + u *   1.0f) * 0.5f; vt.uv = Vec2(0.0f, 1.0f); m.vertices.push_back(vt);
 
         m.indices.push_back(base + 0);
         m.indices.push_back(base + 1);
@@ -64,10 +64,10 @@ MeshData MeshGen::cube() {
 MeshData MeshGen::sphere(int segments, int rings) {
     MeshData m;
     for (int r = 0; r <= rings; r++) {
-        float v = static_cast<float>(r) / rings;
+        float v = static_cast<float>(r) / static_cast<float>(rings);
         float phi = v * PI;
         for (int s = 0; s <= segments; s++) {
-            float u = static_cast<float>(s) / segments;
+            float u = static_cast<float>(s) / static_cast<float>(segments);
             float theta = u * 2.0f * PI;
 
             Vec3 pos(
@@ -84,8 +84,8 @@ MeshData MeshGen::sphere(int segments, int rings) {
     }
     for (int r = 0; r < rings; r++) {
         for (int s = 0; s < segments; s++) {
-            unsigned int a = r * (segments + 1) + s;
-            unsigned int b = a + segments + 1;
+            unsigned int a = static_cast<unsigned int>(r * (segments + 1) + s);
+            unsigned int b = a + static_cast<unsigned int>(segments) + 1;
             m.indices.push_back(a);
             m.indices.push_back(b);
             m.indices.push_back(a + 1);
@@ -100,11 +100,11 @@ MeshData MeshGen::sphere(int segments, int rings) {
 MeshData MeshGen::torus(int ring_segments, int tube_segments, float ring_radius, float tube_radius) {
     MeshData m;
     for (int i = 0; i <= ring_segments; i++) {
-        float u = static_cast<float>(i) / ring_segments;
+        float u = static_cast<float>(i) / static_cast<float>(ring_segments);
         float theta = u * 2.0f * PI;
         float ct = cosf(theta), st = sinf(theta);
         for (int j = 0; j <= tube_segments; j++) {
-            float v = static_cast<float>(j) / tube_segments;
+            float v = static_cast<float>(j) / static_cast<float>(tube_segments);
             float phi = v * 2.0f * PI;
             float cp = cosf(phi), sp = sinf(phi);
 
@@ -118,8 +118,8 @@ MeshData MeshGen::torus(int ring_segments, int tube_segments, float ring_radius,
     }
     for (int i = 0; i < ring_segments; i++) {
         for (int j = 0; j < tube_segments; j++) {
-            unsigned int a = i * (tube_segments + 1) + j;
-            unsigned int b = a + tube_segments + 1;
+            unsigned int a = static_cast<unsigned int>(i * (tube_segments + 1) + j);
+            unsigned int b = a + static_cast<unsigned int>(tube_segments) + 1;
             m.indices.push_back(a);
             m.indices.push_back(b);
             m.indices.push_back(a + 1);
@@ -134,19 +134,19 @@ MeshData MeshGen::torus(int ring_segments, int tube_segments, float ring_radius,
 MeshData MeshGen::terrain(float size, int resolution) {
     MeshData m;
     float half = size * 0.5f;
-    float step = size / (resolution - 1);
+    float step = size / static_cast<float>(resolution - 1);
 
     for (int z = 0; z < resolution; z++) {
         for (int x = 0; x < resolution; x++) {
-            float wx = -half + x * step;
-            float wz = -half + z * step;
+            float wx = -half + static_cast<float>(x) * step;
+            float wz = -half + static_cast<float>(z) * step;
             float h = 0.0f;
 
             Vertex vt;
             vt.pos = Vec3(wx, h, wz);
-            vt.uv = Vec2(static_cast<float>(x) / (resolution - 1), static_cast<float>(z) / (resolution - 1));
+            vt.uv = Vec2(static_cast<float>(x) / static_cast<float>(resolution - 1), static_cast<float>(z) / static_cast<float>(resolution - 1));
             // Normal computed below
-            vt.normal = Vec3(0, 1, 0);
+            vt.normal = Vec3(0.0f, 1.0f, 0.0f);
             m.vertices.push_back(vt);
         }
     }
@@ -154,7 +154,7 @@ MeshData MeshGen::terrain(float size, int resolution) {
     // Compute normals from adjacent vertices
     for (int z = 0; z < resolution; z++) {
         for (int x = 0; x < resolution; x++) {
-            int idx = z * resolution + x;
+            size_t idx = static_cast<size_t>(z * resolution + x);
             Vec3 pos = m.vertices[idx].pos;
 
             Vec3 dx, dz;
@@ -164,9 +164,9 @@ MeshData MeshGen::terrain(float size, int resolution) {
                 dx = pos - m.vertices[idx - 1].pos;
 
             if (z + 1 < resolution)
-                dz = m.vertices[idx + resolution].pos - pos;
+                dz = m.vertices[idx + static_cast<size_t>(resolution)].pos - pos;
             else if (z > 0)
-                dz = pos - m.vertices[idx - resolution].pos;
+                dz = pos - m.vertices[idx - static_cast<size_t>(resolution)].pos;
 
             m.vertices[idx].normal = Vec3::cross(dz, dx).normalized();
         }
@@ -175,9 +175,9 @@ MeshData MeshGen::terrain(float size, int resolution) {
     // Indices
     for (int z = 0; z < resolution - 1; z++) {
         for (int x = 0; x < resolution - 1; x++) {
-            unsigned int tl = z * resolution + x;
+            unsigned int tl = static_cast<unsigned int>(z * resolution + x);
             unsigned int tr = tl + 1;
-            unsigned int bl = tl + resolution;
+            unsigned int bl = tl + static_cast<unsigned int>(resolution);
             unsigned int br = bl + 1;
             m.indices.push_back(tl);
             m.indices.push_back(bl);
@@ -194,8 +194,8 @@ MeshData MeshGen::cone(int segments, float height, float radius) {
     MeshData m;
     // Apex vertex
     Vertex apex;
-    apex.pos = Vec3(0, height, 0);
-    apex.normal = Vec3(0, 1, 0);
+    apex.pos = Vec3(0.0f, height, 0.0f);
+    apex.normal = Vec3(0.0f, 1.0f, 0.0f);
     apex.uv = Vec2(0.5f, 1.0f);
     m.vertices.push_back(apex);
 
@@ -204,14 +204,14 @@ MeshData MeshGen::cone(int segments, float height, float radius) {
     float ny = 1.0f / sqrtf(1.0f + slope * slope);
     float nr = slope * ny;
     for (int i = 0; i <= segments; i++) {
-        float u = static_cast<float>(i) / segments;
+        float u = static_cast<float>(i) / static_cast<float>(segments);
         float theta = u * 2.0f * PI;
         float cs = cosf(theta), sn = sinf(theta);
 
         Vertex vt;
-        vt.pos = Vec3(cs * radius, 0, sn * radius);
+        vt.pos = Vec3(cs * radius, 0.0f, sn * radius);
         vt.normal = Vec3(cs * nr, ny, sn * nr);
-        vt.uv = Vec2(u, 0);
+        vt.uv = Vec2(u, 0.0f);
         m.vertices.push_back(vt);
     }
 
@@ -225,8 +225,8 @@ MeshData MeshGen::cone(int segments, float height, float radius) {
     // Base cap
     unsigned int center_idx = static_cast<unsigned int>(m.vertices.size());
     Vertex center;
-    center.pos = Vec3(0, 0, 0);
-    center.normal = Vec3(0, -1, 0);
+    center.pos = Vec3(0.0f, 0.0f, 0.0f);
+    center.normal = Vec3(0.0f, -1.0f, 0.0f);
     center.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(center);
 
@@ -245,27 +245,27 @@ MeshData MeshGen::cylinder(int segments, float height, float radius) {
 
     // Side vertices: top and bottom rings
     for (int i = 0; i <= segments; i++) {
-        float u = static_cast<float>(i) / segments;
+        float u = static_cast<float>(i) / static_cast<float>(segments);
         float theta = u * 2.0f * PI;
         float cs = cosf(theta), sn = sinf(theta);
-        Vec3 n(cs, 0, sn);
+        Vec3 n(cs, 0.0f, sn);
 
         Vertex top;
         top.pos = Vec3(cs * radius, half_h, sn * radius);
         top.normal = n;
-        top.uv = Vec2(u, 1);
+        top.uv = Vec2(u, 1.0f);
         m.vertices.push_back(top);
 
         Vertex bot;
         bot.pos = Vec3(cs * radius, -half_h, sn * radius);
         bot.normal = n;
-        bot.uv = Vec2(u, 0);
+        bot.uv = Vec2(u, 0.0f);
         m.vertices.push_back(bot);
     }
 
     // Side quads
     for (int i = 0; i < segments; i++) {
-        unsigned int t0 = i * 2;
+        unsigned int t0 = static_cast<unsigned int>(i) * 2;
         unsigned int b0 = t0 + 1;
         unsigned int t1 = t0 + 2;
         unsigned int b1 = t0 + 3;
@@ -275,7 +275,7 @@ MeshData MeshGen::cylinder(int segments, float height, float radius) {
 
     // Top cap
     unsigned int top_center = static_cast<unsigned int>(m.vertices.size());
-    Vertex tc; tc.pos = Vec3(0, half_h, 0); tc.normal = Vec3(0, 1, 0); tc.uv = Vec2(0.5f, 0.5f);
+    Vertex tc; tc.pos = Vec3(0.0f, half_h, 0.0f); tc.normal = Vec3(0.0f, 1.0f, 0.0f); tc.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(tc);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(top_center);
@@ -285,7 +285,7 @@ MeshData MeshGen::cylinder(int segments, float height, float radius) {
 
     // Bottom cap
     unsigned int bot_center = static_cast<unsigned int>(m.vertices.size());
-    Vertex bc; bc.pos = Vec3(0, -half_h, 0); bc.normal = Vec3(0, -1, 0); bc.uv = Vec2(0.5f, 0.5f);
+    Vertex bc; bc.pos = Vec3(0.0f, -half_h, 0.0f); bc.normal = Vec3(0.0f, -1.0f, 0.0f); bc.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(bc);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(bot_center);
@@ -300,17 +300,17 @@ MeshData MeshGen::cubeGrid(int count) {
     MeshData result;
     MeshData unit = cube();
     float spacing = 1.5f;
-    float offset = -(count - 1) * spacing * 0.5f;
+    float offset = -static_cast<float>(count - 1) * spacing * 0.5f;
 
     for (int iz = 0; iz < count; iz++) {
         for (int iy = 0; iy < count; iy++) {
             for (int ix = 0; ix < count; ix++) {
                 Vec3 pos(
-                    offset + ix * spacing,
-                    offset + iy * spacing,
-                    offset + iz * spacing
+                    offset + static_cast<float>(ix) * spacing,
+                    offset + static_cast<float>(iy) * spacing,
+                    offset + static_cast<float>(iz) * spacing
                 );
-                unsigned int base = (unsigned int)result.vertices.size();
+                unsigned int base = static_cast<unsigned int>(result.vertices.size());
                 for (auto vt : unit.vertices) {
                     vt.pos = vt.pos + pos;
                     result.vertices.push_back(vt);
@@ -336,7 +336,7 @@ MeshData MeshGen::frustum(int segments, float height, float r_bottom, float r_to
     float nr = height / slope_len;
 
     for (int i = 0; i <= segments; i++) {
-        float u = static_cast<float>(i) / segments;
+        float u = static_cast<float>(i) / static_cast<float>(segments);
         float theta = u * 2.0f * PI;
         float cs = cosf(theta), sn = sinf(theta);
         Vec3 n(cs * nr, ny, sn * nr);
@@ -344,23 +344,23 @@ MeshData MeshGen::frustum(int segments, float height, float r_bottom, float r_to
         Vertex top;
         top.pos = Vec3(cs * r_top, half_h, sn * r_top);
         top.normal = n;
-        top.uv = Vec2(u, 1);
+        top.uv = Vec2(u, 1.0f);
         m.vertices.push_back(top);
 
         Vertex bot;
         bot.pos = Vec3(cs * r_bottom, -half_h, sn * r_bottom);
         bot.normal = n;
-        bot.uv = Vec2(u, 0);
+        bot.uv = Vec2(u, 0.0f);
         m.vertices.push_back(bot);
     }
     for (int i = 0; i < segments; i++) {
-        unsigned int t0 = i * 2, b0 = t0 + 1, t1 = t0 + 2, b1 = t0 + 3;
+        unsigned int t0 = static_cast<unsigned int>(i) * 2, b0 = t0 + 1, t1 = t0 + 2, b1 = t0 + 3;
         m.indices.push_back(t0); m.indices.push_back(b0); m.indices.push_back(t1);
         m.indices.push_back(t1); m.indices.push_back(b0); m.indices.push_back(b1);
     }
     // Top cap
     unsigned int tc = static_cast<unsigned int>(m.vertices.size());
-    Vertex tcv; tcv.pos = Vec3(0, half_h, 0); tcv.normal = Vec3(0, 1, 0); tcv.uv = Vec2(0.5f, 0.5f);
+    Vertex tcv; tcv.pos = Vec3(0.0f, half_h, 0.0f); tcv.normal = Vec3(0.0f, 1.0f, 0.0f); tcv.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(tcv);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(tc);
@@ -369,7 +369,7 @@ MeshData MeshGen::frustum(int segments, float height, float r_bottom, float r_to
     }
     // Bottom cap
     unsigned int bc = static_cast<unsigned int>(m.vertices.size());
-    Vertex bcv; bcv.pos = Vec3(0, -half_h, 0); bcv.normal = Vec3(0, -1, 0); bcv.uv = Vec2(0.5f, 0.5f);
+    Vertex bcv; bcv.pos = Vec3(0.0f, -half_h, 0.0f); bcv.normal = Vec3(0.0f, -1.0f, 0.0f); bcv.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(bcv);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(bc);
@@ -384,8 +384,8 @@ MeshData MeshGen::frustum(int segments, float height, float r_bottom, float r_to
 // ============================================================
 
 float MeshGen::boundingRadius(const MeshData& md) {
-    if (md.vertices.empty()) return 0;
-    float max_r2 = 0;
+    if (md.vertices.empty()) return 0.0f;
+    float max_r2 = 0.0f;
     for (size_t i = 0; i < md.vertices.size(); i++) {
         const Vec3& p = md.vertices[i].pos;
         float r2 = p.x * p.x + p.y * p.y + p.z * p.z;
@@ -395,7 +395,7 @@ float MeshGen::boundingRadius(const MeshData& md) {
 }
 
 void MeshGen::recomputeNormals(MeshData& m) {
-    for (auto& v : m.vertices) v.normal = Vec3(0, 0, 0);
+    for (auto& v : m.vertices) v.normal = Vec3(0.0f, 0.0f, 0.0f);
     for (size_t i = 0; i + 2 < m.indices.size(); i += 3) {
         Vec3 a = m.vertices[m.indices[i]].pos;
         Vec3 b = m.vertices[m.indices[i+1]].pos;
@@ -446,7 +446,7 @@ void MeshGen::smoothNormals(MeshData& m) {
         if (kv.second.size() <= 1) continue;
 
         // Average normals across all vertices at this position
-        Vec3 avg(0, 0, 0);
+        Vec3 avg(0.0f, 0.0f, 0.0f);
         for (unsigned int idx : kv.second) {
             avg = avg + m.vertices[idx].normal;
         }
@@ -500,10 +500,10 @@ MeshData MeshGen::scatteredRocks(int count, float area_size, float min_scale, fl
         unsigned int base = static_cast<unsigned int>(result.vertices.size());
 
         for (int r = 0; r <= rngs; r++) {
-            float v = static_cast<float>(r) / rngs;
+            float v = static_cast<float>(r) / static_cast<float>(rngs);
             float phi = v * PI;
             for (int s = 0; s <= segs; s++) {
-                float u = static_cast<float>(s) / segs;
+                float u = static_cast<float>(s) / static_cast<float>(segs);
                 float theta = u * 2.0f * PI;
 
                 float sp = sinf(phi), cp = cosf(phi);
@@ -533,8 +533,8 @@ MeshData MeshGen::scatteredRocks(int count, float area_size, float min_scale, fl
 
         for (int r = 0; r < rngs; r++) {
             for (int s = 0; s < segs; s++) {
-                unsigned int a = base + r * (segs + 1) + s;
-                unsigned int b = a + segs + 1;
+                unsigned int a = base + static_cast<unsigned int>(r * (segs + 1) + s);
+                unsigned int b = a + static_cast<unsigned int>(segs) + 1;
                 result.indices.push_back(a);
                 result.indices.push_back(b);
                 result.indices.push_back(a + 1);
@@ -710,7 +710,7 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
 
     // Build adjacency: which triangles reference each vertex
     for (size_t t = 0; t < num_tris; t++) {
-        for (int j = 0; j < 3; j++) {
+        for (size_t j = 0; j < 3; j++) {
             unsigned int vi = m.indices[t * 3 + j];
             if (vi < num_verts) {
                 vdata[vi].tri_list.push_back(static_cast<unsigned int>(t));
@@ -720,7 +720,7 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
     }
 
     // Scoring function for a single vertex
-    auto computeVertexScore = [&](unsigned int vi) -> float {
+    auto computeVertexScore = [&](size_t vi) -> float {
         if (vi >= num_verts) return 0.0f;
         VertData& vd = vdata[vi];
         if (vd.remaining_tris <= 0) {
@@ -741,14 +741,14 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
 
     // Initial scores
     for (size_t i = 0; i < num_verts; i++) {
-        computeVertexScore(static_cast<unsigned int>(i));
+        computeVertexScore(i);
     }
 
     // Per-triangle: emitted flag and score
     std::vector<bool> tri_emitted(num_tris, false);
 
     // Compute initial triangle scores
-    auto triScore = [&](unsigned int t) -> float {
+    auto triScore = [&](size_t t) -> float {
         if (t >= num_tris || tri_emitted[t]) return 0.0f;
         return vdata[m.indices[t * 3 + 0]].score
              + vdata[m.indices[t * 3 + 1]].score
@@ -757,7 +757,7 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
 
     // LRU cache (indices of vertices, front = most recent)
     std::vector<unsigned int> cache;
-    cache.reserve(CACHE_SIZE + 3);
+    cache.reserve(static_cast<size_t>(CACHE_SIZE) + 3);
 
     // Output index buffer
     std::vector<unsigned int> new_indices;
@@ -768,14 +768,14 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
     while (emitted_count < num_tris) {
         // Find the best triangle to emit.
         // First, check triangles adjacent to cache entries (fast path).
-        unsigned int best_tri = static_cast<unsigned int>(num_tris); // invalid
+        size_t best_tri = num_tris; // invalid
         float best_score = -1.0f;
 
         for (size_t ci = 0; ci < cache.size(); ci++) {
             unsigned int vi = cache[ci];
             const VertData& vd = vdata[vi];
             for (size_t ti = 0; ti < vd.tri_list.size(); ti++) {
-                unsigned int t = vd.tri_list[ti];
+                size_t t = static_cast<size_t>(vd.tri_list[ti]);
                 if (tri_emitted[t]) continue;
                 float s = triScore(t);
                 if (s > best_score) {
@@ -789,10 +789,10 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
         if (best_tri >= num_tris) {
             for (size_t t = 0; t < num_tris; t++) {
                 if (tri_emitted[t]) continue;
-                float s = triScore(static_cast<unsigned int>(t));
+                float s = triScore(t);
                 if (s > best_score) {
                     best_score = s;
-                    best_tri = static_cast<unsigned int>(t);
+                    best_tri = t;
                 }
             }
         }
@@ -802,7 +802,7 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
         // Emit the triangle
         tri_emitted[best_tri] = true;
         emitted_count++;
-        for (int j = 0; j < 3; j++) {
+        for (size_t j = 0; j < 3; j++) {
             unsigned int vi = m.indices[best_tri * 3 + j];
             new_indices.push_back(vi);
             vdata[vi].remaining_tris--;
@@ -820,7 +820,7 @@ void MeshGen::optimizeVertexCache(MeshData& m) {
 
         // Trim cache to CACHE_SIZE
         if (cache.size() > static_cast<size_t>(CACHE_SIZE)) {
-            cache.resize(CACHE_SIZE);
+            cache.resize(static_cast<size_t>(CACHE_SIZE));
         }
 
         // Update cache positions and recompute scores for affected vertices
@@ -882,13 +882,13 @@ MeshData MeshGen::grassBlade() {
     float w = 0.5f; // half-width at base (instance shader scales this)
 
     Vertex v;
-    v.normal = Vec3(0, 0, 1); // facing Z (instance shader rotates)
+    v.normal = Vec3(0.0f, 0.0f, 1.0f); // facing Z (instance shader rotates)
 
     // Bottom-left
-    v.pos = Vec3(-w, 0, 0); v.uv = Vec2(0, 0);
+    v.pos = Vec3(-w, 0.0f, 0.0f); v.uv = Vec2(0.0f, 0.0f);
     m.vertices.push_back(v);
     // Bottom-right
-    v.pos = Vec3(w, 0, 0); v.uv = Vec2(1, 0);
+    v.pos = Vec3(w, 0.0f, 0.0f); v.uv = Vec2(1.0f, 0.0f);
     m.vertices.push_back(v);
     // Mid-left
     v.pos = Vec3(-w * 0.6f, 0.5f, 0.05f); v.uv = Vec2(0.2f, 0.5f);
@@ -897,7 +897,7 @@ MeshData MeshGen::grassBlade() {
     v.pos = Vec3(w * 0.6f, 0.5f, 0.05f); v.uv = Vec2(0.8f, 0.5f);
     m.vertices.push_back(v);
     // Top (point)
-    v.pos = Vec3(0, 1.0f, 0.08f); v.uv = Vec2(0.5f, 1.0f);
+    v.pos = Vec3(0.0f, 1.0f, 0.08f); v.uv = Vec2(0.5f, 1.0f);
     m.vertices.push_back(v);
 
     // Two quads + one triangle = 3 triangles
@@ -924,14 +924,14 @@ MeshData MeshGen::disc(float radius, int segments, unsigned int seed) {
 
     // Center vertex (slightly offset for organic feel)
     Vertex center;
-    center.pos = Vec3(0, 0, 0);
-    center.normal = Vec3(0, 1, 0);
+    center.pos = Vec3(0.0f, 0.0f, 0.0f);
+    center.normal = Vec3(0.0f, 1.0f, 0.0f);
     center.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(center);
 
     // Ring vertices with organic edge perturbation
     for (int i = 0; i <= segments; i++) {
-        float angle = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * 3.14159265f;
+        float angle = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * PI;
 
         // Noise-based radius variation: ±20% of radius, smooth and organic
         float phase = static_cast<float>(seed) * 2.17f + 7.31f;
@@ -942,8 +942,8 @@ MeshData MeshGen::disc(float radius, int segments, unsigned int seed) {
         float z = sinf(angle) * r;
 
         Vertex v;
-        v.pos = Vec3(x, 0, z);
-        v.normal = Vec3(0, 1, 0);
+        v.pos = Vec3(x, 0.0f, z);
+        v.normal = Vec3(0.0f, 1.0f, 0.0f);
         v.uv = Vec2(cosf(angle) * 0.5f + 0.5f, sinf(angle) * 0.5f + 0.5f);
         m.vertices.push_back(v);
     }

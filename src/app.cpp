@@ -210,12 +210,12 @@ void App::setupPreviewScene() {
     preview_sphere_  = renderer_->createMesh(MeshGen::sphere(24, 16));
 
     int sz = PREVIEW_TEX_SIZE;
-    std::vector<unsigned char> pixels(sz * sz * 3);
+    std::vector<unsigned char> pixels(static_cast<size_t>(sz) * static_cast<size_t>(sz) * 3);
     for (int y = 0; y < sz; y++)
         for (int x = 0; x < sz; x++) {
             bool white = ((x / 16 + y / 16) % 2) != 0;
-            unsigned char c = white ? 200 : 80;
-            int i = (y * sz + x) * 3;
+            unsigned char c = static_cast<unsigned char>(white ? 200 : 80);
+            size_t i = static_cast<size_t>((y * sz + x) * 3);
             pixels[i] = c; pixels[i+1] = c; pixels[i+2] = c;
         }
     preview_tex_ = renderer_->createTexture(sz, sz, 3, pixels.data());

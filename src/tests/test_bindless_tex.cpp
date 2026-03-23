@@ -76,7 +76,7 @@ void BindlessTexTest::renderGL4(Renderer& r, GL4Features& gl4) {
 
     int tex_count = static_cast<int>(handles_.size());
     for (int i = 0; i < params_.draws_per_frame; i++) {
-        gl4.setUniformHandle(u_tex_loc_, handles_[i % tex_count]);
+        gl4.setUniformHandle(u_tex_loc_, handles_[static_cast<size_t>(i % tex_count)]);
         r.drawMesh(quad_);
     }
 

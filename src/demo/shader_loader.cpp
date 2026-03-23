@@ -2,8 +2,9 @@
 #include "platform/data_path.h"
 #include "platform/logger.h"
 #include <cstring>
+#include <set>
 
-static std::string processIncludes(const std::string& source) {
+static std::string processIncludes(const std::string& source, std::set<std::string>& included) {
     std::string result;
     result.reserve(source.size());
 
@@ -21,10 +22,16 @@ static std::string processIncludes(const std::string& source) {
             size_t name_end = line.find('"', name_start);
             if (name_end != std::string::npos) {
                 std::string include_name = line.substr(name_start, name_end - name_start);
+                if (included.count(include_name)) {
+                    // Already included — skip (prevents circular includes)
+                    pos = (eol < source.size()) ? eol + 1 : source.size();
+                    continue;
+                }
+                included.insert(include_name);
                 std::string include_path = getDataPath(("shaders/common/" + include_name).c_str());
                 if (!include_path.empty()) {
                     std::string inc_content = readTextFile(include_path.c_str());
-                    result += inc_content;
+                    result += processIncludes(inc_content, included);
                     result += '\n';
                 } else {
                     Log::err("Shader include not found: %s", include_name.c_str());
@@ -48,7 +55,8 @@ std::string ShaderLoader::load(const char* relative_path) {
     if (!full_path.empty()) {
         std::string content = readTextFile(full_path.c_str());
         if (!content.empty()) {
-            return processIncludes(content);
+            std::set<std::string> included;
+            return processIncludes(content, included);
         }
     }
 

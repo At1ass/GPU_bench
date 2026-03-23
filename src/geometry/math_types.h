@@ -2,6 +2,11 @@
 #include <cmath>
 #include <cstring>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+static const float CB_PI = static_cast<float>(M_PI);
+
 struct Vec2 {
     float x = 0, y = 0;
     Vec2() = default;

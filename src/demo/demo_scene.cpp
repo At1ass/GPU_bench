@@ -363,10 +363,10 @@ void DemoScene::setPointLightUniforms(ShaderProgram* shader, const FrameContext&
         Vec3(0.8f, 1.5f, 0.8f),  // soft green
     };
     for (int i = 0; i < config_.point_light_count && i < 3; i++) {
-        float angle = fc.time * 0.5f + i * 2.094f;
+        float angle = fc.time * 0.5f + static_cast<float>(i) * 2.094f;
         float px = cosf(angle) * 1.8f;
         float pz = sinf(angle) * 1.8f;
-        float py = -0.5f + sinf(fc.time * 0.8f + i * 1.5f) * 0.3f;
+        float py = -0.5f + sinf(fc.time * 0.8f + static_cast<float>(i) * 1.5f) * 0.3f;
         char name[32];
         snprintf(name, sizeof(name), "u_point_lights[%d]", i);
         shader->set3f(name, px, py, pz);
@@ -771,9 +771,8 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
 
         // Copy scene color to ssr_tex_ for water reflections, then render water
         if (config_.enable_ssr && res_.ssr_tex != INVALID_TEXTURE) {
-            // Copy current FBO color into ssr_tex_ via glCopyTexSubImage2D
-            r->bindTextureUnit(0, res_.ssr_tex);
-            glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, viewport_w_, viewport_h_);
+            // Copy current FBO color into ssr_tex_ for SSR lookups
+            r->copyFramebufferToTexture(res_.ssr_tex, viewport_w_, viewport_h_);
             // Render water with scene reflection
             renderWaterPass(r, fc);
         } else {
@@ -1642,8 +1641,7 @@ void DemoScene::renderHDRComposite(Renderer* r, const FrameContext& fc) {
     if (config_.enable_auto_exposure && res_.exposure_ssbo != INVALID_BUFFER) {
         ComputeFeatures* cf = r->features<ComputeFeatures>();
         if (cf) {
-            cf->bindSSBO(res_.exposure_ssbo, 2);
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float), &exposure);
+            cf->readSSBO(res_.exposure_ssbo, &exposure, 0, sizeof(float));
             if (exposure < 0.01f) exposure = 1.0f;
         }
     }

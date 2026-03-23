@@ -6,6 +6,7 @@
 #include "platform/logger.h"
 #include <cmath>
 #include <algorithm>
+#include <memory>
 
 // Probe test parameters
 static const int PROBE_MAX_FRAMES  = 60;
@@ -47,9 +48,8 @@ void BenchRunner::runSelected(Renderer* r, RenderContext* ctx,
             continue;
         }
         if (cb && !cb->onPoll()) break;
-        BenchTest* test = g_tests[i].factory(preset);
-        runTest(test, r, ctx, cfg, cb);
-        delete test;
+        std::unique_ptr<BenchTest> test(g_tests[i].factory(preset));
+        runTest(test.get(), r, ctx, cfg, cb);
     }
     // Clean up render target
     if (bench_rt_ != INVALID_RENDER_TARGET) {
@@ -134,8 +134,8 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         status_ = std::string("Measuring: ") + test->name();
         std::vector<double> times;
         std::vector<double> gpu_times;
-        times.reserve(cfg.measure_frames * 2);
-        if (use_gpu_timer) gpu_times.reserve(cfg.measure_frames * 2);
+        times.reserve(static_cast<size_t>(cfg.measure_frames) * 2);
+        if (use_gpu_timer) gpu_times.reserve(static_cast<size_t>(cfg.measure_frames) * 2);
         Timer total_timer;
         Timer frame_t;
 
@@ -177,7 +177,7 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         if (!gpu_times.empty()) {
             double gpu_sum = 0;
             for (size_t i = 0; i < gpu_times.size(); i++) gpu_sum += gpu_times[i];
-            result.gpu_ms = gpu_sum / gpu_times.size();
+            result.gpu_ms = gpu_sum / static_cast<double>(gpu_times.size());
         }
 
         result.sanity_ok = sanity_ok;

@@ -253,7 +253,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
     }
 
     if (tier == 3) {
-        int idx = 2; // tier 3 -> index 2
+        // idx already set to tier-1 = 2
         // Island shader
         {
             std::string vs_str, fs_str;
@@ -304,7 +304,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         // Procedural normal map texture (256x256)
         {
             const int NM_SIZE = 256;
-            std::vector<unsigned char> nm_data(NM_SIZE * NM_SIZE * 3);
+            std::vector<unsigned char> nm_data(static_cast<size_t>(NM_SIZE * NM_SIZE * 3));
             for (int y = 0; y < NM_SIZE; y++) {
                 for (int x = 0; x < NM_SIZE; x++) {
                     float u = static_cast<float>(x) / NM_SIZE * 8.0f;
@@ -327,7 +327,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                     float nx = -dx / len * 0.5f + 0.5f;
                     float ny = 1.0f / len * 0.5f + 0.5f;
                     float nz = -dy / len * 0.5f + 0.5f;
-                    int idx2 = (y * NM_SIZE + x) * 3;
+                    size_t idx2 = static_cast<size_t>((y * NM_SIZE + x) * 3);
                     nm_data[idx2 + 0] = static_cast<unsigned char>(nx * 255.0f);
                     nm_data[idx2 + 1] = static_cast<unsigned char>(ny * 255.0f);
                     nm_data[idx2 + 2] = static_cast<unsigned char>(nz * 255.0f);
@@ -344,7 +344,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
     }
 
     if (tier == 4) {
-        int idx = 3; // tier 4 -> index 3
+        // idx already set to tier-1 = 3
         // PBR Island shader
         {
             std::string vs = ShaderLoader::load("gl4/island_t4.vert");
@@ -657,7 +657,7 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
     {
         unsigned char noise[4 * 4 * 3];
         unsigned int seed = 42;
-        for (int i = 0; i < 4 * 4; i++) {
+        for (size_t i = 0; i < 4 * 4; i++) {
             seed = seed * 1103515245u + 12345u;
             noise[i * 3 + 0] = static_cast<unsigned char>((seed >> 16) & 0xFF);
             seed = seed * 1103515245u + 12345u;
@@ -698,14 +698,14 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
     // Create particle SSBO
     if (cf && cf->hasCompute() && compute_particle_shader_) {
         compute_particle_count_ = 2048;
-        int particle_size = 12 * sizeof(float); // 3 vec4s
+        int particle_size = static_cast<int>(12 * sizeof(float)); // 3 vec4s
         BufferHandle ssbo = cf->createSSBO(compute_particle_count_ * particle_size);
         if (ssbo != INVALID_BUFFER) {
             // Initialize particle data
-            std::vector<float> init_data(compute_particle_count_ * 12);
+            std::vector<float> init_data(static_cast<size_t>(compute_particle_count_) * 12);
             unsigned int seed = 12345;
             for (int i = 0; i < compute_particle_count_; i++) {
-                int base = i * 12;
+                size_t base = static_cast<size_t>(i) * 12;
                 seed = seed * 1103515245u + 12345u;
                 float rx = (static_cast<float>((seed >> 16) & 0xFFFF) / 65535.0f - 0.5f) * 6.0f;
                 seed = seed * 1103515245u + 12345u;
@@ -878,18 +878,18 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
 
         if (histogram_shader_ && exposure_shader_) {
             // 256 bins * 4 bytes = 1024 bytes
-            BufferHandle hist = cf->createSSBO(256 * sizeof(unsigned int));
+            BufferHandle hist = cf->createSSBO(static_cast<int>(256 * sizeof(unsigned int)));
             if (hist != INVALID_BUFFER) {
                 // Zero-initialize histogram
                 std::vector<unsigned int> zeros(256, 0);
-                cf->updateSSBO(hist, zeros.data(), 256 * sizeof(unsigned int));
+                cf->updateSSBO(hist, zeros.data(), static_cast<int>(256 * sizeof(unsigned int)));
                 histogram_ssbo_ = hist;
             }
             // Single float for exposure
-            BufferHandle exp_buf = cf->createSSBO(sizeof(float));
+            BufferHandle exp_buf = cf->createSSBO(static_cast<int>(sizeof(float)));
             if (exp_buf != INVALID_BUFFER) {
                 float init_exp = 1.0f;
-                cf->updateSSBO(exp_buf, &init_exp, sizeof(float));
+                cf->updateSSBO(exp_buf, &init_exp, static_cast<int>(sizeof(float)));
                 exposure_ssbo_ = exp_buf;
             }
             if (histogram_ssbo_ != INVALID_BUFFER && exposure_ssbo_ != INVALID_BUFFER) {

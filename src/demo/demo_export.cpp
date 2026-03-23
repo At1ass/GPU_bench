@@ -1,6 +1,7 @@
 #include "demo/demo_export.h"
 #include "bench/results.h"
 #include "platform/compat.h"
+#include <string>
 
 static const char* demoTierName(DemoTier tier) {
     switch (tier) {
@@ -13,13 +14,36 @@ static const char* demoTierName(DemoTier tier) {
 }
 
 static void jsonEscape(FILE* out, const char* s) {
+    if (!s) return;
     while (*s) {
-        if (*s == '"') fprintf(out, "\\\"");
-        else if (*s == '\\') fprintf(out, "\\\\");
-        else if (*s == '\n') fprintf(out, "\\n");
-        else fputc(*s, out);
+        switch (*s) {
+        case '"':  fprintf(out, "\\\""); break;
+        case '\\': fprintf(out, "\\\\"); break;
+        case '\n': fprintf(out, "\\n"); break;
+        case '\r': fprintf(out, "\\r"); break;
+        case '\t': fprintf(out, "\\t"); break;
+        case '\b': fprintf(out, "\\b"); break;
+        case '\f': fprintf(out, "\\f"); break;
+        default:
+            if (static_cast<unsigned char>(*s) < 0x20)
+                fprintf(out, "\\u%04x", static_cast<unsigned char>(*s));
+            else
+                fputc(*s, out);
+            break;
+        }
         s++;
     }
+}
+
+static void csvField(FILE* out, const char* s) {
+    if (!s) { fputc(',', out); return; }
+    fputc('"', out);
+    while (*s) {
+        if (*s == '"') fputc('"', out);
+        fputc(*s, out);
+        s++;
+    }
+    fputc('"', out);
 }
 
 void exportDemoText(FILE* out, const DemoResults& results,
@@ -43,7 +67,7 @@ void exportDemoText(FILE* out, const DemoResults& results,
     for (const auto& t : results.tiers) {
         fprintf(out, "T%d %-7s %8.1f %8.1f %8.1f %8.1f %8.2f %8.2f %6d\n",
                 static_cast<int>(t.tier), demoTierName(t.tier),
-                t.avg_fps, t.min_fps, t.p99_fps, t.p1_fps,
+                t.avg_fps, t.min_fps, t.p1_fps, t.p99_fps,
                 t.avg_ms, t.normalized_score, t.frames);
     }
 }
@@ -53,12 +77,17 @@ void exportDemoCSV(FILE* out, const DemoResults& results,
                    const char* gl_version, const char* renderer_name) {
     fprintf(out, "mode,cpu,gpu,gl_version,renderer,os,demo_score,tier,tier_name,avg_fps,min_fps,p1_fps,p99_fps,avg_ms,target_fps,normalized_score,frames\n");
     for (const auto& t : results.tiers) {
-        fprintf(out, "demo,\"%s\",\"%s\",\"%s\",%s,\"%s %s\",%.0f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.3f,%.0f,%.4f,%d\n",
-                hw.cpu_name.c_str(), gpu_name, gl_version, renderer_name,
-                hw.os_name.c_str(), hw.os_version.c_str(),
+        fprintf(out, "demo,");
+        csvField(out, hw.cpu_name.c_str()); fputc(',', out);
+        csvField(out, gpu_name); fputc(',', out);
+        csvField(out, gl_version); fputc(',', out);
+        csvField(out, renderer_name); fputc(',', out);
+        std::string os = std::string(hw.os_name) + " " + hw.os_version;
+        csvField(out, os.c_str());
+        fprintf(out, ",%.0f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.3f,%.0f,%.4f,%d\n",
                 results.demo_score,
                 static_cast<int>(t.tier), demoTierName(t.tier),
-                t.avg_fps, t.min_fps, t.p99_fps, t.p1_fps,
+                t.avg_fps, t.min_fps, t.p1_fps, t.p99_fps,
                 t.avg_ms, t.target_fps, t.normalized_score, t.frames);
     }
 }
@@ -88,8 +117,8 @@ void exportDemoJSON(FILE* out, const DemoResults& results,
         fprintf(out, "      \"name\": \"%s\",\n", demoTierName(t.tier));
         fprintf(out, "      \"avg_fps\": %.2f,\n", t.avg_fps);
         fprintf(out, "      \"min_fps\": %.2f,\n", t.min_fps);
-        fprintf(out, "      \"p1_fps\": %.2f,\n", t.p99_fps);
-        fprintf(out, "      \"p99_fps\": %.2f,\n", t.p1_fps);
+        fprintf(out, "      \"p1_fps\": %.2f,\n", t.p1_fps);
+        fprintf(out, "      \"p99_fps\": %.2f,\n", t.p99_fps);
         fprintf(out, "      \"avg_ms\": %.3f,\n", t.avg_ms);
         fprintf(out, "      \"target_fps\": %.0f,\n", t.target_fps);
         fprintf(out, "      \"normalized_score\": %.4f,\n", t.normalized_score);

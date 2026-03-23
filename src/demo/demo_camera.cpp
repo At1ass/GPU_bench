@@ -49,12 +49,12 @@ CameraPath::CameraPath() {
 }
 
 Vec3 CameraPath::getPosition(float t) const {
-    if (t <= 0.0f) return keypoints_[0].position;
-    if (t >= 1.0f) return keypoints_[NUM_KEYPOINTS - 1].position;
+    if (t <= 0.0f) t = 0.0f;
+    if (t >= 1.0f) t = 1.0f;
 
-    float seg_f = t * (NUM_KEYPOINTS - 1);
+    float seg_f = t * static_cast<float>(NUM_KEYPOINTS - 1);
     int seg = static_cast<int>(seg_f);
-    float local_t = seg_f - seg;
+    float local_t = seg_f - static_cast<float>(seg);
 
     if (seg >= NUM_KEYPOINTS - 1) {
         seg = NUM_KEYPOINTS - 2;
@@ -71,12 +71,12 @@ Vec3 CameraPath::getPosition(float t) const {
 }
 
 Vec3 CameraPath::getTarget(float t) const {
-    if (t <= 0.0f) return keypoints_[0].target;
-    if (t >= 1.0f) return keypoints_[NUM_KEYPOINTS - 1].target;
+    if (t <= 0.0f) t = 0.0f;
+    if (t >= 1.0f) t = 1.0f;
 
-    float seg_f = t * (NUM_KEYPOINTS - 1);
+    float seg_f = t * static_cast<float>(NUM_KEYPOINTS - 1);
     int seg = static_cast<int>(seg_f);
-    float local_t = seg_f - seg;
+    float local_t = seg_f - static_cast<float>(seg);
 
     if (seg >= NUM_KEYPOINTS - 1) {
         seg = NUM_KEYPOINTS - 2;

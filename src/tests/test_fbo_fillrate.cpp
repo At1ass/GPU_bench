@@ -30,7 +30,7 @@ void FBOFillrateTest::renderGL3(Renderer& r, GL3Features&) {
     r.useShader(Renderer::ShaderType::Color2D);
 
     for (int i = 0; i < params_.layers; i++) {
-        float t = static_cast<float>(i) / params_.layers;
+        float t = static_cast<float>(i) / static_cast<float>(params_.layers);
         r.setColor(
             0.5f + 0.5f * sinf(t * 6.28f),
             0.5f + 0.5f * sinf(t * 6.28f + 2.09f),

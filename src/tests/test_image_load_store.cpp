@@ -52,7 +52,7 @@ void ImageLoadStoreTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, i
 
     int sz = params_.image_size;
     // Create RGBA32F texture for image load
-    std::vector<unsigned char> pixels(static_cast<size_t>(sz) * sz * 4, 128);
+    std::vector<unsigned char> pixels(static_cast<size_t>(sz) * static_cast<size_t>(sz) * 4, 128);
     image_tex_ = r.createTexture(sz, sz, 4, pixels.data());
 
     // Output SSBO: one vec4 per pixel

@@ -151,7 +151,7 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gm.ibo);
 
-    GLsizei stride = sizeof(Vertex);
+    GLsizei stride = static_cast<GLsizei>(sizeof(Vertex));
 
     // Use fixed attribute locations matching built-in shaders
     // a_pos = 0, a_normal = 1, a_uv = 2
@@ -194,7 +194,7 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     GLenum fmt = (channels == 4) ? GL_RGBA : (channels == 3) ? GL_RGB : GL_LUMINANCE;
-    glTexImage2D(GL_TEXTURE_2D, 0, fmt, w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(fmt), w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
 
     // Use glGenerateMipmap instead of GL_GENERATE_MIPMAP
     if (caps_.has_generate_mipmap_func) {
@@ -203,7 +203,7 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
         // Fallback: enable auto mipmap
         glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
         // Re-upload to trigger mipmap generation
-        glTexImage2D(GL_TEXTURE_2D, 0, fmt, w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(fmt), w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -214,7 +214,7 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = static_cast<TextureHandle>(textures_.size());
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
     return th;
@@ -284,7 +284,7 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
         glBindTexture(GL_TEXTURE_2D, color_textures[i]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         glFramebufferTexture2D(GL_FRAMEBUFFER, attachments[i], GL_TEXTURE_2D, color_textures[i], 0);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -311,7 +311,10 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
         return INVALID_RENDER_TARGET;
     }
 
-    rt.color_tex = color_textures[0]; // Primary color texture
+    rt.color_tex = color_textures[0];
+    rt.num_extra_color = num_attachments - 1;
+    for (int i = 1; i < num_attachments; i++)
+        rt.extra_color_tex[i - 1] = color_textures[i];
     rt.valid = true;
 
     RenderTargetHandle handle;
@@ -320,7 +323,7 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
     return handle;
@@ -342,7 +345,7 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     GLenum fmt = (channels == 4) ? GL_RGBA : (channels == 3) ? GL_RGB : GL_RED;
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, fmt, w, h, layers, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, static_cast<GLint>(fmt), w, h, layers, 0, fmt, GL_UNSIGNED_BYTE, pixels);
 
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
@@ -352,7 +355,7 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = static_cast<TextureHandle>(textures_.size());
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
     return th;
@@ -438,19 +441,19 @@ BufferHandle GL3Renderer::createUBO(int size_bytes) {
 }
 
 void GL3Renderer::updateUBO(BufferHandle h, const void* data, int size) {
-    if (h == INVALID_BUFFER || h >= ubos_.size() || !ubos_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ubos_.size() || !ubos_[h].valid) return;
     glBindBuffer(GL_UNIFORM_BUFFER, ubos_[h].id);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void GL3Renderer::bindUBO(BufferHandle h, int binding) {
-    if (h == INVALID_BUFFER || h >= ubos_.size() || !ubos_[h].valid) return;
-    glBindBufferBase(GL_UNIFORM_BUFFER, binding, ubos_[h].id);
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ubos_.size() || !ubos_[h].valid) return;
+    glBindBufferBase(GL_UNIFORM_BUFFER, static_cast<GLuint>(binding), ubos_[h].id);
 }
 
 void GL3Renderer::destroyUBO(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= ubos_.size() || !ubos_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ubos_.size() || !ubos_[h].valid) return;
     glDeleteBuffers(1, &ubos_[h].id);
     ubos_[h].valid = false;
     free_ubo_slots_.push_back(h);
@@ -493,7 +496,7 @@ BufferHandle GL3Renderer::createTransformFeedbackBuffer(int size_bytes) {
 }
 
 void GL3Renderer::destroyTransformFeedbackBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || h >= tf_buffers_.size() || !tf_buffers_[h].valid) return;
+    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= tf_buffers_.size() || !tf_buffers_[h].valid) return;
     glDeleteBuffers(1, &tf_buffers_[h].id);
     tf_buffers_[h].valid = false;
     free_tf_slots_.push_back(h);
@@ -548,9 +551,9 @@ ShaderHandle GL3Renderer::createTransformFeedbackShader(const char* vs_src, cons
 
 void GL3Renderer::beginTransformFeedback(BufferHandle tf_buf) {
     if (!has_transform_feedback_) return;
-    if (tf_buf == INVALID_BUFFER || tf_buf >= tf_buffers_.size() || !tf_buffers_[tf_buf].valid) return;
+    if (tf_buf == INVALID_BUFFER || static_cast<size_t>(tf_buf) >= tf_buffers_.size() || !tf_buffers_[tf_buf].valid) return;
 
-    assert(!tf_active_ && "Nested beginTransformFeedback");
+    if (tf_active_) { Log::err("Nested beginTransformFeedback"); return; }
     tf_active_ = true;
     glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_buffers_[tf_buf].id);
     glBeginTransformFeedback(GL_TRIANGLES);
@@ -558,7 +561,7 @@ void GL3Renderer::beginTransformFeedback(BufferHandle tf_buf) {
 
 void GL3Renderer::endTransformFeedback() {
     if (!has_transform_feedback_) return;
-    assert(tf_active_ && "endTransformFeedback without begin");
+    if (!tf_active_) { Log::err("endTransformFeedback without begin"); return; }
     tf_active_ = false;
     glEndTransformFeedback();
 }
@@ -581,7 +584,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     // No compare mode: shaders read raw depth via sampler2D + texture()
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, w, h, 0,
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH_COMPONENT16), w, h, 0,
                  GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -615,7 +618,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
     return handle;
@@ -650,7 +653,7 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0,
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH_COMPONENT24), w, h, 0,
                  GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rt.depth_tex, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -676,7 +679,7 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
         free_rt_slots_.pop_back();
         render_targets_[handle] = rt;
     } else {
-        handle = static_cast<RenderTargetHandle>(render_targets_.size());
+        handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(rt);
     }
     return handle;
@@ -687,10 +690,11 @@ TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
     GLuint tex_id = render_targets_[rt].depth_tex;
     if (!tex_id) return INVALID_TEXTURE;
 
-    // Wrap raw GL texture in a TextureHandle
+    // Wrap raw GL texture in a TextureHandle (non-owning view)
     GLTex gt;
     gt.id = tex_id;
     gt.valid = true;
+    gt.rt_owned = true;
 
     TextureHandle th;
     if (!free_tex_slots_.empty()) {
@@ -698,7 +702,7 @@ TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = static_cast<TextureHandle>(textures_.size());
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
     return th;
@@ -721,7 +725,7 @@ TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = static_cast<TextureHandle>(textures_.size());
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
     return th;

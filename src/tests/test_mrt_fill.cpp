@@ -92,7 +92,7 @@ void MRTFillTest::renderGL3(Renderer& r, GL3Features&) {
     int u_color_loc = r.getCustomUniformLoc(shader_, "u_color");
 
     for (int i = 0; i < params_.layers; i++) {
-        float t = static_cast<float>(i) / params_.layers;
+        float t = static_cast<float>(i) / static_cast<float>(params_.layers);
         r.setUniform4f(u_color_loc,
             0.5f + 0.5f * sinf(t * 6.28f),
             0.5f + 0.5f * sinf(t * 6.28f + 2.09f),

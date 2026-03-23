@@ -18,6 +18,7 @@ public:
     void         destroySSBO(BufferHandle h) override;
     void         bindSSBO(BufferHandle h, int binding) override;
     void         updateSSBO(BufferHandle h, const void* data, int size_bytes) override;
+    void         readSSBO(BufferHandle h, void* data, int offset, int size_bytes) override;
 
     // Float render targets (HDR)
     RenderTargetHandle createFloatRenderTarget(int w, int h) override;
@@ -73,6 +74,7 @@ private:
     // Persistent buffers
     struct PersistentBuffer {
         GLuint id = 0;
+        int    size = 0;
         void*  mapped = nullptr;
         GLsync fence = nullptr;
         bool   valid = false;

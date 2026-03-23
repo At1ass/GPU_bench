@@ -13,9 +13,29 @@ endif()
 
 # --- Compiler warnings ---
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra -Wno-unused-parameter)
+    add_compile_options(
+        -Wall -Wextra -Wshadow
+        -Wconversion -Wsign-conversion -Wdouble-promotion
+        -Wformat=2 -Wundef -Woverloaded-virtual
+        -Wno-unused-parameter
+    )
+    # GCC-specific warnings
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options(-Wnull-dereference -Wduplicated-cond -Wduplicated-branches)
+    endif()
 elseif(MSVC)
     add_compile_options(/W4 /wd4100 /wd4244 /wd4267)
+endif()
+
+# --- Release optimizations ---
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # -O3 + LTO for release builds; x86-64-v2 covers SSE4.2+ (~2010 CPUs)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    if(NOT CMAKE_CROSSCOMPILING)
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v2")
+    endif()
+    # Link-Time Optimization
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 endif()
 
 # --- Portable static build option ---
@@ -83,6 +103,11 @@ if(TARGET OpenGL::GL)
 else()
     target_include_directories(imgui_lib PUBLIC ${OPENGL_INCLUDE_DIR})
     target_link_libraries(imgui_lib PUBLIC ${OPENGL_LIBRARIES})
+endif()
+
+# Suppress warnings for third-party code (ImGui)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(imgui_lib PRIVATE -w)
 endif()
 
 # --- Main executable ---
@@ -171,6 +196,15 @@ set(SOURCES
     # ImGui backend
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
+
+# Suppress warnings for third-party source files compiled in our target
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set_source_files_properties(
+        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+        src/platform/stb_image_impl.cpp
+        PROPERTIES COMPILE_FLAGS "-w"
+    )
+endif()
 
 add_executable(gpu_benchmark ${SOURCES})
 target_include_directories(gpu_benchmark PRIVATE src extern)

@@ -7,6 +7,17 @@
 // Forward declaration (printHelp is generated from kArgs[], defined after it)
 static void printHelp();
 
+// Safe integer parsing with error detection (returns fallback on invalid input)
+static int parseIntArg(const char* s, int fallback = 0) {
+    char* end = nullptr;
+    long v = strtol(s, &end, 10);
+    if (end == s || *end != '\0') {
+        fprintf(stderr, "Warning: invalid integer '%s', using %d\n", s, fallback);
+        return fallback;
+    }
+    return static_cast<int>(v);
+}
+
 // --- Enum value tables (defined once, used by both help and parsing) ---
 
 struct NameVal {
@@ -124,13 +135,13 @@ static const ArgDef kArgs[] = {
     {"--width", nullptr, true, "Viewport width", "<n>",
      nullptr, 0, "800",
      +[](const char* a, AppConfig& c) -> int {
-         c.width = atoi(a); return 0;
+         c.width = parseIntArg(a, 800); return 0;
      }},
 
     {"--height", nullptr, true, "Viewport height", "<n>",
      nullptr, 0, "600",
      +[](const char* a, AppConfig& c) -> int {
-         c.height = atoi(a); return 0;
+         c.height = parseIntArg(a, 600); return 0;
      }},
 
     {"--timing", nullptr, true, "Timing mode", nullptr,
@@ -157,7 +168,7 @@ static const ArgDef kArgs[] = {
     {"--stress", nullptr, true, "Stress test mode (headless only)", "<seconds>",
      nullptr, 0, nullptr,
      +[](const char* a, AppConfig& c) -> int {
-         c.stress_duration_sec = atoi(a);
+         c.stress_duration_sec = parseIntArg(a, 60);
          c.headless = true;
          return 0;
      }},
@@ -171,7 +182,7 @@ static const ArgDef kArgs[] = {
     {"--demo-tier", nullptr, true, "Run specific demo tier only", "<1-4>",
      nullptr, 0, nullptr,
      +[](const char* a, AppConfig& c) -> int {
-         c.demo_tier = atoi(a);
+         c.demo_tier = parseIntArg(a, 0);
          if (c.demo_tier < 1 || c.demo_tier > 4) {
              fprintf(stderr, "Invalid demo tier: %d (must be 1-4)\n", c.demo_tier);
              return 1;
@@ -182,7 +193,7 @@ static const ArgDef kArgs[] = {
     {"--demo-duration", nullptr, true, "Duration per tier", "<seconds>",
      nullptr, 0, "15",
      +[](const char* a, AppConfig& c) -> int {
-         c.demo_duration = atoi(a);
+         c.demo_duration = parseIntArg(a, 15);
          if (c.demo_duration < 1) c.demo_duration = 1;
          return 0;
      }},
@@ -190,7 +201,7 @@ static const ArgDef kArgs[] = {
     {"--gpu", nullptr, true, "Select GPU by index (see --list-gpus)", "<index>",
      nullptr, 0, nullptr,
      +[](const char* a, AppConfig& c) -> int {
-         c.gpu_index = atoi(a); return 0;
+         c.gpu_index = parseIntArg(a, -1); return 0;
      }},
 
     {"--debug", nullptr, false, "Enable debug logging", nullptr,

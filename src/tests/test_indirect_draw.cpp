@@ -57,7 +57,7 @@ void IndirectDrawTest::setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) {
     // Create indirect buffer with command_count identical commands
     int index_count = static_cast<int>(md.indices.size());
     std::vector<DrawElementsIndirectCommand> commands(static_cast<size_t>(params_.command_count));
-    for (int i = 0; i < params_.command_count; i++) {
+    for (size_t i = 0; i < static_cast<size_t>(params_.command_count); i++) {
         commands[i].count = static_cast<unsigned int>(index_count);
         commands[i].instanceCount = 1;
         commands[i].firstIndex = 0;
@@ -65,7 +65,7 @@ void IndirectDrawTest::setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) {
         commands[i].baseInstance = 0;
     }
 
-    int buf_size = params_.command_count * static_cast<int>(sizeof(DrawElementsIndirectCommand));
+    int buf_size = static_cast<int>(static_cast<size_t>(params_.command_count) * sizeof(DrawElementsIndirectCommand));
     indirect_buf_ = gl4.createIndirectBuffer(buf_size, commands.data());
 }
 

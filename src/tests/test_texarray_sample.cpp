@@ -75,10 +75,10 @@ void TexArraySampleTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh)
     }
 
     // Generate texture data for all array layers
-    int layer_size = actual_tex_size_ * actual_tex_size_ * 3;
-    std::vector<unsigned char> pixels(layer_size * params_.array_layers);
+    size_t layer_size = static_cast<size_t>(actual_tex_size_) * static_cast<size_t>(actual_tex_size_) * 3;
+    std::vector<unsigned char> pixels(layer_size * static_cast<size_t>(params_.array_layers));
     unsigned int seed = 42;
-    for (int i = 0; i < static_cast<int>(pixels.size()); i++) {
+    for (size_t i = 0; i < pixels.size(); i++) {
         seed = seed * 1664525u + 1013904223u;
         pixels[i] = static_cast<unsigned char>(seed >> 24);
     }

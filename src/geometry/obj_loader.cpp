@@ -23,7 +23,7 @@ MeshData ObjLoader::load(const char* filepath) {
     // Vertex deduplication map: pack (vi, ti, ni) into uint64_t key
     std::unordered_map<uint64_t, unsigned int> vert_map;
 
-    char line[512];
+    char line[4096];
     while (fgets(line, sizeof(line), f)) {
         // Skip comments and empty lines
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
@@ -55,21 +55,21 @@ MeshData ObjLoader::load(const char* filepath) {
                 if (*p == '\0' || *p == '\n' || *p == '\r') break;
 
                 FaceVert fv = { 0, 0, 0 };
-                // Try v/t/n
                 int consumed = 0;
+                // Try v/t/n
                 if (sscanf(p, "%d/%d/%d%n", &fv.vi, &fv.ti, &fv.ni, &consumed) >= 3 && consumed > 0) {
                     p += consumed;
                 }
                 // Try v//n
-                else if (sscanf(p, "%d//%d%n", &fv.vi, &fv.ni, &consumed) >= 2 && consumed > 0) {
+                else if (consumed = 0, sscanf(p, "%d//%d%n", &fv.vi, &fv.ni, &consumed) >= 2 && consumed > 0) {
                     p += consumed;
                 }
                 // Try v/t
-                else if (sscanf(p, "%d/%d%n", &fv.vi, &fv.ti, &consumed) >= 2 && consumed > 0) {
+                else if (consumed = 0, sscanf(p, "%d/%d%n", &fv.vi, &fv.ti, &consumed) >= 2 && consumed > 0) {
                     p += consumed;
                 }
                 // Just v
-                else if (sscanf(p, "%d%n", &fv.vi, &consumed) >= 1 && consumed > 0) {
+                else if (consumed = 0, sscanf(p, "%d%n", &fv.vi, &consumed) >= 1 && consumed > 0) {
                     p += consumed;
                 }
                 else {
@@ -91,9 +91,9 @@ MeshData ObjLoader::load(const char* filepath) {
                     const FaceVert& fv = verts[tri[j]];
 
                     // Pack (vi, ti, ni) into a single uint64_t key
-                    uint64_t key = (static_cast<uint64_t>(fv.vi) << 40)
-                                 | (static_cast<uint64_t>(fv.ti & 0xFFFFF) << 20)
-                                 | static_cast<uint64_t>(fv.ni & 0xFFFFF);
+                    uint64_t key = (static_cast<uint64_t>(static_cast<unsigned int>(fv.vi)) << 40)
+                                 | (static_cast<uint64_t>(static_cast<unsigned int>(fv.ti) & 0xFFFFFu) << 20)
+                                 | static_cast<uint64_t>(static_cast<unsigned int>(fv.ni) & 0xFFFFFu);
 
                     std::unordered_map<uint64_t, unsigned int>::iterator it = vert_map.find(key);
                     if (it != vert_map.end()) {
@@ -101,11 +101,11 @@ MeshData ObjLoader::load(const char* filepath) {
                     } else {
                         Vertex vtx;
                         vtx.pos = (fv.vi > 0 && fv.vi <= static_cast<int>(positions.size()))
-                                  ? positions[fv.vi - 1] : Vec3(0, 0, 0);
+                                  ? positions[static_cast<size_t>(fv.vi - 1)] : Vec3(0, 0, 0);
                         vtx.normal = (fv.ni > 0 && fv.ni <= static_cast<int>(normals.size()))
-                                     ? normals[fv.ni - 1] : Vec3(0, 1, 0);
+                                     ? normals[static_cast<size_t>(fv.ni - 1)] : Vec3(0, 1, 0);
                         vtx.uv = (fv.ti > 0 && fv.ti <= static_cast<int>(texcoords.size()))
-                                 ? texcoords[fv.ti - 1] : Vec2(0, 0);
+                                 ? texcoords[static_cast<size_t>(fv.ti - 1)] : Vec2(0, 0);
 
                         unsigned int idx = static_cast<unsigned int>(result.vertices.size());
                         result.vertices.push_back(vtx);

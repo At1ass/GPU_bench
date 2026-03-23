@@ -15,7 +15,7 @@ static std::string makeFragShader_120(int variant) {
         "uniform vec4 u_color;\n"
         "void main() {\n"
         "    gl_FragColor = u_color * vec4(%.3f, %.3f, %.3f, 1.0);\n"
-        "}\n", r, g, b);
+        "}\n", static_cast<double>(r), static_cast<double>(g), static_cast<double>(b));
     return std::string(buf);
 }
 
@@ -31,7 +31,7 @@ static std::string makeFragShader_150(int variant) {
         "out vec4 fragColor;\n"
         "void main() {\n"
         "    fragColor = u_color * vec4(%.3f, %.3f, %.3f, 1.0);\n"
-        "}\n", r, g, b);
+        "}\n", static_cast<double>(r), static_cast<double>(g), static_cast<double>(b));
     return std::string(buf);
 }
 
@@ -69,18 +69,18 @@ void StateChangeTest::setup(Renderer* r, int vw, int vh) {
     // Create multiple custom shaders
     bool core = r->isCoreProfile();
     const char* vs = core ? STATECHANGE_VS_150 : STATECHANGE_VS_120;
-    shaders_.resize(params_.shader_count);
+    shaders_.resize(static_cast<size_t>(params_.shader_count));
     for (int i = 0; i < params_.shader_count; i++) {
         std::string fs = core ? makeFragShader_150(i) : makeFragShader_120(i);
-        shaders_[i] = r->createCustomShader(vs, fs.c_str());
+        shaders_[static_cast<size_t>(i)] = r->createCustomShader(vs, fs.c_str());
     }
 
     // Create multiple textures
-    textures_.resize(params_.tex_count);
+    textures_.resize(static_cast<size_t>(params_.tex_count));
     for (int i = 0; i < params_.tex_count; i++) {
         int sz = 64; // small textures, the point is switching not texturing
-        auto pix = genColorNoise(sz, 100 + i);
-        textures_[i] = r->createTexture(sz, sz, 3, pix.data());
+        auto pix = genColorNoise(sz, static_cast<unsigned int>(100 + i));
+        textures_[static_cast<size_t>(i)] = r->createTexture(sz, sz, 3, pix.data());
     }
 }
 
@@ -93,16 +93,16 @@ void StateChangeTest::render(Renderer* r) {
     for (int i = 0; i < params_.switches; i++) {
         // Switch shader
         int si = i % shader_count;
-        r->useCustomShader(shaders_[si]);
+        r->useCustomShader(shaders_[static_cast<size_t>(si)]);
 
-        int u_color = r->getCustomUniformLoc(shaders_[si], "u_color");
-        float t = static_cast<float>(i) / params_.switches;
+        int u_color = r->getCustomUniformLoc(shaders_[static_cast<size_t>(si)], "u_color");
+        float t = static_cast<float>(i) / static_cast<float>(params_.switches);
         float c = 0.5f + 0.5f * sinf(t * 6.28f);
         r->setUniform4f(u_color, c, c, c, 1.0f);
 
         // Switch texture
         int ti = i % tex_count;
-        r->bindTexture(textures_[ti]);
+        r->bindTexture(textures_[static_cast<size_t>(ti)]);
 
         // Toggle blending
         r->setBlending((i % 2) == 0);
@@ -128,6 +128,6 @@ void StateChangeTest::cleanup(Renderer* r) {
 
 double StateChangeTest::computeScore(const std::vector<double>& times, int, int) {
     double avg_ms = avgFrameMs(times);
-    if (avg_ms <= 0.0) return 0;
+    if (avg_ms <= 0.0) return 0.0;
     return static_cast<double>(params_.switches) / (avg_ms / 1000.0) / 1e3; // Kcalls/s
 }

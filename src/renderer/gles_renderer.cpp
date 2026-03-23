@@ -9,6 +9,7 @@
 
 static const char* GLES_VS_3D = R"(
 #version 100
+precision highp float;
 attribute vec3 a_pos;
 attribute vec3 a_normal;
 attribute vec2 a_uv;
@@ -46,6 +47,7 @@ void main() {
 
 static const char* GLES_VS_2D = R"(
 #version 100
+precision highp float;
 attribute vec2 a_pos;
 void main() {
     gl_Position = vec4(a_pos, 0.0, 1.0);
@@ -63,6 +65,7 @@ void main() {
 
 static const char* GLES_VS_2D_TEX = R"(
 #version 100
+precision highp float;
 attribute vec2 a_pos;
 attribute vec2 a_uv;
 varying vec2 v_uv;
@@ -206,7 +209,7 @@ TextureHandle GLESRenderer::createTexture(int w, int h, int channels, const unsi
         fmt = gles3_ ? GL_RED : GL_LUMINANCE;
     }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, fmt, w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(fmt), w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
 
     // glGenerateMipmap is always available on GLES 2.0+ (core function)
     if (caps_.has_generate_mipmap_func) {
@@ -214,7 +217,7 @@ TextureHandle GLESRenderer::createTexture(int w, int h, int channels, const unsi
     } else {
         // GLES 2.0 fallback: GL_GENERATE_MIPMAP hint
         glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-        glTexImage2D(GL_TEXTURE_2D, 0, fmt, w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(fmt), w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -225,7 +228,7 @@ TextureHandle GLESRenderer::createTexture(int w, int h, int channels, const unsi
         free_tex_slots_.pop_back();
         textures_[th] = gt;
     } else {
-        th = static_cast<TextureHandle>(textures_.size());
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
     return th;
@@ -238,7 +241,7 @@ void GLESRenderer::drawMesh(MeshHandle h) {
     if (gles3_ && gm.vao) {
         // GLES 3.0 VAO fast path
         glBindVertexArray(gm.vao);
-        glDrawElements(GL_TRIANGLES, gm.index_count, gm.index_type, 0);
+        glDrawElements(GL_TRIANGLES, gm.index_count, gm.index_type, nullptr);
         glBindVertexArray(0);
     } else {
         // GLES 2.0 path (same as GL2)

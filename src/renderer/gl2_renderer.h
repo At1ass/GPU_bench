@@ -4,6 +4,7 @@
 #include "renderer/gpu_timer.h"
 #include <vector>
 #include <string>
+#include "platform/logger.h"
 
 class GL2Renderer : public Renderer {
 public:
@@ -59,6 +60,7 @@ public:
     void setScissor(bool enable, int x = 0, int y = 0, int w = 0, int h = 0) override;
     void finish() override;
     void readPixels(int x, int y, int w, int h, unsigned char* rgba_out) override;
+    void copyFramebufferToTexture(TextureHandle tex, int w, int h) override;
 
     bool              supportsRenderTargets() const override;
     RenderTargetHandle createRenderTarget(int w, int h) override;
@@ -93,6 +95,7 @@ protected:
     struct GLTex {
         GLuint id = 0;
         bool valid = false;
+        bool rt_owned = false; // true = GL object owned by render target, don't glDelete
         GLTex() = default;
     };
     struct ShaderProg {
@@ -129,6 +132,8 @@ protected:
     struct GLFBO {
         GLuint fbo = 0;
         GLuint color_tex = 0;
+        GLuint extra_color_tex[3] = {0, 0, 0}; // MRT attachments 1-3
+        int num_extra_color = 0;
         GLuint depth_rb = 0;
         GLuint depth_tex = 0;   // sampleable depth texture (0 = uses renderbuffer)
         int w = 0;
@@ -150,17 +155,25 @@ protected:
     bool   buildShader(ShaderProg& prog, const char* vs_src, const char* fs_src);
     void   detectCaps();
 
-    // Handle validation helpers
+    // Handle validation helpers (debug-log on invalid access)
     bool isValidMesh(MeshHandle h) const {
-        return h != 0 && h < meshes_.size() && meshes_[h].valid;
+        bool ok = h != 0 && h < meshes_.size() && meshes_[h].valid;
+        if (!ok && h != 0) Log::dbg("Invalid MeshHandle %u", static_cast<unsigned>(h));
+        return ok;
     }
     bool isValidTexture(TextureHandle h) const {
-        return h != 0 && h < textures_.size() && textures_[h].valid;
+        bool ok = h != 0 && h < textures_.size() && textures_[h].valid;
+        if (!ok && h != 0) Log::dbg("Invalid TextureHandle %u", static_cast<unsigned>(h));
+        return ok;
     }
     bool isValidShader(ShaderHandle h) const {
-        return h != 0 && h < custom_shaders_.size() && custom_shaders_[h] != 0;
+        bool ok = h != 0 && h < custom_shaders_.size() && custom_shaders_[h] != 0;
+        if (!ok && h != 0) Log::dbg("Invalid ShaderHandle %u", static_cast<unsigned>(h));
+        return ok;
     }
     bool isValidRenderTarget(RenderTargetHandle h) const {
-        return h != INVALID_RENDER_TARGET && h < render_targets_.size() && render_targets_[h].valid;
+        bool ok = h != INVALID_RENDER_TARGET && h < render_targets_.size() && render_targets_[h].valid;
+        if (!ok && h != INVALID_RENDER_TARGET) Log::dbg("Invalid RenderTargetHandle %u", static_cast<unsigned>(h));
+        return ok;
     }
 };

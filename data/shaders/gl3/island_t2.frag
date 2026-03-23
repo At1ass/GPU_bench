@@ -15,6 +15,7 @@ uniform float u_time;
 uniform float u_normal_strength;
 uniform float u_proc_tex;
 uniform sampler2D u_shadow_map;
+uniform vec2 u_shadow_texel_size;
 uniform float u_has_shadow;
 #pragma include "noise_lib.glsl"
 #pragma include "terrain_color.glsl"
@@ -26,7 +27,7 @@ float computeShadow() {
     if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0 || proj.z > 1.0)
         return 1.0;
     float bias = 0.003;
-    float texel = 1.0 / 1024.0;
+    float texel = u_shadow_texel_size.x;
     float shadow = 0.0;
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {

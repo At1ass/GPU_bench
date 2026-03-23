@@ -55,6 +55,18 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
     }
 }
 
+// RFC 4180 CSV field escaping: wrap in quotes, double any embedded quotes
+static void csvField(FILE* out, const char* s) {
+    if (!s) { fputc(',', out); return; }
+    fputc('"', out);
+    while (*s) {
+        if (*s == '"') fputc('"', out);
+        fputc(*s, out);
+        s++;
+    }
+    fputc('"', out);
+}
+
 void exportCSV(FILE* out, const std::vector<BenchResult>& results,
                const HWInfo& hw, const RenderCaps& caps,
                uint32_t available_caps,
@@ -65,12 +77,18 @@ void exportCSV(FILE* out, const std::vector<BenchResult>& results,
     (void)ecfg;
     fprintf(out, "preset,cpu,gpu,gl_version,renderer,os,vram_mb,test,score,unit,avg_ms,min_ms,max_ms,median_ms,p1_ms,p99_ms,cv,frames,valid,sanity_ok\n");
     for (const auto& r : results) {
-        fprintf(out, "%s,\"%s\",\"%s\",\"%s\",%s,\"%s %s\",%d,%s,%.2f,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%s,%s\n",
-                preset_name,
-                hw.cpu_name.c_str(), gpu_name, gl_version, renderer_name,
-                hw.os_name.c_str(), hw.os_version.c_str(),
-                caps.estimated_vram_mb,
-                r.name.c_str(), r.score, r.unit.c_str(),
+        csvField(out, preset_name); fputc(',', out);
+        csvField(out, hw.cpu_name.c_str()); fputc(',', out);
+        csvField(out, gpu_name); fputc(',', out);
+        csvField(out, gl_version); fputc(',', out);
+        csvField(out, renderer_name); fputc(',', out);
+        std::string os = hw.os_name + " " + hw.os_version;
+        csvField(out, os.c_str()); fputc(',', out);
+        fprintf(out, "%d,", caps.estimated_vram_mb);
+        csvField(out, r.name.c_str()); fputc(',', out);
+        fprintf(out, "%.2f,", r.score);
+        csvField(out, r.unit.c_str()); fputc(',', out);
+        fprintf(out, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%s,%s\n",
                 r.avg_ms, r.min_ms, r.max_ms, r.median_ms, r.p1_ms, r.p99_ms,
                 r.cv, r.frames, r.valid ? "true" : "false",
                 r.sanity_ok ? "true" : "false");
@@ -78,11 +96,23 @@ void exportCSV(FILE* out, const std::vector<BenchResult>& results,
 }
 
 static void jsonEscape(FILE* out, const char* s) {
+    if (!s) return;
     while (*s) {
-        if (*s == '"') fprintf(out, "\\\"");
-        else if (*s == '\\') fprintf(out, "\\\\");
-        else if (*s == '\n') fprintf(out, "\\n");
-        else fputc(*s, out);
+        switch (*s) {
+        case '"':  fprintf(out, "\\\""); break;
+        case '\\': fprintf(out, "\\\\"); break;
+        case '\n': fprintf(out, "\\n"); break;
+        case '\r': fprintf(out, "\\r"); break;
+        case '\t': fprintf(out, "\\t"); break;
+        case '\b': fprintf(out, "\\b"); break;
+        case '\f': fprintf(out, "\\f"); break;
+        default:
+            if (static_cast<unsigned char>(*s) < 0x20)
+                fprintf(out, "\\u%04x", static_cast<unsigned char>(*s));
+            else
+                fputc(*s, out);
+            break;
+        }
         s++;
     }
 }

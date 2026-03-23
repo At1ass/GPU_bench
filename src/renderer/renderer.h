@@ -139,6 +139,9 @@ public:
     // Bind a render target's color texture to a texture unit (for post-process chains).
     virtual void bindRenderTargetTexture(RenderTargetHandle rt, int unit) { (void)rt; (void)unit; }
 
+    // Copy current FBO color attachment to a bound texture. Default: no-op.
+    virtual void copyFramebufferToTexture(TextureHandle tex, int w, int h) { (void)tex; (void)w; (void)h; }
+
     // Float texture (RGBA16F) for compute shader output. Default: unsupported.
     virtual TextureHandle createFloatTexture(int w, int h) { (void)w; (void)h; return INVALID_TEXTURE; }
 

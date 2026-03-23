@@ -39,7 +39,7 @@ void VertexTest::render(Renderer* r) {
     r->setBlending(false);
     r->useShader(Renderer::ShaderType::Scene3D);
 
-    float aspect = static_cast<float>(vw_) / vh_;
+    float aspect = static_cast<float>(vw_) / static_cast<float>(vh_);
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 100.0f));
     r->setView(Mat4::lookAt(Vec3(0, 0, 3), Vec3(0, 0, 0), Vec3(0, 1, 0)));
     r->setModel(Mat4());

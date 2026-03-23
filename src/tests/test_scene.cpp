@@ -40,7 +40,7 @@ void SceneTest::render(Renderer* r) {
     r->setBlending(false);
     r->useShader(Renderer::ShaderType::Scene3D);
 
-    float aspect = static_cast<float>(vw_) / vh_;
+    float aspect = static_cast<float>(vw_) / static_cast<float>(vh_);
     r->setProjection(Mat4::perspective(60.0f, aspect, 0.1f, 800.0f));
     r->setView(Mat4::lookAt(
         Vec3(50.0f, 30.0f, 50.0f),
@@ -59,10 +59,10 @@ void SceneTest::render(Renderer* r) {
     // 80+ spheres in 5 rings
     r->bindTexture(obj_tex_);
     for (int ring = 0; ring < 5; ring++) {
-        float radius = 10.0f + ring * 7.0f;
+        float radius = 10.0f + static_cast<float>(ring) * 7.0f;
         int count = 14 + ring * 4;
         for (int i = 0; i < count; i++) {
-            float a = static_cast<float>(i) / count * 6.28318f + angle_ * (1.0f + ring * 0.2f);
+            float a = static_cast<float>(i) / static_cast<float>(count) * 6.28318f + angle_ * (1.0f + static_cast<float>(ring) * 0.2f);
             float x = cosf(a) * radius;
             float z = sinf(a) * radius;
             float y = 4.0f + sinf(a * 3.0f + angle_ * 2.0f) * 2.0f;
@@ -79,7 +79,7 @@ void SceneTest::render(Renderer* r) {
         float x = cosf(a) * 20.0f;
         float z = sinf(a) * 20.0f;
         r->setModel(Mat4::translate(x, 8.0f, z)
-                     * Mat4::rotateY(angle_ * 30.0f + i * 60.0f)
+                     * Mat4::rotateY(angle_ * 30.0f + static_cast<float>(i) * 60.0f)
                      * Mat4::scale(0.4f, 0.4f, 0.4f));
         r->drawMesh(cube_);
     }

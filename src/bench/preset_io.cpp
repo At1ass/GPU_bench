@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <string>
+#include <algorithm>
 
 bool saveConfig(const char* path, const BenchPreset& preset) {
     FileGuard f(fopen(path, "w"));
@@ -39,7 +40,7 @@ bool saveConfig(const char* path, const BenchPreset& preset) {
 
     fprintf(f.get(), "\n[overdraw]\n");
     fprintf(f.get(), "layers=%d\n", preset.overdraw.layers);
-    fprintf(f.get(), "alpha=%.2f\n", preset.overdraw.alpha);
+    fprintf(f.get(), "alpha=%.2f\n", static_cast<double>(preset.overdraw.alpha));
 
     fprintf(f.get(), "\n[texupload]\n");
     fprintf(f.get(), "tex_size=%d\n", preset.texupload.tex_size);
@@ -59,50 +60,56 @@ bool saveConfig(const char* path, const BenchPreset& preset) {
     return true;
 }
 
+// Parse integer with range clamping
+static int clampedInt(const char* s, int lo, int hi) {
+    return std::max(lo, std::min(hi, atoi(s)));
+}
+
 static void parseLine(const char* line, const std::string& section, BenchPreset& p) {
     const char* eq = strchr(line, '=');
     if (!eq) return;
-    std::string key(line, eq - line);
+    std::string key(line, static_cast<size_t>(eq - line));
     std::string val(eq + 1);
     // Trim whitespace
     while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
     while (!val.empty() && (val.back() == '\n' || val.back() == '\r' || val.back() == ' ')) val.pop_back();
+    const char* v = val.c_str();
 
     if (section == "preset") {
-        if (key == "warmup_frames")    p.warmup_frames = atoi(val.c_str());
-        if (key == "measure_frames")   p.measure_frames = atoi(val.c_str());
-        if (key == "min_duration_sec") p.min_duration_sec = atof(val.c_str());
+        if (key == "warmup_frames")    p.warmup_frames = clampedInt(v, 1, 10000);
+        if (key == "measure_frames")   p.measure_frames = clampedInt(v, 1, 100000);
+        if (key == "min_duration_sec") p.min_duration_sec = std::max(0.1, std::min(300.0, atof(v)));
     } else if (section == "fillrate") {
-        if (key == "layers") p.fillrate.layers = atoi(val.c_str());
+        if (key == "layers") p.fillrate.layers = clampedInt(v, 1, 10000);
     } else if (section == "geometry") {
-        if (key == "grid_size") p.geometry.grid_size = atoi(val.c_str());
+        if (key == "grid_size") p.geometry.grid_size = clampedInt(v, 1, 4096);
     } else if (section == "texturing") {
-        if (key == "tex_size") p.texturing.tex_size = atoi(val.c_str());
-        if (key == "layers")   p.texturing.layers = atoi(val.c_str());
+        if (key == "tex_size") p.texturing.tex_size = clampedInt(v, 1, 16384);
+        if (key == "layers")   p.texturing.layers = clampedInt(v, 1, 10000);
     } else if (section == "scene") {
-        if (key == "terrain_res")  p.scene.terrain_res = atoi(val.c_str());
-        if (key == "terrain_tex")  p.scene.terrain_tex = atoi(val.c_str());
-        if (key == "obj_tex")      p.scene.obj_tex = atoi(val.c_str());
-        if (key == "sphere_segs")  p.scene.sphere_segs = atoi(val.c_str());
-        if (key == "sphere_rings") p.scene.sphere_rings = atoi(val.c_str());
-        if (key == "cube_grid")    p.scene.cube_grid = atoi(val.c_str());
+        if (key == "terrain_res")  p.scene.terrain_res = clampedInt(v, 1, 4096);
+        if (key == "terrain_tex")  p.scene.terrain_tex = clampedInt(v, 1, 16384);
+        if (key == "obj_tex")      p.scene.obj_tex = clampedInt(v, 1, 16384);
+        if (key == "sphere_segs")  p.scene.sphere_segs = clampedInt(v, 3, 1024);
+        if (key == "sphere_rings") p.scene.sphere_rings = clampedInt(v, 2, 1024);
+        if (key == "cube_grid")    p.scene.cube_grid = clampedInt(v, 1, 256);
     } else if (section == "drawcall") {
-        if (key == "mesh_count")      p.drawcall.mesh_count = atoi(val.c_str());
-        if (key == "draws_per_frame") p.drawcall.draws_per_frame = atoi(val.c_str());
+        if (key == "mesh_count")      p.drawcall.mesh_count = clampedInt(v, 1, 100000);
+        if (key == "draws_per_frame") p.drawcall.draws_per_frame = clampedInt(v, 1, 1000000);
     } else if (section == "overdraw") {
-        if (key == "layers") p.overdraw.layers = atoi(val.c_str());
-        if (key == "alpha")  p.overdraw.alpha = static_cast<float>(atof(val.c_str()));
+        if (key == "layers") p.overdraw.layers = clampedInt(v, 1, 10000);
+        if (key == "alpha")  p.overdraw.alpha = std::max(0.0f, std::min(1.0f, static_cast<float>(atof(v))));
     } else if (section == "texupload") {
-        if (key == "tex_size")          p.texupload.tex_size = atoi(val.c_str());
-        if (key == "uploads_per_frame") p.texupload.uploads_per_frame = atoi(val.c_str());
+        if (key == "tex_size")          p.texupload.tex_size = clampedInt(v, 1, 16384);
+        if (key == "uploads_per_frame") p.texupload.uploads_per_frame = clampedInt(v, 1, 10000);
     } else if (section == "statechange") {
-        if (key == "switches")     p.statechange.switches = atoi(val.c_str());
-        if (key == "shader_count") p.statechange.shader_count = atoi(val.c_str());
-        if (key == "tex_count")    p.statechange.tex_count = atoi(val.c_str());
+        if (key == "switches")     p.statechange.switches = clampedInt(v, 1, 100000);
+        if (key == "shader_count") p.statechange.shader_count = clampedInt(v, 1, 1000);
+        if (key == "tex_count")    p.statechange.tex_count = clampedInt(v, 1, 1000);
     } else if (section == "vertex") {
-        if (key == "vertex_count") p.vertex.vertex_count = atoi(val.c_str());
+        if (key == "vertex_count") p.vertex.vertex_count = clampedInt(v, 1, 10000000);
     } else if (section == "shader_alu") {
-        if (key == "iterations") p.shader_alu.iterations = atoi(val.c_str());
+        if (key == "iterations") p.shader_alu.iterations = clampedInt(v, 1, 100000);
     }
 }
 
@@ -126,7 +133,7 @@ bool loadConfig(const char* path, BenchPreset& preset) {
         if (line[0] == '[') {
             char* end = strchr(line, ']');
             if (end) {
-                section = std::string(line + 1, end - line - 1);
+                section = std::string(line + 1, static_cast<size_t>(end - line - 1));
             }
             continue;
         }

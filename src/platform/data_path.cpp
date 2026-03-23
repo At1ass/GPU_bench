@@ -52,7 +52,20 @@ static bool fileExists(const std::string& path) {
     return stat(path.c_str(), &st) == 0;
 }
 
+static bool hasPathTraversal(const char* p) {
+    if (!p) return true;
+    // Reject ".." components: standalone, leading, trailing, or embedded
+    for (const char* s = p; *s; ) {
+        if (s[0] == '.' && s[1] == '.' && (s[2] == '/' || s[2] == '\\' || s[2] == '\0'))
+            return true;
+        while (*s && *s != '/' && *s != '\\') s++;
+        if (*s) s++;
+    }
+    return false;
+}
+
 std::string getDataPath(const char* relative_path) {
+    if (!relative_path || hasPathTraversal(relative_path)) return std::string();
     // 1. ./data/
     {
         std::string p = std::string("data/") + relative_path;

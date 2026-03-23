@@ -12,8 +12,8 @@ UIAction BenchUI::render(RenderContext* ctx, const UIView& view, UIState& state)
     UIAction action;
     ctx->imguiNewFrame();
 
-    float panel_h = view.window_h * 0.55f;
-    ImGui::SetNextWindowPos(ImVec2(0, view.window_h - panel_h));
+    float panel_h = static_cast<float>(view.window_h) * 0.55f;
+    ImGui::SetNextWindowPos(ImVec2(0, static_cast<float>(view.window_h) - panel_h));
     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(view.window_w), panel_h));
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
@@ -40,7 +40,7 @@ UIAction BenchUI::render(RenderContext* ctx, const UIView& view, UIState& state)
         drawControls(view, action);
     } else {
         ImGui::Text("Status: %s", view.bench_status->c_str());
-        ImGui::ProgressBar(view.bench_progress / 100.0f, ImVec2(-1, 0));
+        ImGui::ProgressBar(static_cast<float>(view.bench_progress) / 100.0f, ImVec2(-1.0f, 0.0f));
     }
 
     ImGui::Separator();
