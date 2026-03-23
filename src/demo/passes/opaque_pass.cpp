@@ -16,6 +16,7 @@ void OpaquePass::execute(Renderer* r, FrameData& fd,
                          const SceneData& scene) {
     if (!res.core.island_shader) return;
 
+    r->setBlending(false);
     ub_.use();
 
     ub_.set(U::Proj, fd.proj);

@@ -203,4 +203,13 @@ private:
     DemoDebugOverrides debug_;
 
     RenderTargetHandle dest_rt_;
+
+    // Frame data construction (extracted from renderFrame)
+    FrameData buildFrameData(float t, float time, int w, int h, RenderTargetHandle dest_rt);
+
+    // SSR framebuffer copy command (static, used as PipelineCommandFn)
+    static void ssrCopyCommand(Renderer* r, FrameData& fd,
+                               const TierResourceView& res,
+                               const DemoTierConfig& cfg,
+                               const SceneData& scene);
 };

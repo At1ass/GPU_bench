@@ -221,22 +221,58 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     bool is_t2t3_bloom = config_.enable_bloom && !is_t4_hdr;
 
     if (is_t4_hdr) {
-        // T4 Ultra HDR pipeline (post-processing passes only --
-        // scene objects are rendered directly in renderFrame due to FBO bind/clear)
-        if (config_.enable_auto_exposure && !debug_.skip_auto_exposure)
-            pipeline_.addPass(&auto_exposure_pass_);
-        if (!debug_.skip_gtao && config_.enable_gtao && res_.t4.gtao_shader)
-            pipeline_.addPass(&gtao_pass_);
-        else if (config_.enable_ssao)
-            pipeline_.addPass(&ssao_pass_);
-        if (config_.enable_volumetric_fog && !debug_.skip_vol_fog)
-            pipeline_.addPass(&vol_fog_pass_);
-        if (!debug_.skip_compute_bloom && config_.enable_compute_bloom && res_.t4.bloom_down_compute)
-            pipeline_.addPass(&bloom_compute_pass_);
-        else if (config_.enable_bloom)
-            pipeline_.addPass(&bloom_pass_);
-        if (config_.enable_dof && res_.t4.dof_shader && !debug_.skip_dof)
-            pipeline_.addPass(&dof_pass_);
+        // T4 Ultra HDR pipeline — full scene + post-processing in one pipeline
+
+        // Pre-scene passes
+        if (config_.enable_shadows)
+            pipeline_.addPass(&shadow_pass_);
+        if (config_.enable_compute_particles)
+            pipeline_.addPass(&compute_particles_pass_);
+
+        // Scene to HDR FBO
+        pipeline_.addPassWithRT(&sky_pass_, res_.t4.hdr_scene_rt,
+                                true, FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
+                                viewport_w_, viewport_h_);
+        pipeline_.addPass(&opaque_pass_);
+        pipeline_.addPass(&grass_pass_);
+        pipeline_.addPass(&tess_model_pass_, config_.enable_tessellation);
+        pipeline_.addPass(&fur_pass_, !config_.enable_tessellation);
+        pipeline_.addPass(&compute_particles_draw_pass_, config_.enable_compute_particles);
+        pipeline_.addPass(&particle_pass_, !config_.enable_compute_particles);
+
+        // SSR copy + water
+        pipeline_.addCommand(&DemoScene::ssrCopyCommand,
+                             config_.enable_ssr && res_.t4.ssr_tex != INVALID_TEXTURE);
+        pipeline_.addPass(&water_pass_);
+
+        // Unbind scene FBO
+        pipeline_.addRTSwitch(INVALID_RENDER_TARGET);
+
+        // Post-processing
+        pipeline_.addPass(&auto_exposure_pass_,
+                          config_.enable_auto_exposure && !debug_.skip_auto_exposure);
+
+        bool use_gtao = !debug_.skip_gtao && config_.enable_gtao
+                        && res_.t4.gtao_shader != nullptr && res_.t4.gtao_tex != INVALID_TEXTURE;
+        pipeline_.addPass(&gtao_pass_, use_gtao);
+        pipeline_.addPass(&ssao_pass_, config_.enable_ssao && !use_gtao);
+
+        pipeline_.addPass(&vol_fog_pass_,
+                          config_.enable_volumetric_fog && !debug_.skip_vol_fog);
+
+        bool use_compute_bloom = !debug_.skip_compute_bloom && config_.enable_compute_bloom
+                                 && res_.t4.bloom_down_compute != nullptr
+                                 && res_.t4.bloom_mips[0] != INVALID_TEXTURE;
+        pipeline_.addPass(&bloom_compute_pass_, use_compute_bloom);
+        pipeline_.addPass(&bloom_pass_, config_.enable_bloom && !use_compute_bloom);
+
+        pipeline_.addPass(&dof_pass_,
+                          config_.enable_dof && res_.t4.dof_shader != nullptr && !debug_.skip_dof);
+
+        // Barrier + final composite
+        pipeline_.addBarrier(4);
+        pipeline_.addPassToDest(&hdr_composite_pass_, false, 0.0f, 0.0f, 0.0f, 0.0f,
+                                viewport_w_, viewport_h_);
     } else if (is_t2t3_bloom) {
         // T2/T3 pipeline
         if (config_.enable_shadows)
@@ -250,6 +286,8 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
         // T1 Basic pipeline
         if (config_.enable_shadows)
             pipeline_.addPass(&shadow_pass_);
+        pipeline_.addDefaultFBWithClear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f,
+                                        viewport_w_, viewport_h_);
         pipeline_.addPass(&sky_pass_);
         pipeline_.addPass(&opaque_pass_);
         pipeline_.addPass(&grass_pass_);
@@ -295,30 +333,23 @@ TechniqueInfo DemoScene::getTechniqueInfo() const {
 }
 
 // ============================================================
-// renderFrame: pipeline orchestrator
+// buildFrameData: construct per-frame data from camera + config
 // ============================================================
 
-void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, int viewport_h,
-                            RenderTargetHandle dest_rt) {
-    if (!initialized_) return;
-
-    viewport_w_ = viewport_w;
-    viewport_h_ = viewport_h;
-    dest_rt_ = dest_rt;
-
-    // Build frame data
+FrameData DemoScene::buildFrameData(float t, float time, int w, int h,
+                                    RenderTargetHandle dest_rt) {
     FrameData fd;
     fd.cam_pos = camera_.getPosition(t);
     Vec3 cam_target = camera_.getTarget(t);
-    fd.aspect = static_cast<float>(viewport_w) / static_cast<float>(viewport_h > 0 ? viewport_h : 1);
+    fd.aspect = static_cast<float>(w) / static_cast<float>(h > 0 ? h : 1);
     fd.proj = Mat4::perspective(kDemoFovDeg, fd.aspect, kDemoNear, kDemoFar);
     fd.view = Mat4::lookAt(fd.cam_pos, cam_target, Vec3(0.0f, 1.0f, 0.0f));
     fd.sun_dir = SUN_DIR_RAW.normalized();
     fd.frustum = extractFrustum(fd.proj * fd.view);
     fd.time = time;
     fd.tier_int = static_cast<int>(tier_);
-    fd.viewport_w = viewport_w;
-    fd.viewport_h = viewport_h;
+    fd.viewport_w = w;
+    fd.viewport_h = h;
     fd.dest_rt = dest_rt;
 
     // Tier capability flags
@@ -352,80 +383,37 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
                  fd.has_volumetric_fog, fd.has_hdr);
     }
 
-    bool is_t4_hdr = fd.has_hdr && !debug_.skip_hdr;
+    return fd;
+}
 
-    if (is_t4_hdr) {
-        // T4: Shadow + compute particles, then scene to HDR FBO, then post-process pipeline
-        if (fd.has_shadows) {
-            computeLightMatrix(fd);
-            shadow_pass_.execute(r, fd, res_, config_, scene_data_);
-        }
-        if (fd.has_compute_particles)
-            compute_particles_pass_.execute(r, fd, res_, config_, scene_data_);
+// ============================================================
+// ssrCopyCommand: copy framebuffer to SSR texture (pipeline command)
+// ============================================================
 
-        // Render scene to HDR FBO
-        r->bindRenderTarget(res_.t4.hdr_scene_rt);
-        r->setViewport(0, 0, viewport_w, viewport_h);
-        r->clear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f);
-        r->setDepthTest(true);
-        r->setCullFace(true);
-        sky_pass_.execute(r, fd, res_, config_, scene_data_);
-        opaque_pass_.execute(r, fd, res_, config_, scene_data_);
-        grass_pass_.execute(r, fd, res_, config_, scene_data_);
-        if (fd.has_tessellation)
-            tess_model_pass_.execute(r, fd, res_, config_, scene_data_);
-        else
-            fur_pass_.execute(r, fd, res_, config_, scene_data_);
-        if (fd.has_compute_particles)
-            compute_particles_draw_pass_.execute(r, fd, res_, config_, scene_data_);
-        else
-            particle_pass_.execute(r, fd, res_, config_, scene_data_);
+void DemoScene::ssrCopyCommand(Renderer* r, FrameData& fd,
+                               const TierResourceView& res,
+                               const DemoTierConfig& cfg,
+                               const SceneData& scene) {
+    (void)cfg; (void)scene;
+    if (res.t4.ssr_tex != INVALID_TEXTURE)
+        r->copyFramebufferToTexture(res.t4.ssr_tex, fd.viewport_w, fd.viewport_h);
+}
 
-        // SSR texture copy + water
-        if (config_.enable_ssr && res_.t4.ssr_tex != INVALID_TEXTURE)
-            r->copyFramebufferToTexture(res_.t4.ssr_tex, viewport_w, viewport_h);
-        water_pass_.execute(r, fd, res_, config_, scene_data_);
+// ============================================================
+// renderFrame: pipeline orchestrator
+// ============================================================
 
-        r->bindRenderTarget(INVALID_RENDER_TARGET);
+void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, int viewport_h,
+                            RenderTargetHandle dest_rt) {
+    if (!initialized_) return;
+    viewport_w_ = viewport_w;
+    viewport_h_ = viewport_h;
+    dest_rt_ = dest_rt;
 
-        // Post-processing via pipeline (auto-exposure, AO, fog, bloom, dof)
-        pipeline_.execute(r, fd, res_, config_, scene_data_);
+    FrameData fd = buildFrameData(t, time, viewport_w, viewport_h, dest_rt);
+    pipeline_.execute(r, fd, res_, config_, scene_data_);
 
-        // Restore full-res viewport after half-res passes
-        r->setViewport(0, 0, viewport_w, viewport_h);
-
-        // Compute barriers before final composite
-        {
-            GL4Features* g4 = r->features<GL4Features>();
-            if (g4) {
-                for (int iu = 0; iu < 4; iu++)
-                    g4->bindImageTexture(INVALID_TEXTURE, iu, false, false);
-            }
-            ComputeFeatures* cf = r->features<ComputeFeatures>();
-            if (cf) cf->computeMemoryBarrier();
-        }
-
-        // Final HDR composite
-        r->bindRenderTarget(dest_rt);
-        r->setViewport(0, 0, viewport_w, viewport_h);
-        hdr_composite_pass_.execute(r, fd, res_, config_, scene_data_);
-    } else if (fd.has_bloom) {
-        // T2/T3: pipeline handles everything (shadow, sceneToFBO, ssao, bloom, composite)
-        if (fd.has_shadows)
-            computeLightMatrix(fd);
-        pipeline_.execute(r, fd, res_, config_, scene_data_);
-    } else {
-        // T1: pipeline handles everything (shadow, sky, opaque, grass, fur, particles)
-        if (fd.has_shadows)
-            computeLightMatrix(fd);
-        r->setViewport(0, 0, viewport_w, viewport_h);
-        r->clear(FOG_COLOR.x, FOG_COLOR.y, FOG_COLOR.z, 1.0f);
-        r->setDepthTest(true);
-        r->setCullFace(true);
-        pipeline_.execute(r, fd, res_, config_, scene_data_);
-    }
-
-    // Restore state
+    // Restore GL state
     r->setDepthTest(true);
     r->setCullFace(true);
     r->setBlending(false);
