@@ -8,6 +8,27 @@
 #include "demo/scene_data.h"
 #include "demo/tier_resource_view.h"
 #include "demo/uniform_block.h"
+#include "demo/passes/sky_pass.h"
+#include "demo/passes/shadow_pass.h"
+#include "demo/passes/opaque_pass.h"
+#include "demo/passes/grass_instanced_pass.h"
+#include "demo/passes/fur_pass.h"
+#include "demo/passes/particle_pass.h"
+#include "demo/passes/ssao_pass.h"
+#include "demo/passes/bloom_pass.h"
+#include "demo/passes/composite_pass.h"
+#include "demo/passes/scene_to_fbo_pass.h"
+#include "demo/passes/hdr_composite_pass.h"
+#include "demo/passes/compute_particles_pass.h"
+#include "demo/passes/compute_particles_draw_pass.h"
+#include "demo/passes/tessellated_model_pass.h"
+#include "demo/passes/gtao_pass.h"
+#include "demo/passes/bloom_compute_pass.h"
+#include "demo/passes/auto_exposure_pass.h"
+#include "demo/passes/volumetric_fog_pass.h"
+#include "demo/passes/water_pass.h"
+#include "demo/passes/ssr_pass.h"
+#include "demo/passes/dof_pass.h"
 #include <vector>
 
 // Demo tier levels matching GL capability
@@ -147,75 +168,38 @@ private:
     void placeGroundPlane(Renderer* r);
     void placeRocks(Renderer* r);
     void placeGrass(Renderer* r);
+    void placePuddles(Renderer* r);
 
     Mat4 model_transform_;
 
-    // Render passes (still inline methods — will be extracted to pass classes later)
-    void renderShadowPass(Renderer* r, const FrameData& fd);
-    void renderSky(Renderer* r, const FrameData& fd);
-    void renderOpaquePass(Renderer* r, const FrameData& fd);
-    void renderGrassInstanced(Renderer* r, const FrameData& fd);
-    void renderFurPass(Renderer* r, const FrameData& fd);
-    void renderParticlePass(Renderer* r, const FrameData& fd);
+    // Pass objects (owned by DemoScene)
+    SkyPass sky_pass_;
+    ShadowPass shadow_pass_;
+    OpaquePass opaque_pass_;
+    GrassInstancedPass grass_pass_;
+    FurPass fur_pass_;
+    ParticlePass particle_pass_;
+    SSAOPass ssao_pass_;
+    BloomPass bloom_pass_;
+    CompositePass composite_pass_;
+    SceneToFBOPass scene_to_fbo_pass_;
+    HDRCompositePass hdr_composite_pass_;
+    ComputeParticlesPass compute_particles_pass_;
+    ComputeParticlesDrawPass compute_particles_draw_pass_;
+    TessellatedModelPass tess_model_pass_;
+    GTAOPass gtao_pass_;
+    BloomComputePass bloom_compute_pass_;
+    AutoExposurePass auto_exposure_pass_;
+    VolumetricFogPass vol_fog_pass_;
+    WaterPass water_pass_;
+    SSRPass ssr_pass_;
+    DoFPass dof_pass_;
 
-    // T2+ SSAO
-    void renderSSAOPass(Renderer* r, const FrameData& fd);
-    void renderSSAOBlur(Renderer* r, const FrameData& fd);
-
-    // T4 render passes
-    void renderComputeParticles(Renderer* r, const FrameData& fd);
-    void renderTessellatedModel(Renderer* r, const FrameData& fd);
-    void renderComputeParticlesDraw(Renderer* r, const FrameData& fd);
-    void renderVolumetricFog(Renderer* r, const FrameData& fd);
-    void renderHDRComposite(Renderer* r, const FrameData& fd);
-
-    // T4 Ultra compute passes
-    void renderGTAOPass(Renderer* r, const FrameData& fd);
-    void renderGTAOBlur(Renderer* r, const FrameData& fd);
-    void renderBloomCompute(Renderer* r, const FrameData& fd);
-    void computeAutoExposure(Renderer* r, const FrameData& fd);
-    void renderSSR(Renderer* r, const FrameData& fd);
-    void renderWaterPass(Renderer* r, const FrameData& fd);
-    void renderDoF(Renderer* r, const FrameData& fd);
-
-    // Puddle placement
-    void placePuddles(Renderer* r);
-
-    // T2+ bloom post-processing
-    void renderSceneToFBO(Renderer* r, const FrameData& fd);
-    void renderBloomPasses(Renderer* r, const FrameData& fd);
-    void renderComposite(Renderer* r, const FrameData& fd);
-
-    // Cached uniform blocks (one per shader, zero string ops in hot path)
-    UniformBlock ub_island_;
-    UniformBlock ub_fur_;
-    UniformBlock ub_grass_;
-    UniformBlock ub_sky_;
-    UniformBlock ub_particle_;
-    UniformBlock ub_shadow_;
-    UniformBlock ub_ssao_;
-    UniformBlock ub_ssao_blur_;
-    UniformBlock ub_bloom_extract_;
-    UniformBlock ub_bloom_blur_;
-    UniformBlock ub_bloom_composite_;
-    UniformBlock ub_tess_;
-    UniformBlock ub_compute_particle_;
-    UniformBlock ub_particle_render_;
-    UniformBlock ub_vol_fog_;
-    UniformBlock ub_tone_map_;
-    UniformBlock ub_gtao_;
-    UniformBlock ub_gtao_blur_;
-    UniformBlock ub_bloom_down_;
-    UniformBlock ub_bloom_up_;
-    UniformBlock ub_histogram_;
-    UniformBlock ub_exposure_;
-    UniformBlock ub_ssr_;
-    UniformBlock ub_dof_;
+    DemoPipeline pipeline_;
 
     int viewport_w_, viewport_h_;
     bool initialized_;
     bool passes_logged_;
-    float prev_exposure_;
     DemoDebugOverrides debug_;
 
     RenderTargetHandle dest_rt_;
