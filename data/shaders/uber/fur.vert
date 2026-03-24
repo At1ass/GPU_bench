@@ -1,4 +1,5 @@
-// Uber shader — version-portable via ShaderCache preamble.
+// Uber fur vertex shader — version-portable via ShaderCache preamble.
+// Feature guards: HAS_SHADOWS, HAS_INSTANCING
 ATTR_IN vec3 a_pos;
 ATTR_IN vec3 a_normal;
 ATTR_IN vec2 a_uv;
@@ -11,14 +12,35 @@ uniform float u_fur_length;    // world-space fur length
 uniform float u_time;
 uniform vec3 u_wind_dir;
 
+#ifdef HAS_SHADOWS
+uniform mat4 u_light_vp;
+#endif
+
+#ifdef HAS_INSTANCING
+uniform int u_use_instancing;
+uniform int u_fur_shells;
+#endif
+
 VS_OUT vec3 v_world_pos;
 VS_OUT vec3 v_world_normal;
 VS_OUT vec3 v_obj_pos;
 VS_OUT vec2 v_uv;
 VS_OUT float v_shell_index;
+#ifdef HAS_SHADOWS
+VS_OUT vec4 v_light_pos;
+#endif
 
 void main() {
-    float h = u_shell_index;
+    float h;
+#ifdef HAS_INSTANCING
+    if (u_use_instancing > 0) {
+        h = float(gl_InstanceID + 1) / float(u_fur_shells - 1);
+    } else {
+        h = u_shell_index;
+    }
+#else
+    h = u_shell_index;
+#endif
 
     // --- Fur direction: start with surface normal ---
     vec3 fur_dir = a_normal;
@@ -51,6 +73,9 @@ void main() {
     v_obj_pos = a_pos;
     v_uv = a_uv;
     v_shell_index = h;
+#ifdef HAS_SHADOWS
+    v_light_pos = u_light_vp * u_model * vec4(a_pos, 1.0);
+#endif
 
     gl_Position = u_proj * u_view * world;
 }

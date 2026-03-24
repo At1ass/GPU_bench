@@ -1,4 +1,5 @@
-// Uber shader — version-portable via ShaderCache preamble.
+// Uber grass vertex shader — version-portable via ShaderCache preamble.
+// Feature guards: HAS_SHADOWS
 ATTR_IN vec3 a_pos;
 ATTR_IN vec3 a_normal;
 ATTR_IN vec2 a_uv;
@@ -6,17 +7,22 @@ ATTR_IN vec2 a_uv;
 uniform mat4 u_proj;
 uniform mat4 u_view;
 uniform mat4 u_model;
-uniform mat4 u_light_vp;
 uniform float u_time;
 uniform vec3 u_wind_dir;
 uniform int u_grass_count;
 uniform float u_area_size;
 
+#ifdef HAS_SHADOWS
+uniform mat4 u_light_vp;
+#endif
+
 VS_OUT vec3 v_world_pos;
 VS_OUT vec3 v_normal;
 VS_OUT vec2 v_uv;
-VS_OUT vec4 v_light_pos;
 VS_OUT float v_color_t;  // 0=base, 1=tip for color gradient
+#ifdef HAS_SHADOWS
+VS_OUT vec4 v_light_pos;
+#endif
 
 // Robust integer-style hash (no sin, stable for large inputs)
 float hash(float n) {
@@ -79,7 +85,9 @@ void main() {
     v_normal = vec3(0.0, 1.0, 0.0); // grass normals point up
     v_uv = a_uv;
     v_color_t = a_pos.y; // 0 at base, 1 at tip (before scaling)
+#ifdef HAS_SHADOWS
     v_light_pos = u_light_vp * world;
+#endif
 
     gl_Position = u_proj * u_view * world;
 }

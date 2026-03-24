@@ -181,9 +181,9 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
     if (tier == 1) {
         // Island T1 via cache
-        island_cache_[idx] = shader_cache_.get("island_t1", feat, feat);
+        island_cache_[idx] = shader_cache_.get("island", feat, feat);
         if (!island_cache_[idx]) {
-            LOG_ERR("Resources: failed to compile island_t1 shader via cache");
+            LOG_ERR("Resources: failed to compile island shader via cache (tier 1)");
             return false;
         }
 
@@ -205,23 +205,23 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
     if (tier == 2) {
         // Island T2 via cache
-        island_cache_[idx] = shader_cache_.get("island_t2", feat, feat);
+        island_cache_[idx] = shader_cache_.get("island", feat, feat);
         if (!island_cache_[idx]) {
-            LOG_ERR("Resources: failed to compile island_t2 shader via cache");
+            LOG_ERR("Resources: failed to compile island shader via cache (tier 2)");
             return false;
         }
 
-        // Fur T2 via cache
-        fur_cache_[idx] = shader_cache_.get("fur_t2", feat, feat);
+        // Fur T2 via cache (unified uber shader, features drive #ifdefs)
+        fur_cache_[idx] = shader_cache_.get("fur", feat, feat);
         if (!fur_cache_[idx]) {
-            LOG_ERR("Resources: failed to compile fur_t2 shader via cache");
+            LOG_ERR("Resources: failed to compile fur shader via cache (tier 2)");
             return false;
         }
 
-        // Grass T2 via cache
-        grass_cache_ = shader_cache_.get("grass_t2", feat, feat);
+        // Grass T2 via cache (unified uber shader)
+        grass_cache_ = shader_cache_.get("grass", feat, feat);
         if (!grass_cache_) {
-            LOG_WRN("Resources: failed to compile grass_t2 shader via cache (non-critical)");
+            LOG_WRN("Resources: failed to compile grass shader via cache (non-critical)");
         }
 
         return true;
@@ -229,23 +229,23 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
     if (tier == 3) {
         // Island T3 via cache
-        island_cache_[idx] = shader_cache_.get("island_t3", feat, feat);
+        island_cache_[idx] = shader_cache_.get("island", feat, feat);
         if (!island_cache_[idx]) {
-            LOG_ERR("Resources: failed to compile island_t3 shader via cache");
+            LOG_ERR("Resources: failed to compile island shader via cache (tier 3)");
             return false;
         }
 
-        // Fur T3 via cache
-        fur_cache_[idx] = shader_cache_.get("fur_t3", feat, feat);
+        // Fur T3 via cache (unified uber shader, features drive #ifdefs)
+        fur_cache_[idx] = shader_cache_.get("fur", feat, feat);
         if (!fur_cache_[idx]) {
-            LOG_ERR("Resources: failed to compile fur_t3 shader via cache");
+            LOG_ERR("Resources: failed to compile fur shader via cache (tier 3)");
             return false;
         }
 
-        // Grass T3 via cache
-        grass_t3_cache_ = shader_cache_.get("grass_t3", feat, feat);
+        // Grass T3 via cache (unified uber shader)
+        grass_t3_cache_ = shader_cache_.get("grass", feat, feat);
         if (!grass_t3_cache_) {
-            LOG_WRN("Resources: failed to compile grass_t3 shader via cache (non-critical)");
+            LOG_WRN("Resources: failed to compile grass shader via cache (non-critical)");
         }
 
         // Procedural normal map texture (256x256)

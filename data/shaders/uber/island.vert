@@ -1,4 +1,4 @@
-// Uber shader — version-portable via ShaderCache preamble.
+// Uber island vertex shader — T1/T2/T3 unified via ShaderCache preamble defines.
 ATTR_IN vec3 a_pos;
 ATTR_IN vec3 a_normal;
 ATTR_IN vec2 a_uv;
@@ -8,9 +8,18 @@ uniform mat4 u_model;
 uniform vec3 u_wind_dir;
 uniform float u_time;
 uniform float u_vertex_wind;  // 1.0 = enable wind displacement (grass), 0.0 = off
+
+#ifdef HAS_SHADOWS
+uniform mat4 u_light_vp;
+#endif
+
 VS_OUT vec3 v_world_pos;
 VS_OUT vec3 v_normal;
 VS_OUT vec2 v_uv;
+#ifdef HAS_SHADOWS
+VS_OUT vec4 v_light_pos;
+#endif
+
 void main() {
     vec3 pos = a_pos;
 
@@ -29,5 +38,8 @@ void main() {
     v_world_pos = world.xyz;
     v_normal = normalize(mat3(u_model) * a_normal);
     v_uv = a_uv;
+#ifdef HAS_SHADOWS
+    v_light_pos = u_light_vp * world;
+#endif
     gl_Position = u_proj * u_view * world;
 }

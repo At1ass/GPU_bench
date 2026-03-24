@@ -1,9 +1,13 @@
-// Uber shader — version-portable via ShaderCache preamble.
+// Uber fur fragment shader — version-portable via ShaderCache preamble.
+// Feature guards: HAS_SHADOWS, HAS_SHADOW_PCF5, HAS_POINT_LIGHTS, HAS_VIGNETTE
 FS_IN vec3 v_world_pos;
 FS_IN vec3 v_world_normal;
 FS_IN vec3 v_obj_pos;
 FS_IN vec2 v_uv;
 FS_IN float v_shell_index;
+#ifdef HAS_SHADOWS
+FS_IN vec4 v_light_pos;
+#endif
 
 uniform sampler2D u_fur_tex;       // strand pattern (tiled)
 uniform sampler2D u_fur_mask;      // intensity map from fur.png (model UVs)
@@ -17,13 +21,60 @@ uniform float u_fog_density;
 uniform vec3 u_fur_color_root;
 uniform vec3 u_fur_color_tip;
 uniform float u_fur_ao_power;
+
+#ifdef HAS_SHADOWS
+uniform sampler2D u_shadow_map;
+uniform vec2 u_shadow_texel_size;
+uniform float u_has_shadow;
+#endif
+
+#ifdef HAS_POINT_LIGHTS
+uniform vec3 u_point_lights[3];
+uniform vec3 u_point_colors[3];
+uniform int u_point_light_count;
+#endif
+
+#ifdef HAS_VIGNETTE
 uniform vec2 u_viewport_size;
+#endif
 
 float hash21(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * vec3(443.8975, 397.2973, 491.1871));
     p3 += dot(p3, p3.yzx + 19.19);
     return fract((p3.x + p3.y) * p3.z);
 }
+
+#ifdef HAS_SHADOWS
+float computeShadow() {
+    if (u_has_shadow < 0.5) return 1.0;
+    vec3 proj = v_light_pos.xyz / v_light_pos.w;
+    proj = proj * 0.5 + 0.5;
+    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0 || proj.z > 1.0)
+        return 1.0;
+    float bias = 0.003;
+    float shadow = 0.0;
+#ifdef HAS_SHADOW_PCF5
+    float texel = u_shadow_texel_size.x;
+    for (int x = -2; x <= 2; x++) {
+        for (int y = -2; y <= 2; y++) {
+            float d = COMPAT_TEX2D(u_shadow_map, proj.xy + vec2(float(x), float(y)) * texel).r;
+            shadow += (proj.z - bias > d) ? 0.0 : 1.0;
+        }
+    }
+    shadow /= 25.0;
+#else
+    float texel = u_shadow_texel_size.x;
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            float d = COMPAT_TEX2D(u_shadow_map, proj.xy + vec2(float(x), float(y)) * texel).r;
+            shadow += (proj.z - bias > d) ? 0.0 : 1.0;
+        }
+    }
+    shadow /= 9.0;
+#endif
+    return mix(0.3, 1.0, shadow);
+}
+#endif
 
 void main() {
     float h = v_shell_index;
@@ -98,15 +149,42 @@ void main() {
     float up = dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
     vec3 ambient = mix(vec3(0.22, 0.18, 0.14), vec3(0.48, 0.52, 0.62), up) * fur_color * 0.3;
 
+    // Shadow
+#ifdef HAS_SHADOWS
+    float shadow = computeShadow();
+#else
+    float shadow = 1.0;
+#endif
+
     vec3 color = ambient
-               + fur_color * ao * (diff * 0.8 + fill)
+               + (fur_color * ao * (diff * 0.8 + fill)
                + vec3(1.0, 0.95, 0.85) * spec
-               + vec3(0.55, 0.60, 0.70) * rim * ao;
+               + vec3(0.55, 0.60, 0.70) * rim * ao) * shadow;
+
+    // Point lights
+#ifdef HAS_POINT_LIGHTS
+    for (int i = 0; i < u_point_light_count && i < 3; i++) {
+        vec3 to_light = u_point_lights[i] - v_world_pos;
+        float d = length(to_light);
+        vec3 pl_dir = to_light / d;
+        float atten = 1.0 / (1.0 + 0.3 * d + 0.4 * d * d);
+
+        float pl_diff = max(0.0, (dot(normal, pl_dir) + 0.4) / 1.4);
+        float pl_spec = 0.0;
+        if (h > 0.5) {
+            vec3 pl_h = normalize(pl_dir + vd);
+            pl_spec = pow(max(dot(normal, pl_h), 0.0), 48.0) * 0.25 * color_t;
+        }
+
+        color += (fur_color * ao * pl_diff * 0.8 + vec3(1.0, 0.95, 0.85) * pl_spec) * u_point_colors[i] * atten;
+    }
+#endif
 
     float cam_dist = length(v_world_pos - u_cam_pos);
     float fog = 1.0 - exp(-cam_dist * u_fog_density);
     color = mix(color, u_fog_color, fog);
 
+#ifdef HAS_VIGNETTE
     // Vignette: darken edges
     vec2 screen_uv = gl_FragCoord.xy / u_viewport_size;
     float vignette = smoothstep(0.9, 0.35, length(screen_uv - 0.5));
@@ -116,6 +194,7 @@ void main() {
     color = pow(color, vec3(0.95, 1.0, 1.08));
     color = mix(vec3(0.5), color, 1.15);
     color = clamp(color, 0.0, 1.0);
+#endif
 
     FRAG_COLOR = vec4(color, alpha);
 }
