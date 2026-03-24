@@ -90,9 +90,10 @@ void main() {
         color += subsurfaceScattering(N, V, pl_dir, albedo, sss_thickness) * atten * 0.15;
     }
 
-    // Fog
+    // Fog + distance fade
     float cam_dist = length(v_world_pos - u_cam_pos);
     float fog = 1.0 - exp(-cam_dist * u_fog_density);
+    fog = max(fog, smoothstep(8.0, 16.0, cam_dist));
     color = mix(color, u_fog_color, fog);
 
     // Alpha: fade at very tip for soft edges

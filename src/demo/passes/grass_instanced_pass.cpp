@@ -30,7 +30,7 @@ void GrassInstancedPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::LightDir, fd.sun_dir);
     ub_.set(U::CamPos, fd.cam_pos);
     ub_.set(U::FogColor, FOG_COLOR);
-    ub_.set(U::FogDensity, cfg.fog_density);
+    ub_.set(U::FogDensity, cfg.enable_volumetric_fog ? cfg.fog_density * 0.3f : cfg.fog_density);
     ub_.set(U::Time, fd.time);
     ub_.set(U::GrassCount, cfg.instanced_grass_count);
     ub_.set(U::AreaSize, cfg.grass_area_size);

@@ -138,8 +138,8 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.enable_bloom = true;
             c.bloom_strength = 0.25f;
             c.enable_ssao = true;
-            c.ssao_radius = 0.8f;
-            c.ssao_intensity = 1.4f;
+            c.ssao_radius = 0.5f;
+            c.ssao_intensity = 1.0f;
             c.point_light_count = 0;
             c.enable_normal_map_texture = true;
             c.enable_pbr = true;

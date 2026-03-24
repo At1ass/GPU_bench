@@ -61,6 +61,8 @@ void DemoScene::placeModel(Renderer* r) {
     obj.material = MaterialType::Model;
     obj.color = Vec3(0.55f, 0.38f, 0.32f);  // pinkish skin visible under fur
     obj.specular = 0.08f;
+    obj.metallic = 0.0f;    // dielectric (organic)
+    obj.roughness = 0.85f;  // matte surface (fur/skin, not plastic)
     setBounds(obj, res_.core.model_bounding_radius);
     opaque_objects_.push_back(obj);
 }

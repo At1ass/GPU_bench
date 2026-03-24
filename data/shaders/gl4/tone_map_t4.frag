@@ -19,8 +19,11 @@ uniform float u_has_ssr;
 uniform sampler2D u_dof_tex;   // DoF result
 uniform float u_has_dof;
 
-// ACES filmic tone mapping (fitted by Stephen Hill)
+// ACES filmic tone mapping (Narkowicz 2016 fit, pre-exposure corrected)
 vec3 acesToneMap(vec3 x) {
+    // Narkowicz fit is pre-exposed; multiply to match standard ACES RRT+ODT
+    // 0.6 is reference-correct but too dark for this scene; 0.7 balances accuracy and visibility
+    x *= 0.7;
     float a = 2.51;
     float b = 0.03;
     float c = 2.43;
@@ -106,33 +109,22 @@ void main() {
     // Gamma correction (linear -> sRGB)
     ldr = pow(ldr, vec3(1.0 / 2.2));
 
-    // Chromatic aberration: subtle RGB channel shift in LDR post-tone-map
-    // Operates on the final LDR result to avoid inconsistency with post-effects
+    // Chromatic aberration: approximate RGB channel shift using screen-space gradients
+    // Uses dFdx/dFdy on the computed LDR to avoid re-sampling HDR (which caused
+    // green tint due to inconsistent pipeline between R/B and G channels)
     if (u_chromatic_strength > 0.0) {
         vec2 ca_center = v_uv - 0.5;
         float ca_dist_sq = dot(ca_center, ca_center);
         vec2 ca_offset = ca_center * u_chromatic_strength * ca_dist_sq;
-        // Shift R outward, B inward (approximation: re-index into LDR)
-        // Since we can't re-sample LDR (it's computed, not a texture), we use
-        // the tone-mapped scene with a subtle UV offset on the HDR input
-        vec2 uv_r = v_uv + ca_offset;
-        vec2 uv_b = v_uv - ca_offset;
-        // Clamp to valid UV range
-        uv_r = clamp(uv_r, 0.0, 1.0);
-        uv_b = clamp(uv_b, 0.0, 1.0);
-        // Sample HDR + apply same processing chain for consistency
-        vec3 hdr_r = texture(u_scene_tex, uv_r).rgb;
-        vec3 hdr_b = texture(u_scene_tex, uv_b).rgb;
-        // Apply SSAO to offset samples
-        if (u_has_ssao > 0.5) {
-            hdr_r *= texture(u_ssao_tex, uv_r).r;
-            hdr_b *= texture(u_ssao_tex, uv_b).r;
-        }
-        // Tone map + gamma
-        hdr_r = pow(acesToneMap(hdr_r * exposure), vec3(1.0 / 2.2));
-        hdr_b = pow(acesToneMap(hdr_b * exposure), vec3(1.0 / 2.2));
-        ldr.r = hdr_r.r;
-        ldr.b = hdr_b.b;
+
+        // Scale offset to pixel units for gradient approximation
+        vec2 offset_pixels = ca_offset * u_viewport_size;
+        // LDR gradients per pixel (screen-space derivatives)
+        vec3 dldx = dFdx(ldr);
+        vec3 dldy = dFdy(ldr);
+        // Shift R outward, B inward using Taylor approximation
+        ldr.r += dot(offset_pixels, vec2(dldx.r, dldy.r));
+        ldr.b -= dot(offset_pixels, vec2(dldx.b, dldy.b));
     }
 
     // Vignette: darken edges for cinematic feel

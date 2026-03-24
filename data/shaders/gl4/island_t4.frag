@@ -72,10 +72,10 @@ vec3 waterNormal(vec3 worldPos, float time) {
     return normalize(vec3(-dx, 1.0, -dz));
 }
 
-// Fresnel for puddle water
+// Fresnel for puddle water (IOR 1.33 -> F0 = 0.02; boosted to 0.04 for visual clarity)
 float waterFresnel(float NdotV) {
-    float f0 = 0.25;  // moderate base reflection
-    return f0 + (1.0 - f0) * pow(1.0 - NdotV, 3.0);
+    float f0 = 0.04;
+    return f0 + (1.0 - f0) * pow(1.0 - NdotV, 5.0);
 }
 
 // Screen-space reflection for water: ray march through scene depth buffer
@@ -291,8 +291,9 @@ void main() {
     // Fog (applied in linear HDR space)
     float dist = length(v_world_pos - u_cam_pos);
     float fog = 1.0 - exp(-dist * u_fog_density * 1.5);
-    // Terrain fully fades at its edges
-    fog = max(fog, smoothstep(9.0, 14.0, dist));
+    // Terrain edge fade: gradual blend starting further out for smooth horizon
+    float edge_fade = smoothstep(7.0, 16.0, dist);
+    fog = max(fog, edge_fade);
     color = mix(color, u_fog_color, fog);
 
     // HDR output - do NOT clamp, tone mapping done in composite pass

@@ -126,10 +126,10 @@ void main() {
             // Horizon angle: how high is the sample relative to the surface
             float horizon = dot(diff / len, viewNormal);
 
-            // Thickness rejection: ignore samples that are very far behind
-            // (prevents thin geometry like grass from over-occluding)
+            // Thickness rejection: ignore samples across depth discontinuities
+            // (prevents halo artifacts around silhouettes like bunny edges)
             float depth_diff = abs(sampleZ - centerZ);
-            float thickness_reject = 1.0 - smoothstep(u_ao_radius * 0.8, u_ao_radius * 3.0, depth_diff);
+            float thickness_reject = 1.0 - smoothstep(u_ao_radius * 0.5, u_ao_radius * 1.5, depth_diff);
 
             // Distance falloff
             float falloff = 1.0 - t_norm * t_norm;
@@ -144,7 +144,7 @@ void main() {
     ao /= float(NUM_DIRS);
 
     // Distance-based AO fade: reduce AO on distant objects to avoid over-darkening
-    float dist_fade = 1.0 - smoothstep(5.0, 20.0, centerZ);
+    float dist_fade = 1.0 - smoothstep(3.0, 12.0, centerZ);
     ao *= dist_fade;
 
     ao = 1.0 - ao * u_ao_intensity;

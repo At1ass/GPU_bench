@@ -84,5 +84,5 @@ float computePCSSShadow(sampler2D shadowMap, vec4 lightSpacePos,
     }
     shadow /= 16.0;
 
-    return mix(0.15, 1.0, shadow); // darker minimum shadow for PCSS
+    return mix(0.25, 1.0, shadow); // ambient shadow floor (prevents pure black)
 }

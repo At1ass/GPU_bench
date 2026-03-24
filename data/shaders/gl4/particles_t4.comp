@@ -128,11 +128,11 @@ void main() {
         float flicker = 0.7 + 0.3 * sin(u_time * flicker_freq + float(idx) * 1.618);
         p.color.a = base_alpha * flicker;
 
-        // Color: HDR intensity dims over life, reddens (absolute set, no compounding)
-        float hdr_boost = 2.0; // enough to exceed bloom threshold
+        // Color: warm firefly glow, dims over life (absolute set, no compounding)
+        float hdr_boost = 1.2; // subtle HDR glow, not overpowering
         float color_var = fract(float(idx) * 0.37);
-        p.color.r = (0.9 + 0.1 * color_var) * hdr_boost * life_ratio;
-        p.color.g = (0.4 + 0.4 * color_var) * hdr_boost * life_ratio * (0.5 + 0.5 * life_ratio);
+        p.color.r = (0.7 + 0.1 * color_var) * hdr_boost * life_ratio;
+        p.color.g = (0.4 + 0.3 * color_var) * hdr_boost * life_ratio * (0.5 + 0.5 * life_ratio);
         p.color.b = (0.1 + 0.1 * color_var) * hdr_boost * life_ratio * life_ratio;
     }
 

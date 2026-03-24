@@ -57,9 +57,9 @@ void main() {
         float avg_log_lum = (counted > 0u) ? weighted_sum / float(counted) : 0.0;
         float avg_lum = exp2(avg_log_lum);
 
-        // Target exposure: slightly below standard middle-gray to avoid washing out
-        float target_exposure = 0.14 / max(avg_lum, 0.001);
-        target_exposure = clamp(target_exposure, 0.4, 1.4);
+        // Target exposure: standard 18% middle-gray reference
+        float target_exposure = 0.18 / max(avg_lum, 0.001);
+        target_exposure = clamp(target_exposure, 0.05, 4.0);
 
         // Temporal smoothing
         float prev = exposure_value;
