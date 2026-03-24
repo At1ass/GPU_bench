@@ -24,7 +24,7 @@ const char* ShaderCache::versionString(ShaderFeatureSet features) {
     if (features & SF_GLSL_430) return "#version 430\n";
     if (features & SF_GLSL_330) return "#version 330\n";
     if (features & SF_GLSL_150) return "#version 150\n";
-    if (features & SF_GLSL_130) return "#version 130\n";
+    if (features & SF_GLSL_140) return "#version 140\n";
     if (features & SF_GLSL_120) return "#version 120\n";
     return "#version 120\n"; // fallback
 }
@@ -220,7 +220,7 @@ ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile) {
         f |= SF_VIGNETTE;
         break;
     case DemoTier::Enhanced:
-        f |= core_profile ? SF_GLSL_150 : SF_GLSL_130;
+        f |= core_profile ? SF_GLSL_150 : SF_GLSL_140;
         f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
         break;
     case DemoTier::Quality:

@@ -44,27 +44,35 @@ private:
     ScopedTexture fur_mask_tex_;
 
     // Sky shader (GL2.1, shared across all tiers)
-    ShaderProgram sky_shader_;           // legacy ownership
+    ShaderProgram sky_shader_;           // legacy ownership (fallback)
     ShaderProgram* sky_shader_from_cache_;  // non-owning, from ShaderCache
 
     // Per-tier shaders (index 0..3 = tier 1..4)
+    // Owned ShaderPrograms are legacy fallback; cache pointers are preferred.
     static const int MAX_TIERS = 4;
-    ShaderProgram island_shaders_[MAX_TIERS];
-    ShaderProgram fur_shaders_[MAX_TIERS];
+    ShaderProgram island_shaders_[MAX_TIERS];    // legacy (T4 only)
+    ShaderProgram fur_shaders_[MAX_TIERS];       // legacy (T4 only)
+    ShaderProgram* island_cache_[MAX_TIERS];     // non-owning, from ShaderCache (T1-T3)
+    ShaderProgram* fur_cache_[MAX_TIERS];        // non-owning, from ShaderCache (T1-T3)
 
     // Particle shader (shared, T1+)
-    ShaderProgram particle_shader_;
+    ShaderProgram particle_shader_;              // legacy fallback
+    ShaderProgram* particle_cache_;              // non-owning, from ShaderCache
 
     // T2+ shadow mapping
-    ShaderProgram shadow_shader_;
+    ShaderProgram shadow_shader_;                // legacy fallback
+    ShaderProgram* shadow_cache_;                // non-owning, from ShaderCache
     ScopedRenderTarget shadow_rt_;
     TextureHandle shadow_depth_tex_;
     int shadow_map_size_;
 
     // T2+ bloom post-processing
-    ShaderProgram bloom_extract_shader_;
-    ShaderProgram bloom_blur_shader_;
-    ShaderProgram bloom_composite_shader_;
+    ShaderProgram bloom_extract_shader_;         // legacy fallback
+    ShaderProgram bloom_blur_shader_;            // legacy fallback
+    ShaderProgram bloom_composite_shader_;       // legacy fallback
+    ShaderProgram* bloom_extract_cache_;         // non-owning, from ShaderCache
+    ShaderProgram* bloom_blur_cache_;            // non-owning, from ShaderCache
+    ShaderProgram* bloom_composite_cache_;       // non-owning, from ShaderCache
     ScopedMesh fullscreen_quad_;
     ScopedRenderTarget scene_rt_;
     ScopedRenderTarget bright_rt_;
@@ -72,13 +80,17 @@ private:
     float bloom_strength_;
 
     // T2+ instanced grass
-    ShaderProgram grass_shader_;
-    ShaderProgram grass_shader_t3_;
+    ShaderProgram grass_shader_;                 // legacy fallback
+    ShaderProgram grass_shader_t3_;              // legacy fallback
+    ShaderProgram* grass_cache_;                 // non-owning, from ShaderCache (T2)
+    ShaderProgram* grass_t3_cache_;              // non-owning, from ShaderCache (T3)
     MeshHandle grass_blade_mesh_;
 
     // T2+ SSAO
-    ShaderProgram ssao_shader_;
-    ShaderProgram ssao_blur_shader_;
+    ShaderProgram ssao_shader_;                  // legacy fallback
+    ShaderProgram ssao_blur_shader_;             // legacy fallback
+    ShaderProgram* ssao_cache_;                  // non-owning, from ShaderCache
+    ShaderProgram* ssao_blur_cache_;             // non-owning, from ShaderCache
     ScopedRenderTarget ssao_rt_;
     ScopedRenderTarget ssao_blur_rt_;
     ScopedTexture ssao_noise_tex_;

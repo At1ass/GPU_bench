@@ -12,7 +12,7 @@ enum ShaderFeature : uint32_t {
     // GLSL version (mutually exclusive — exactly one must be set)
     SF_GLSL_120       = 1u << 0,   // GLSL 1.20 compatibility profile
     SF_GLSL_150       = 1u << 1,   // GLSL 1.50 core profile
-    SF_GLSL_130       = 1u << 2,   // GLSL 1.30
+    SF_GLSL_140       = 1u << 2,   // GLSL 1.40 (GL 3.1, supports gl_InstanceID)
     SF_GLSL_330       = 1u << 3,   // GLSL 3.30
     SF_GLSL_430       = 1u << 4,   // GLSL 4.30
 
@@ -35,7 +35,7 @@ using ShaderFeatureSet = uint32_t;
 
 // Version flag mask (exactly one must be set)
 static const ShaderFeatureSet SF_VERSION_MASK =
-    SF_GLSL_120 | SF_GLSL_150 | SF_GLSL_130 | SF_GLSL_330 | SF_GLSL_430;
+    SF_GLSL_120 | SF_GLSL_150 | SF_GLSL_140 | SF_GLSL_330 | SF_GLSL_430;
 
 // Convert tier + renderer profile to shader feature set.
 // Encapsulates all tier→feature mapping in one place.
