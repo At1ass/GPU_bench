@@ -147,26 +147,9 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
 }
 
 bool DemoResources::compileSkyShader(Renderer* r) {
-    // Try uber shader via cache first
     ShaderFeatureSet feat = r->isCoreProfile() ? SF_GLSL_150 : SF_GLSL_120;
-    ShaderProgram* cached = shader_cache_.get("sky", feat, feat);
-    if (cached) {
-        // Sky shader from cache — create a copy for DemoResources ownership
-        // (cache owns the program, we just point to it through viewForTier)
-        sky_shader_from_cache_ = cached;
-        return true;
-    }
-
-    // Fallback to legacy per-file loading
-    std::string vs_str, fs_str;
-    if (r->isCoreProfile()) {
-        vs_str = ShaderLoader::load("gl2/sky_150.vert");
-        fs_str = ShaderLoader::load("gl2/sky_150.frag");
-    } else {
-        vs_str = ShaderLoader::load("gl2/sky.vert");
-        fs_str = ShaderLoader::load("gl2/sky.frag");
-    }
-    if (!sky_shader_.create(r, vs_str.c_str(), fs_str.c_str())) {
+    sky_shader_from_cache_ = shader_cache_.get("sky", feat, feat);
+    if (!sky_shader_from_cache_) {
         LOG_ERR("Resources: failed to create sky shader");
         return false;
     }
