@@ -184,6 +184,7 @@ set(SOURCES
     src/demo/demo_export.cpp
     src/demo/pass_factory.cpp
     src/demo/pipeline_builder.cpp
+    src/demo/shader_cache.cpp
     src/demo/passes/sky_pass.cpp
     src/demo/passes/shadow_pass.cpp
     src/demo/passes/particle_pass.cpp
