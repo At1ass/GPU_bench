@@ -132,6 +132,17 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
 }
 
 bool DemoResources::compileSkyShader(Renderer* r) {
+    // Try uber shader via cache first
+    ShaderFeatureSet feat = r->isCoreProfile() ? SF_GLSL_150 : SF_GLSL_120;
+    ShaderProgram* cached = shader_cache_.get("sky", feat, feat);
+    if (cached) {
+        // Sky shader from cache — create a copy for DemoResources ownership
+        // (cache owns the program, we just point to it through viewForTier)
+        sky_shader_from_cache_ = cached;
+        return true;
+    }
+
+    // Fallback to legacy per-file loading
     std::string vs_str, fs_str;
     if (r->isCoreProfile()) {
         vs_str = ShaderLoader::load("gl2/sky_150.vert");
@@ -951,6 +962,8 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
 bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_h) {
     if (prepared_) return true;
     renderer_ = r;
+    sky_shader_from_cache_ = nullptr;
+    shader_cache_.init(r);
 
     if (!loadSharedMeshes(r)) {
         LOG_ERR("Resources: failed to load shared meshes");
@@ -1005,7 +1018,7 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
 TierResourceView DemoResources::viewForTier(DemoTier tier) {
     TierResourceView view;
 
-    view.core.sky_shader = &sky_shader_;
+    view.core.sky_shader = sky_shader_from_cache_ ? sky_shader_from_cache_ : &sky_shader_;
     view.core.model_mesh = model_mesh_;
     view.core.sky_mesh = sky_mesh_.get();
     view.core.ground_mesh = ground_mesh_;
@@ -1145,6 +1158,8 @@ void DemoResources::destroy() {
     fur_tex_.reset();
     fur_mask_tex_.reset();
     sky_shader_.reset();
+    sky_shader_from_cache_ = nullptr;
+    shader_cache_.destroy();
 
     for (int i = 0; i < MAX_TIERS; i++) {
         island_shaders_[i].reset();

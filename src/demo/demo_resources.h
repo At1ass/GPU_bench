@@ -2,6 +2,7 @@
 #include "renderer/renderer.h"
 #include "renderer/scoped_handle.h"
 #include "demo/shader_program.h"
+#include "demo/shader_cache.h"
 #include "demo/mesh_pool.h"
 #include "demo/scoped_ssbo.h"
 #include "demo/tier_resource_view.h"
@@ -26,6 +27,7 @@ public:
 private:
     Renderer* renderer_;
     bool prepared_;
+    ShaderCache shader_cache_;
 
     // Shared meshes
     MeshPool scene_meshes_;
@@ -42,7 +44,8 @@ private:
     ScopedTexture fur_mask_tex_;
 
     // Sky shader (GL2.1, shared across all tiers)
-    ShaderProgram sky_shader_;
+    ShaderProgram sky_shader_;           // legacy ownership
+    ShaderProgram* sky_shader_from_cache_;  // non-owning, from ShaderCache
 
     // Per-tier shaders (index 0..3 = tier 1..4)
     static const int MAX_TIERS = 4;
