@@ -24,28 +24,28 @@ CameraPath::CameraPath() {
     // All targets look at model center (0,0,0).
     // Height varies for interesting angles.
 
-    float r = 3.5f;
+    float r = 5.0f;
 
-    // 1. Start: high front-right
-    keypoints_[0] = { Vec3( r*0.7f,  1.8f, -r*0.7f), Vec3(0, 0, 0) };
-    // 2. Descend to eye level, front
-    keypoints_[1] = { Vec3( 0.3f,    0.5f, -r),       Vec3(0, 0, 0) };
-    // 3. Low angle, right side
-    keypoints_[2] = { Vec3( r,       0.2f,  0.0f),    Vec3(0, 0, 0) };
-    // 4. Rise, back-right
-    keypoints_[3] = { Vec3( r*0.7f,  1.2f,  r*0.7f), Vec3(0, 0, 0) };
-    // 5. High back
-    keypoints_[4] = { Vec3( 0.0f,    2.5f,  r),       Vec3(0, 0, 0) };
-    // 6. Descend, back-left
-    keypoints_[5] = { Vec3(-r*0.7f,  0.8f,  r*0.7f), Vec3(0, 0, 0) };
-    // 7. Low left
-    keypoints_[6] = { Vec3(-r,       0.3f,  0.0f),    Vec3(0, 0, 0) };
-    // 8. Rise, front-left
-    keypoints_[7] = { Vec3(-r*0.7f,  1.5f, -r*0.7f), Vec3(0, 0, 0) };
-    // 9. High overhead
-    keypoints_[8] = { Vec3( 0.5f,    3.5f, -0.5f),    Vec3(0, 0, 0) };
+    // 1. Start: high front-right, looking slightly above center
+    keypoints_[0] = { Vec3( r*0.7f,  2.0f, -r*0.6f),  Vec3(0, 0.2f, 0) };
+    // 2. Pond flyby, medium angle
+    keypoints_[1] = { Vec3( r*0.6f,  0.8f,  r*0.6f),   Vec3(0, -0.2f, 0) };
+    // 3. Right side, above terrain
+    keypoints_[2] = { Vec3( r,       0.5f,  0.0f),     Vec3(0, 0.1f, 0) };
+    // 4. Rise behind arch, look through it
+    keypoints_[3] = { Vec3( 0.5f,    1.5f, -r*0.8f),   Vec3(0, 0, 0) };
+    // 5. High back-left, overview
+    keypoints_[4] = { Vec3(-r*0.5f,  3.2f,  r*0.5f),   Vec3(0, 0, 0) };
+    // 6. Back-left, above terrain
+    keypoints_[5] = { Vec3(-r*0.7f,  0.6f,  r*0.4f),   Vec3(0, 0, 0) };
+    // 7. Left side, above terrain
+    keypoints_[6] = { Vec3(-r,       0.5f, -0.5f),     Vec3(0, 0.1f, 0) };
+    // 8. Rise front-left, near obelisk
+    keypoints_[7] = { Vec3(-r*0.6f,  1.8f, -r*0.6f),   Vec3(0.5f, 0, 0.5f) };
+    // 9. High overhead, top-down view
+    keypoints_[8] = { Vec3( 0.3f,    3.8f,  0.2f),     Vec3(0, 0, 0) };
     // 10. Return to start position
-    keypoints_[9] = { Vec3( r*0.7f,  1.8f, -r*0.7f), Vec3(0, 0, 0) };
+    keypoints_[9] = { Vec3( r*0.7f,  2.0f, -r*0.6f),   Vec3(0, 0.2f, 0) };
 }
 
 Vec3 CameraPath::getPosition(float t) const {

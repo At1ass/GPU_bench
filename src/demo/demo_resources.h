@@ -86,6 +86,22 @@ private:
     ShaderProgram* grass_t3_cache_;              // non-owning, from ShaderCache (T3)
     MeshHandle grass_blade_mesh_;
 
+    // Sanctuary scene meshes
+    MeshHandle pedestal_mesh_;
+    MeshHandle column_tall_mesh_;    // merged cylinder + torus base
+    MeshHandle column_stump_mesh_;   // merged short cylinder + torus base
+    MeshHandle arch_mesh_;
+    MeshHandle fallen_column_mesh_;
+    MeshHandle slab_mesh_;
+    MeshHandle stone_sphere_mesh_;
+    MeshHandle mossy_block_mesh_;
+    MeshHandle bowl_mesh_;
+    MeshHandle obelisk_mesh_;
+    MeshHandle ring_inner_mesh_;
+    MeshHandle ring_outer_mesh_;
+    MeshHandle pond_mesh_;
+    MeshHandle tree_meshes_[3];
+
     // T2+ SSAO
     ShaderProgram ssao_shader_;                  // legacy fallback
     ShaderProgram ssao_blur_shader_;             // legacy fallback

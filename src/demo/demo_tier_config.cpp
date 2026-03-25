@@ -43,8 +43,8 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.fur_length = 0.08f;
             c.fur_density = 80.0f;
             c.fur_thickness = 0.9f;
-            c.rock_count = 10;
-            c.grass_count = 600;
+            c.rock_count = 15;
+            c.grass_count = 800;
             c.particle_count = 200;
             c.enable_wind = true;
             c.instanced_grass_count = 0;
@@ -71,11 +71,11 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.fur_length = 0.06f;
             c.fur_density = 120.0f;
             c.fur_thickness = 0.75f;
-            c.rock_count = 10;
+            c.rock_count = 15;
             c.grass_count = 30;
-            c.particle_count = 200;
+            c.particle_count = 300;
             c.enable_wind = true;
-            c.instanced_grass_count = 25000;
+            c.instanced_grass_count = 30000;
             c.grass_area_size = 20.0f;
             c.enable_shadows = true;
             c.shadow_map_size = 1024;
@@ -99,11 +99,11 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.fur_length = 0.07f;
             c.fur_density = 180.0f;
             c.fur_thickness = 0.7f;
-            c.rock_count = 10;
+            c.rock_count = 25;
             c.grass_count = 30;
-            c.particle_count = 400;
+            c.particle_count = 500;
             c.enable_wind = true;
-            c.instanced_grass_count = 40000;
+            c.instanced_grass_count = 50000;
             c.grass_area_size = 20.0f;
             c.enable_shadows = true;
             c.shadow_map_size = 2048;
@@ -127,11 +127,11 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.fur_length = 0.07f;
             c.fur_density = 250.0f;
             c.fur_thickness = 0.65f;
-            c.rock_count = 10;
+            c.rock_count = 25;
             c.grass_count = 30;
-            c.particle_count = 600;
+            c.particle_count = 800;
             c.enable_wind = true;
-            c.instanced_grass_count = 60000;
+            c.instanced_grass_count = 80000;
             c.grass_area_size = 20.0f;
             c.enable_shadows = true;
             c.shadow_map_size = 4096;
@@ -146,7 +146,7 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.enable_tessellation = true;
             c.tess_level = 6;
             c.enable_compute_particles = true;
-            c.compute_particle_count = 2048;
+            c.compute_particle_count = 4096;
             c.enable_volumetric_fog = true;
             c.enable_hdr = true;
             // T4 Ultra enhancements

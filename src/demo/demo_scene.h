@@ -144,6 +144,12 @@ private:
     void placeRocks(Renderer* r);
     void placeGrass(Renderer* r);
     void placePuddles(Renderer* r);
+    void placePedestal(Renderer* r);
+    void placeColumns(Renderer* r);
+    void placeArch(Renderer* r);
+    void placeRuins(Renderer* r);
+    void placeTrees(Renderer* r);
+    void placePond(Renderer* r);
 
     Mat4 model_transform_;
 

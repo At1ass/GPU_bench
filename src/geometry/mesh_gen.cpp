@@ -87,11 +87,11 @@ MeshData MeshGen::sphere(int segments, int rings) {
             unsigned int a = static_cast<unsigned int>(r * (segments + 1) + s);
             unsigned int b = a + static_cast<unsigned int>(segments) + 1;
             m.indices.push_back(a);
-            m.indices.push_back(b);
-            m.indices.push_back(a + 1);
             m.indices.push_back(a + 1);
             m.indices.push_back(b);
+            m.indices.push_back(a + 1);
             m.indices.push_back(b + 1);
+            m.indices.push_back(b);
         }
     }
     return m;
@@ -121,11 +121,11 @@ MeshData MeshGen::torus(int ring_segments, int tube_segments, float ring_radius,
             unsigned int a = static_cast<unsigned int>(i * (tube_segments + 1) + j);
             unsigned int b = a + static_cast<unsigned int>(tube_segments) + 1;
             m.indices.push_back(a);
-            m.indices.push_back(b);
-            m.indices.push_back(a + 1);
             m.indices.push_back(a + 1);
             m.indices.push_back(b);
+            m.indices.push_back(a + 1);
             m.indices.push_back(b + 1);
+            m.indices.push_back(b);
         }
     }
     return m;
@@ -218,8 +218,8 @@ MeshData MeshGen::cone(int segments, float height, float radius) {
     // Side triangles
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(0);
-        m.indices.push_back(static_cast<unsigned int>(i + 1));
         m.indices.push_back(static_cast<unsigned int>(i + 2));
+        m.indices.push_back(static_cast<unsigned int>(i + 1));
     }
 
     // Base cap
@@ -232,8 +232,8 @@ MeshData MeshGen::cone(int segments, float height, float radius) {
 
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(center_idx);
-        m.indices.push_back(static_cast<unsigned int>(i + 2));
         m.indices.push_back(static_cast<unsigned int>(i + 1));
+        m.indices.push_back(static_cast<unsigned int>(i + 2));
     }
 
     return m;
@@ -269,8 +269,8 @@ MeshData MeshGen::cylinder(int segments, float height, float radius) {
         unsigned int b0 = t0 + 1;
         unsigned int t1 = t0 + 2;
         unsigned int b1 = t0 + 3;
-        m.indices.push_back(t0); m.indices.push_back(b0); m.indices.push_back(t1);
-        m.indices.push_back(t1); m.indices.push_back(b0); m.indices.push_back(b1);
+        m.indices.push_back(t0); m.indices.push_back(t1); m.indices.push_back(b0);
+        m.indices.push_back(t1); m.indices.push_back(b1); m.indices.push_back(b0);
     }
 
     // Top cap
@@ -279,8 +279,8 @@ MeshData MeshGen::cylinder(int segments, float height, float radius) {
     m.vertices.push_back(tc);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(top_center);
-        m.indices.push_back(static_cast<unsigned int>(i * 2));
         m.indices.push_back(static_cast<unsigned int>((i + 1) * 2));
+        m.indices.push_back(static_cast<unsigned int>(i * 2));
     }
 
     // Bottom cap
@@ -289,8 +289,8 @@ MeshData MeshGen::cylinder(int segments, float height, float radius) {
     m.vertices.push_back(bc);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(bot_center);
-        m.indices.push_back(static_cast<unsigned int>((i + 1) * 2 + 1));
         m.indices.push_back(static_cast<unsigned int>(i * 2 + 1));
+        m.indices.push_back(static_cast<unsigned int>((i + 1) * 2 + 1));
     }
 
     return m;
@@ -353,28 +353,29 @@ MeshData MeshGen::frustum(int segments, float height, float r_bottom, float r_to
         bot.uv = Vec2(u, 0.0f);
         m.vertices.push_back(bot);
     }
+    // Side faces (CCW winding when viewed from outside)
     for (int i = 0; i < segments; i++) {
         unsigned int t0 = static_cast<unsigned int>(i) * 2, b0 = t0 + 1, t1 = t0 + 2, b1 = t0 + 3;
-        m.indices.push_back(t0); m.indices.push_back(b0); m.indices.push_back(t1);
-        m.indices.push_back(t1); m.indices.push_back(b0); m.indices.push_back(b1);
+        m.indices.push_back(t0); m.indices.push_back(t1); m.indices.push_back(b0);
+        m.indices.push_back(t1); m.indices.push_back(b1); m.indices.push_back(b0);
     }
-    // Top cap
+    // Top cap (CCW when viewed from above)
     unsigned int tc = static_cast<unsigned int>(m.vertices.size());
     Vertex tcv; tcv.pos = Vec3(0.0f, half_h, 0.0f); tcv.normal = Vec3(0.0f, 1.0f, 0.0f); tcv.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(tcv);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(tc);
-        m.indices.push_back(static_cast<unsigned int>(i * 2));
         m.indices.push_back(static_cast<unsigned int>((i + 1) * 2));
+        m.indices.push_back(static_cast<unsigned int>(i * 2));
     }
-    // Bottom cap
+    // Bottom cap (CCW when viewed from below)
     unsigned int bc = static_cast<unsigned int>(m.vertices.size());
     Vertex bcv; bcv.pos = Vec3(0.0f, -half_h, 0.0f); bcv.normal = Vec3(0.0f, -1.0f, 0.0f); bcv.uv = Vec2(0.5f, 0.5f);
     m.vertices.push_back(bcv);
     for (int i = 0; i < segments; i++) {
         m.indices.push_back(bc);
-        m.indices.push_back(static_cast<unsigned int>((i + 1) * 2 + 1));
         m.indices.push_back(static_cast<unsigned int>(i * 2 + 1));
+        m.indices.push_back(static_cast<unsigned int>((i + 1) * 2 + 1));
     }
     return m;
 }
@@ -560,17 +561,17 @@ MeshData MeshGen::scatteredGrass(int count, float area_size, float blade_height,
     float ground_y = -1.0f;
 
     for (int i = 0; i < count; i++) {
-        // Random position, avoid center (bunny area)
+        // Random position, avoid center (pedestal + bunny area)
         float px, pz, dist2;
         do {
             px = (rng.next() - 0.5f) * area_size;
             pz = (rng.next() - 0.5f) * area_size;
             dist2 = px * px + pz * pz;
-        } while (dist2 < 0.49f);
+        } while (dist2 < 4.0f);  // min distance 2.0 from center (pedestal radius ~0.8)
 
         // Fade out near center
         float dist = sqrtf(dist2);
-        float vis = dist < 0.6f ? 0.0f : (dist < 1.2f ? (dist - 0.6f) / 0.6f : 1.0f);
+        float vis = dist < 2.0f ? 0.0f : (dist < 2.8f ? (dist - 2.0f) / 0.8f : 1.0f);
 
         // Random variation per blade
         float bh = blade_height * (0.8f + 0.5f * rng.next()) * vis;
@@ -956,4 +957,240 @@ MeshData MeshGen::disc(float radius, int segments, unsigned int seed) {
     }
 
     return m;
+}
+
+// ============================================================
+// Half torus (arch shape): top half only (u in [0, PI])
+// ============================================================
+
+MeshData MeshGen::halfTorus(int ring_seg, int tube_seg, float R, float r) {
+    MeshData m;
+    for (int i = 0; i <= ring_seg; i++) {
+        float u = static_cast<float>(i) / static_cast<float>(ring_seg) * PI;
+        float cu = cosf(u), su = sinf(u);
+        for (int j = 0; j <= tube_seg; j++) {
+            float v = static_cast<float>(j) / static_cast<float>(tube_seg) * 2.0f * PI;
+            float cv = cosf(v), sv = sinf(v);
+            float rad = R + r * cv;
+            Vertex vt;
+            vt.pos = Vec3(rad * cu, rad * su, r * sv);
+            vt.normal = Vec3(cv * cu, cv * su, sv);
+            vt.uv = Vec2(static_cast<float>(i) / static_cast<float>(ring_seg),
+                         static_cast<float>(j) / static_cast<float>(tube_seg));
+            m.vertices.push_back(vt);
+        }
+    }
+    // Winding order: halfTorus is in XY plane (vs XZ for regular torus),
+    // which flips handedness.  Reverse triangle winding so outside faces out.
+    for (int i = 0; i < ring_seg; i++) {
+        for (int j = 0; j < tube_seg; j++) {
+            unsigned int a = static_cast<unsigned int>(i * (tube_seg + 1) + j);
+            unsigned int b = a + static_cast<unsigned int>(tube_seg) + 1;
+            m.indices.push_back(a);
+            m.indices.push_back(b);
+            m.indices.push_back(a + 1);
+            m.indices.push_back(a + 1);
+            m.indices.push_back(b);
+            m.indices.push_back(b + 1);
+        }
+    }
+    return m;
+}
+
+// ============================================================
+// Procedural tree: tapered trunk + branches + foliage spheres
+// ============================================================
+//
+// Approach: "trunk with branching + sphere cluster canopy"
+//   - Tapered frustum trunk (wider base, narrower top)
+//   - 3-4 branch frustums angling outward from upper trunk
+//   - 8-12 overlapping deformed spheres for foliage volume
+//   - Seed-driven randomization for variety across instances
+//
+// At viewing distance 5-7 units with flat color + Blinn-Phong:
+//   - Branching structure gives recognizable tree silhouette
+//   - Overlapping spheres catch hemisphere ambient with soft gradients
+//   - Non-symmetric placement ensures every viewing angle looks different
+//   - Self-shadowing between foliage clusters adds depth
+//
+// Typical vertex count: ~1500-2500 (well within 4000 budget)
+
+MeshData MeshGen::proceduralTree(float trunk_height, float trunk_radius, float crown_radius, int segments, unsigned int seed) {
+    MeshRNG rng(seed);
+    MeshData m;
+
+    // --- Trunk: tapered frustum, wider at base ---
+    float trunk_r_base = trunk_radius;
+    float trunk_r_top = trunk_radius * 0.55f;
+    MeshData trunk = frustum(segments, trunk_height, trunk_r_base, trunk_r_top);
+    appendMesh(m, trunk, Mat4());
+
+    // Trunk top center (where branches originate)
+    float trunk_top_y = trunk_height * 0.5f;
+
+    // --- Branches: 3-4 frustums angling outward from upper trunk ---
+    int num_branches = 3 + (rng.next() > 0.5f ? 1 : 0);  // 3 or 4
+
+    // Pre-generate branch parameters for foliage placement
+    struct BranchInfo {
+        float tip_x, tip_y, tip_z;  // world-space tip position
+        float length;
+    };
+    BranchInfo branches[4];
+
+    // Distribute branches around trunk with golden-angle-like spacing + jitter
+    float base_angle = rng.next() * 360.0f;  // random starting rotation
+    for (int i = 0; i < num_branches; i++) {
+        // Azimuth: roughly evenly spaced with randomized jitter
+        float azimuth = base_angle + static_cast<float>(i) * (360.0f / static_cast<float>(num_branches));
+        azimuth += (rng.next() - 0.5f) * 30.0f;  // +/- 15 deg jitter
+
+        // Pitch from vertical: 25-50 degrees outward
+        float pitch = 25.0f + rng.next() * 25.0f;
+
+        // Branch length: proportional to trunk, with variation
+        float branch_len = trunk_height * (0.3f + rng.next() * 0.15f);
+        float branch_r_base = trunk_r_top * (0.6f + rng.next() * 0.2f);
+        float branch_r_tip = branch_r_base * 0.3f;
+
+        // Branch origin: slightly below trunk top with vertical spread
+        float origin_y = trunk_top_y - trunk_height * (0.05f + rng.next() * 0.15f);
+
+        // Create branch frustum (generated along Y axis, then rotated)
+        MeshData br = frustum(segments > 6 ? segments / 2 : segments, branch_len, branch_r_base, branch_r_tip);
+
+        // Transform: translate to origin, rotate to pitch outward, rotate azimuth
+        // The frustum is centered at origin along Y, so shift up by half its length
+        // to place base at origin, then rotate and translate to branch point
+        Mat4 xform = Mat4::translate(0.0f, origin_y, 0.0f)
+                    * Mat4::rotateY(azimuth)
+                    * Mat4::rotateZ(pitch)
+                    * Mat4::translate(0.0f, branch_len * 0.5f, 0.0f);
+
+        appendMesh(m, br, xform);
+
+        // Compute branch tip position (tip = along local Y at branch_len from base)
+        float pitch_rad = pitch * CB_PI / 180.0f;
+        float azimuth_rad = azimuth * CB_PI / 180.0f;
+        // Local tip direction after pitch rotation (in XY plane of rotateZ)
+        float tip_local_x = sinf(pitch_rad) * branch_len;
+        float tip_local_y = cosf(pitch_rad) * branch_len;
+        // Rotate by azimuth around Y
+        branches[i].tip_x = tip_local_x * cosf(azimuth_rad);
+        branches[i].tip_y = origin_y + tip_local_y;
+        branches[i].tip_z = -tip_local_x * sinf(azimuth_rad);
+        branches[i].length = branch_len;
+    }
+
+    // --- Foliage: overlapping deformed spheres ---
+    // Use low-poly spheres (8 segments x 6 rings = 63 verts each)
+    int foliage_segs = segments > 6 ? 8 : 6;
+    int foliage_rings = segments > 6 ? 6 : 5;
+    MeshData base_sphere = sphere(foliage_segs, foliage_rings);
+
+    // Crown center: above trunk top
+    float crown_center_y = trunk_top_y + crown_radius * 0.4f;
+
+    // Place foliage clusters:
+    //   - 1 large sphere at crown center (main mass)
+    //   - 1 sphere at each branch tip
+    //   - 4-6 additional spheres filling gaps around the crown envelope
+
+    // Central crown sphere (largest, gives overall round shape)
+    {
+        float sz_y = crown_radius * (0.7f + rng.next() * 0.15f);  // squashed vertically
+        float sz_xz = crown_radius * (0.85f + rng.next() * 0.1f);
+        Mat4 xf = Mat4::translate(0.0f, crown_center_y, 0.0f)
+                 * Mat4::scale(sz_xz, sz_y, sz_xz);
+        appendMesh(m, base_sphere, xf);
+    }
+
+    // Branch tip spheres (medium, give directional volume)
+    for (int i = 0; i < num_branches; i++) {
+        float r = crown_radius * (0.45f + rng.next() * 0.2f);
+        float squash = 0.65f + rng.next() * 0.2f;  // vertical squash
+
+        // Offset slightly inward from tip toward crown center for overlap
+        float blend = 0.3f + rng.next() * 0.2f;
+        float fx = branches[i].tip_x * (1.0f - blend);
+        float fy = branches[i].tip_y * (1.0f - blend) + crown_center_y * blend;
+        float fz = branches[i].tip_z * (1.0f - blend);
+
+        // Random slight offset for organic feel
+        fx += (rng.next() - 0.5f) * crown_radius * 0.15f;
+        fy += (rng.next() - 0.5f) * crown_radius * 0.1f;
+        fz += (rng.next() - 0.5f) * crown_radius * 0.15f;
+
+        Mat4 xf = Mat4::translate(fx, fy, fz)
+                 * Mat4::rotateY(rng.next() * 360.0f)
+                 * Mat4::scale(r, r * squash, r);
+        appendMesh(m, base_sphere, xf);
+    }
+
+    // Fill spheres: randomly placed within the crown envelope
+    // These break up the silhouette and fill gaps between branch-tip clusters
+    int num_fill = 4 + static_cast<int>(rng.next() * 3.0f);  // 4-6
+    for (int i = 0; i < num_fill; i++) {
+        float r = crown_radius * (0.3f + rng.next() * 0.25f);
+        float squash = 0.55f + rng.next() * 0.3f;
+
+        // Random position within a bounding ellipsoid around the crown
+        float angle = rng.next() * 2.0f * PI;
+        float elev = (rng.next() - 0.4f) * crown_radius * 1.2f;  // bias upward
+        float dist = crown_radius * (0.2f + rng.next() * 0.5f);
+
+        float fx = cosf(angle) * dist;
+        float fy = crown_center_y + elev;
+        float fz = sinf(angle) * dist;
+
+        Mat4 xf = Mat4::translate(fx, fy, fz)
+                 * Mat4::rotateY(rng.next() * 360.0f)
+                 * Mat4::scale(r, r * squash, r);
+        appendMesh(m, base_sphere, xf);
+    }
+
+    // Recompute normals for smooth shading across the whole tree.
+    // This blends normals at sphere/branch seams and gives the foliage
+    // a more cohesive, organic appearance under hemisphere ambient lighting.
+    recomputeNormals(m);
+
+    return m;
+}
+
+// ============================================================
+// Simple procedural tree: trunk cylinder + 2 cone crowns (legacy)
+// ============================================================
+
+MeshData MeshGen::simpleTree(float th, float tr, float ch, float cr, int seg) {
+    MeshData m = cylinder(seg, th, tr);
+    // Two stacked cones: lower wider, upper narrower (no overlap = no z-fighting)
+    MeshData c1 = cone(seg, ch * 0.6f, cr);
+    MeshData c2 = cone(seg, ch * 0.5f, cr * 0.65f);
+    // Lower cone at trunk top
+    appendMesh(m, c1, Mat4::translate(0.0f, th * 0.5f, 0.0f));
+    // Upper cone stacked on top of lower (base at lower apex)
+    appendMesh(m, c2, Mat4::translate(0.0f, th * 0.5f + ch * 0.6f, 0.0f));
+    return m;
+}
+
+// ============================================================
+// Append mesh with transform (for multi-part objects)
+// ============================================================
+
+void MeshGen::appendMesh(MeshData& dst, const MeshData& src, const Mat4& transform) {
+    unsigned int base = static_cast<unsigned int>(dst.vertices.size());
+
+    dst.vertices.reserve(dst.vertices.size() + src.vertices.size());
+    for (size_t i = 0; i < src.vertices.size(); i++) {
+        Vertex v;
+        v.pos = transform.transformPoint(src.vertices[i].pos);
+        v.normal = transform.transformNormal(src.vertices[i].normal).normalized();
+        v.uv = src.vertices[i].uv;
+        dst.vertices.push_back(v);
+    }
+
+    dst.indices.reserve(dst.indices.size() + src.indices.size());
+    for (size_t i = 0; i < src.indices.size(); i++) {
+        dst.indices.push_back(src.indices[i] + base);
+    }
 }

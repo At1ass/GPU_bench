@@ -11,6 +11,23 @@
 #include "stb_image.h"
 #include <cmath>
 
+// Terrain heightmap sampling (matches demo_scene.cpp sampleTerrainHeight)
+static float terrainHeightRaw(float x, float z) {
+    float h = 0.0f;
+    h += sinf(x * 0.4f) * cosf(z * 0.3f) * 0.6f;
+    h += sinf(x * 0.7f + 1.3f) * sinf(z * 0.5f + 0.7f) * 0.3f;
+    float pdx = x - 3.5f, pdz = z - 3.5f;
+    float pd = sqrtf(pdx * pdx + pdz * pdz);
+    float pt = pd < 3.0f ? (3.0f - pd) / 3.0f : 0.0f;
+    pt = pt * pt * (3.0f - 2.0f * pt);
+    h -= pt * 0.3f;
+    float cd = sqrtf(x * x + z * z);
+    float ft = cd < 2.5f ? (cd < 1.0f ? 1.0f : (2.5f - cd) / 1.5f) : 0.0f;
+    ft = ft * ft * (3.0f - 2.0f * ft);
+    h *= (1.0f - ft);
+    return h;
+}
+
 DemoResources::DemoResources()
     : renderer_(nullptr)
     , prepared_(false)
@@ -47,7 +64,7 @@ DemoResources::~DemoResources() {
 bool DemoResources::loadSharedMeshes(Renderer* r) {
     scene_meshes_.init(r);
 
-    // Sky mesh
+    // Sky mesh (vertex shader scales ×500 and uses pos.xyww trick)
     {
         MeshData sd = MeshGen::sphere(32, 16);
         sky_mesh_.assign(r, r->createMesh(sd));
@@ -78,24 +95,54 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
 
     // Ground plane
     {
-        MeshData gd = MeshGen::terrain(14.0f, 40);
+        MeshData gd = MeshGen::terrain(20.0f, 80);
+        // Apply heightmap displacement
+        for (size_t i = 0; i < gd.vertices.size(); i++) {
+            float x = gd.vertices[i].pos.x;
+            float z = gd.vertices[i].pos.z;
+            float h = 0.0f;
+            // Rolling hills
+            h += sinf(x * 0.4f) * cosf(z * 0.3f) * 0.6f;
+            h += sinf(x * 0.7f + 1.3f) * sinf(z * 0.5f + 0.7f) * 0.3f;
+            // Pond depression at (3.5, 3.5)
+            float pdx = x - 3.5f, pdz = z - 3.5f;
+            float pond_dist = sqrtf(pdx * pdx + pdz * pdz);
+            float pond_t = pond_dist < 3.0f ? (3.0f - pond_dist) / 3.0f : 0.0f;
+            pond_t = pond_t * pond_t * (3.0f - 2.0f * pond_t);  // smoothstep
+            h -= pond_t * 0.3f;
+            // Flatten center for pedestal
+            float cd = sqrtf(x * x + z * z);
+            float flat_t = cd < 2.5f ? (cd < 1.0f ? 1.0f : (2.5f - cd) / 1.5f) : 0.0f;
+            flat_t = flat_t * flat_t * (3.0f - 2.0f * flat_t);  // smoothstep
+            h = h * (1.0f - flat_t);
+            gd.vertices[i].pos.y = h;
+        }
+        MeshGen::recomputeNormals(gd);
         ground_mesh_ = scene_meshes_.add(gd);
     }
 
     // Scattered rocks
     {
-        MeshData rocks = MeshGen::scatteredRocks(10, 8.0f, 0.1f, 0.3f, 137u);
+        MeshData rocks = MeshGen::scatteredRocks(15, 8.0f, 0.1f, 0.3f, 137u);
+        // Apply terrain heightmap to rock positions
+        for (size_t i = 0; i < rocks.vertices.size(); i++) {
+            rocks.vertices[i].pos.y += terrainHeightRaw(rocks.vertices[i].pos.x, rocks.vertices[i].pos.z);
+        }
         rock_mesh_ = scene_meshes_.add(rocks);
         LOG_INF("Resources: generated %d scattered rocks (%d verts)",
-                  10, static_cast<int>(rocks.vertices.size()));
+                  15, static_cast<int>(rocks.vertices.size()));
     }
 
     // Scattered grass (batched for T1, same blade shape as instanced version)
     {
-        MeshData grass = MeshGen::scatteredGrass(600, 20.0f, 0.30f, 0.10f, 251u);
+        MeshData grass = MeshGen::scatteredGrass(800, 20.0f, 0.30f, 0.10f, 251u);
+        // Apply terrain heightmap to grass positions
+        for (size_t i = 0; i < grass.vertices.size(); i++) {
+            grass.vertices[i].pos.y += terrainHeightRaw(grass.vertices[i].pos.x, grass.vertices[i].pos.z);
+        }
         grass_mesh_ = scene_meshes_.add(grass);
         LOG_INF("Resources: generated %d grass blades (%d verts)",
-                  600, static_cast<int>(grass.vertices.size()));
+                  800, static_cast<int>(grass.vertices.size()));
     }
 
     // Billboard particles
@@ -114,7 +161,99 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
                   static_cast<int>(blade.vertices.size()));
     }
 
-    LOG_DBG("Demo: mesh pool loaded (%d meshes)", 7);  // sky + model + ground + rocks + grass + particles + blade
+    // Pedestal: hexagonal frustum (larger, prominent base for bunny)
+    {
+        MeshData md = MeshGen::frustum(6, 1.1f, 1.4f, 1.1f);
+        pedestal_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Tall column: thick cylinder + base ring + capital (top ring)
+    {
+        MeshData md = MeshGen::cylinder(16, 3.0f, 0.30f);
+        MeshData ring = MeshGen::torus(16, 8, 0.30f, 0.08f);
+        MeshGen::appendMesh(md, ring, Mat4());  // ring at center (sinks into ground)
+        // Capital at column top: wider torus to bridge column (r=0.30) → arch tube (r=0.25)
+        MeshData capital = MeshGen::torus(16, 8, 0.30f, 0.12f);
+        MeshGen::appendMesh(md, capital, Mat4::translate(0.0f, 1.5f, 0.0f));  // at cylinder top
+        column_tall_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Column stump: shorter but thick cylinder + torus base
+    {
+        MeshData md = MeshGen::cylinder(16, 1.2f, 0.30f);
+        MeshData ring = MeshGen::torus(16, 8, 0.30f, 0.08f);
+        MeshGen::appendMesh(md, ring, Mat4());
+        column_stump_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Arch: massive half torus (proper stone arch)
+    {
+        MeshData md = MeshGen::halfTorus(32, 12, 1.8f, 0.25f);
+        arch_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Fallen column segment (thick, lying on ground)
+    {
+        MeshData md = MeshGen::cylinder(16, 2.2f, 0.28f);
+        fallen_column_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Stone slab (cube will be scaled in scene)
+    {
+        MeshData md = MeshGen::cube();
+        slab_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Stone sphere (low-poly for carved stone look)
+    {
+        MeshData md = MeshGen::sphere(16, 10);
+        stone_sphere_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Mossy block (cube, will be scaled)
+    {
+        MeshData md = MeshGen::cube();
+        mossy_block_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Offering bowl (larger, visible)
+    {
+        MeshData md = MeshGen::torus(16, 10, 0.30f, 0.10f);
+        bowl_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Obelisk (taller, thicker)
+    {
+        MeshData md = MeshGen::frustum(8, 2.5f, 0.15f, 0.05f);
+        obelisk_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Step rings (thicker tori)
+    {
+        MeshData md = MeshGen::torus(32, 6, 1.5f, 0.08f);
+        ring_inner_mesh_ = scene_meshes_.add(md);
+    }
+    {
+        MeshData md = MeshGen::torus(32, 6, 2.2f, 0.08f);
+        ring_outer_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Pond (large disc, replaces 3 small puddles)
+    {
+        MeshData md = MeshGen::disc(2.5f, 64, 0);
+        pond_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Procedural tree meshes: 3 variants with different seeds for variety
+    {
+        unsigned int seeds[] = { 42, 137, 293 };
+        for (int i = 0; i < 3; i++) {
+            MeshData md = MeshGen::proceduralTree(3.0f, 0.15f, 1.2f, 10, seeds[i]);
+            tree_meshes_[i] = scene_meshes_.add(md);
+        }
+    }
+
+    LOG_DBG("Demo: mesh pool loaded (%d meshes)", 21);
 
     return true;
 }
@@ -913,6 +1052,20 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
     view.core.particle_mesh = particle_mesh_;
     view.core.fur_tex = fur_tex_.get();
     view.core.fur_mask_tex = fur_mask_tex_.get();
+    view.core.pedestal_mesh = pedestal_mesh_;
+    view.core.column_tall_mesh = column_tall_mesh_;
+    view.core.column_stump_mesh = column_stump_mesh_;
+    view.core.arch_mesh = arch_mesh_;
+    view.core.fallen_column_mesh = fallen_column_mesh_;
+    view.core.slab_mesh = slab_mesh_;
+    view.core.stone_sphere_mesh = stone_sphere_mesh_;
+    view.core.mossy_block_mesh = mossy_block_mesh_;
+    view.core.bowl_mesh = bowl_mesh_;
+    view.core.obelisk_mesh = obelisk_mesh_;
+    view.core.ring_inner_mesh = ring_inner_mesh_;
+    view.core.ring_outer_mesh = ring_outer_mesh_;
+    view.core.pond_mesh = pond_mesh_;
+    for (int i = 0; i < 3; i++) view.core.tree_meshes[i] = tree_meshes_[i];
     view.core.model_bounding_radius = model_bounding_radius_;
     view.core.particle_shader = particle_cache_ ? particle_cache_
                                : (particle_shader_ ? &particle_shader_ : nullptr);

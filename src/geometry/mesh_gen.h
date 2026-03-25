@@ -70,4 +70,21 @@ namespace MeshGen {
     // Centered at origin, y=0, with organic irregular edges.
     // seed varies the shape per instance.
     MeshData disc(float radius, int segments, unsigned int seed = 0);
+
+    // Half torus (arch shape): only the top half (u in [0, PI]).
+    // Generated in XY plane: base endpoints at (±R, 0, 0), apex at (0, R, 0).
+    MeshData halfTorus(int ring_segments, int tube_segments, float ring_radius, float tube_radius);
+
+    // Procedural tree: tapered trunk + branching + sphere foliage clusters.
+    // Generates a realistic-looking tree with organic non-symmetric crown.
+    // seed varies the shape so each tree instance looks different.
+    MeshData proceduralTree(float trunk_height, float trunk_radius, float crown_radius, int segments = 10, unsigned int seed = 0);
+
+    // Simple procedural tree: cylinder trunk + 2 overlapping cones for crown (legacy).
+    MeshData simpleTree(float trunk_height, float trunk_radius, float crown_height, float crown_radius, int segments = 12);
+
+    // Append src mesh into dst, transforming all vertices by the given matrix.
+    // Indices are offset by the current dst vertex count.
+    // Useful for merging multi-part objects (e.g. column + base ring) into a single draw call.
+    void appendMesh(MeshData& dst, const MeshData& src, const Mat4& transform);
 }

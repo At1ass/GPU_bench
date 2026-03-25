@@ -11,6 +11,13 @@ struct TierResourceView {
         ShaderProgram* fur_shader;
         ShaderProgram* particle_shader;
         MeshHandle model_mesh, sky_mesh, ground_mesh, rock_mesh, grass_mesh, particle_mesh;
+        // Sanctuary scene meshes
+        MeshHandle pedestal_mesh, column_tall_mesh, column_stump_mesh;
+        MeshHandle arch_mesh, fallen_column_mesh, slab_mesh;
+        MeshHandle stone_sphere_mesh, mossy_block_mesh, bowl_mesh;
+        MeshHandle obelisk_mesh, ring_inner_mesh, ring_outer_mesh;
+        MeshHandle pond_mesh;
+        MeshHandle tree_meshes[3];
         TextureHandle fur_tex, fur_mask_tex;
         float model_bounding_radius;
     } core;

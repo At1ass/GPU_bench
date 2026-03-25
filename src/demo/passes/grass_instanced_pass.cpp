@@ -51,6 +51,29 @@ void GrassInstancedPass::execute(Renderer* r, FrameData& fd,
         ub_.set(U::LightSize, cfg.light_size);
     }
 
+    // Exclusion zones: prevent grass from growing through scene objects
+    // vec4(x, y_unused, z, radius) — XZ position + radius
+    {
+        struct Zone { float x, z, r; };
+        Zone zones[] = {
+            {  0.0f,   0.0f,  1.5f },  // pedestal
+            { -1.8f,  -2.5f,  0.5f },  // column A
+            {  1.8f,  -2.5f,  0.5f },  // column B
+            {  3.0f,   0.5f,  0.8f },  // stone slab
+            { -2.8f,   1.5f,  0.5f },  // stone sphere A
+            {  3.5f,  -1.5f,  0.4f },  // stone sphere B
+            { -3.2f,   1.0f,  0.8f },  // fallen column
+            {  3.8f,   2.5f,  0.6f },  // mossy block
+        };
+        int count = 8;
+        res.grass.shader->set1i("u_exclusion_count", count);
+        for (int i = 0; i < count; i++) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "u_exclusion[%d]", i);
+            res.grass.shader->set4f(buf, zones[i].x, 0.0f, zones[i].z, zones[i].r);
+        }
+    }
+
     // Puddle exclusion zones (T4 Ultra) -- array uniforms, keep string-based
     if (cfg.enable_ssr) {
         ub_.set(U::PuddleCount, 3);

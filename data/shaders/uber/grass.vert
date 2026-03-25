@@ -12,6 +12,10 @@ uniform vec3 u_wind_dir;
 uniform int u_grass_count;
 uniform float u_area_size;
 
+// Exclusion zones: xyz = world XZ position, w = radius
+uniform int u_exclusion_count;
+uniform vec4 u_exclusion[8];
+
 #ifdef HAS_SHADOWS
 uniform mat4 u_light_vp;
 #endif
@@ -41,7 +45,16 @@ void main() {
 
     // Hide grass too close to center (bunny area)
     float dist_from_center = sqrt(px * px + pz * pz);
-    float vis = smoothstep(0.6, 1.2, dist_from_center);
+    float vis = smoothstep(0.6, 1.5, dist_from_center);
+
+    // Hide grass inside exclusion zones (columns, stones, etc.)
+    for (int ei = 0; ei < 8; ei++) {
+        if (ei >= u_exclusion_count) break;
+        float dx = px - u_exclusion[ei].x;
+        float dz = pz - u_exclusion[ei].z;
+        float ed = sqrt(dx * dx + dz * dz);
+        vis *= smoothstep(u_exclusion[ei].w * 0.8, u_exclusion[ei].w * 1.3, ed);
+    }
 
     // Random rotation per blade
     float angle = hash(id * 2.51 + 3.17) * 6.2832;
