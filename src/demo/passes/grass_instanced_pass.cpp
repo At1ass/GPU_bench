@@ -44,11 +44,11 @@ void GrassInstancedPass::execute(Renderer* r, FrameData& fd,
         ub_.set(U::WindDir, 0.0f, 0.0f, 0.0f);
     }
 
-    // PCSS uniforms (T4 Ultra)
-    if (cfg.enable_pcss) {
+    // Shadow texel size for PCF kernel spacing (all shadow tiers)
+    if (fd.has_shadows && cfg.shadow_map_size > 0) {
         float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
         ub_.set(U::ShadowTexelSize, texel, texel);
-        ub_.set(U::LightSize, cfg.light_size);
+        if (cfg.enable_pcss) ub_.set(U::LightSize, cfg.light_size);
     }
 
     // Exclusion zones: prevent grass from growing through scene objects

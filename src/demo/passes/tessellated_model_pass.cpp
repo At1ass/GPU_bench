@@ -35,12 +35,7 @@ void TessellatedModelPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::ProcTex, 0.0f);
     ub_.set(U::NormalStrength, 0.0f);
 
-    // PCSS / SSS uniforms
-    if (cfg.enable_pcss) {
-        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
-        ub_.set(U::ShadowTexelSize, texel, texel);
-        ub_.set(U::LightSize, cfg.light_size);
-    }
+    // SSS uniforms
     if (cfg.enable_sss) {
         ub_.set(U::SssStrength, cfg.sss_strength);
     } else {
@@ -48,6 +43,9 @@ void TessellatedModelPass::execute(Renderer* r, FrameData& fd,
     }
 
     if (fd.has_shadows) {
+        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
+        ub_.set(U::ShadowTexelSize, texel, texel);
+        if (cfg.enable_pcss) ub_.set(U::LightSize, cfg.light_size);
         ub_.set(U::LightVP, fd.light_vp);
         r->bindTextureUnit(3, res.shadow.depth_tex);
         ub_.set(U::ShadowMap, 3);

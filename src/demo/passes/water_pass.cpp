@@ -40,14 +40,12 @@ void WaterPass::execute(Renderer* r, FrameData& fd,
         ub_.set(U::Metallic, 0.0f);
         ub_.set(U::Roughness, 0.02f);
     }
-    if (cfg.enable_pcss) {
-        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
-        ub_.set(U::ShadowTexelSize, texel, texel);
-        ub_.set(U::LightSize, cfg.light_size);
-    }
     ub_.set(U::SssStrength, 0.0f);
 
     if (fd.has_shadows) {
+        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
+        ub_.set(U::ShadowTexelSize, texel, texel);
+        if (cfg.enable_pcss) ub_.set(U::LightSize, cfg.light_size);
         ub_.set(U::LightVP, fd.light_vp);
         r->bindTextureUnit(3, res.shadow.depth_tex);
         ub_.set(U::ShadowMap, 3);

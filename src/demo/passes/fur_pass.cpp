@@ -38,15 +38,12 @@ void FurPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::ViewportSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
 
-    // PCSS uniforms (T4 Ultra)
-    if (cfg.enable_pcss) {
-        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
-        ub_.set(U::ShadowTexelSize, texel, texel);
-        ub_.set(U::LightSize, cfg.light_size);
-    }
-
     // Shadow uniforms (T2+)
     if (fd.has_shadows) {
+        // Texel size for PCF kernel spacing (all shadow tiers)
+        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
+        ub_.set(U::ShadowTexelSize, texel, texel);
+        if (cfg.enable_pcss) ub_.set(U::LightSize, cfg.light_size);
         ub_.set(U::LightVP, fd.light_vp);
         r->bindTextureUnit(3, res.shadow.depth_tex);
         ub_.set(U::ShadowMap, 3);

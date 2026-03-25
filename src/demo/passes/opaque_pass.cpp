@@ -51,12 +51,7 @@ void OpaquePass::execute(Renderer* r, FrameData& fd,
         ub_.set(U::Roughness, default_roughness);
     }
 
-    // PCSS / SSS uniforms (T4 Ultra)
-    if (cfg.enable_pcss) {
-        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
-        ub_.set(U::ShadowTexelSize, texel, texel);
-        ub_.set(U::LightSize, cfg.light_size);
-    }
+    // SSS uniforms (T4 Ultra)
     if (cfg.enable_sss) {
         ub_.set(U::SssStrength, cfg.sss_strength);
     } else {
@@ -69,6 +64,13 @@ void OpaquePass::execute(Renderer* r, FrameData& fd,
         r->bindTextureUnit(3, res.shadow.depth_tex);
         ub_.set(U::ShadowMap, 3);
         ub_.set(U::HasShadow, 1.0f);
+        // Texel size for PCF kernel spacing (needed by ALL shadow tiers, not just PCSS)
+        float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
+        ub_.set(U::ShadowTexelSize, texel, texel);
+        // PCSS-specific uniforms (T4 Ultra)
+        if (cfg.enable_pcss) {
+            ub_.set(U::LightSize, cfg.light_size);
+        }
     } else {
         ub_.set(U::HasShadow, 0.0f);
     }
