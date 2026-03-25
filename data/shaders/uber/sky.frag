@@ -96,8 +96,10 @@ void main() {
     skyColor += vec3(1.0, 0.9, 0.7) * sunGlow;
     skyColor += vec3(1.0, 0.85, 0.6) * sunCorona;
 
-    // Darken below horizon
-    skyColor *= smoothstep(-0.05, 0.1, altitude);
+    // Below horizon: blend to ground/fog color instead of black
+    vec3 groundColor = vec3(0.35, 0.40, 0.32);  // earthy green-brown
+    float horizonBlend = smoothstep(-0.15, 0.05, altitude);
+    skyColor = mix(groundColor, skyColor, horizonBlend);
 
     FRAG_COLOR = vec4(skyColor, 1.0);
 }

@@ -484,13 +484,13 @@ MeshData MeshGen::scatteredRocks(int count, float area_size, float min_scale, fl
     const int rngs = 6;
 
     for (int rock = 0; rock < count; rock++) {
-        // Random position, avoid center (bunny area)
+        // Random position, avoid center (bunny area) and pond under arch
         float px, pz, dist2;
         do {
             px = (rng.next() - 0.5f) * area_size;
             pz = (rng.next() - 0.5f) * area_size;
             dist2 = px * px + pz * pz;
-        } while (dist2 < 1.5f); // min distance ~1.2 from center
+        } while (dist2 < 1.5f || (px * px + (pz + 3.5f) * (pz + 3.5f)) < 9.0f);
 
         float sc = min_scale + rng.next() * (max_scale - min_scale);
         float ground_y = -1.0f;
@@ -561,13 +561,13 @@ MeshData MeshGen::scatteredGrass(int count, float area_size, float blade_height,
     float ground_y = -1.0f;
 
     for (int i = 0; i < count; i++) {
-        // Random position, avoid center (pedestal + bunny area)
+        // Random position, avoid center (pedestal + bunny area) and pond under arch
         float px, pz, dist2;
         do {
             px = (rng.next() - 0.5f) * area_size;
             pz = (rng.next() - 0.5f) * area_size;
             dist2 = px * px + pz * pz;
-        } while (dist2 < 4.0f);  // min distance 2.0 from center (pedestal radius ~0.8)
+        } while (dist2 < 4.0f || (px * px + (pz + 3.5f) * (pz + 3.5f)) < 12.25f);
 
         // Fade out near center
         float dist = sqrtf(dist2);
@@ -667,6 +667,53 @@ MeshData MeshGen::particleQuads(int count, float area_size, float height_range, 
         v3.pos = Vec3(-1.0f, 1.0f, 0.0f);
         v3.normal = seed_pos;
         v3.uv = Vec2(particle_id, 1.0f);
+
+        result.vertices.push_back(v0);
+        result.vertices.push_back(v1);
+        result.vertices.push_back(v2);
+        result.vertices.push_back(v3);
+
+        result.indices.push_back(base + 0);
+        result.indices.push_back(base + 1);
+        result.indices.push_back(base + 2);
+        result.indices.push_back(base + 0);
+        result.indices.push_back(base + 2);
+        result.indices.push_back(base + 3);
+    }
+
+    return result;
+}
+
+// ============================================================
+// Torch billboard quads (for flame rendering at point lights)
+// ============================================================
+
+MeshData MeshGen::torchQuads(int count) {
+    MeshData result;
+
+    for (int i = 0; i < count; i++) {
+        unsigned int base = static_cast<unsigned int>(result.vertices.size());
+        float torch_id = static_cast<float>(i);
+
+        // Unit quad corners: vertex shader positions at point light location
+        // a_pos.xy = corner offset [-1,1], a_uv.x = torch index
+        Vertex v0, v1, v2, v3;
+
+        v0.pos = Vec3(-1.0f, -1.0f, 0.0f);
+        v0.normal = Vec3(0.0f, 0.0f, 1.0f);
+        v0.uv = Vec2(torch_id, 0.0f);
+
+        v1.pos = Vec3(1.0f, -1.0f, 0.0f);
+        v1.normal = Vec3(0.0f, 0.0f, 1.0f);
+        v1.uv = Vec2(torch_id, 0.0f);
+
+        v2.pos = Vec3(1.0f, 1.0f, 0.0f);
+        v2.normal = Vec3(0.0f, 0.0f, 1.0f);
+        v2.uv = Vec2(torch_id, 1.0f);
+
+        v3.pos = Vec3(-1.0f, 1.0f, 0.0f);
+        v3.normal = Vec3(0.0f, 0.0f, 1.0f);
+        v3.uv = Vec2(torch_id, 1.0f);
 
         result.vertices.push_back(v0);
         result.vertices.push_back(v1);

@@ -9,18 +9,19 @@ public:
     SceneToFBOPass()
         : sky_pass_(nullptr), opaque_pass_(nullptr)
         , grass_pass_(nullptr), fur_pass_(nullptr)
-        , particle_pass_(nullptr) {}
+        , particle_pass_(nullptr), torch_pass_(nullptr) {}
 
     const char* name() const override { return "scene_to_fbo"; }
 
     void setSubPasses(DemoRenderPass* sky, DemoRenderPass* opaque,
                       DemoRenderPass* grass, DemoRenderPass* fur,
-                      DemoRenderPass* particle) {
+                      DemoRenderPass* particle, DemoRenderPass* torch = nullptr) {
         sky_pass_ = sky;
         opaque_pass_ = opaque;
         grass_pass_ = grass;
         fur_pass_ = fur;
         particle_pass_ = particle;
+        torch_pass_ = torch;
     }
 
     void execute(Renderer* r, FrameData& fd, const TierResourceView& res,
@@ -48,4 +49,5 @@ private:
     DemoRenderPass* grass_pass_;
     DemoRenderPass* fur_pass_;
     DemoRenderPass* particle_pass_;
+    DemoRenderPass* torch_pass_;
 };

@@ -56,12 +56,14 @@ void WaterPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::HasNormalMap, 0.0f);
     ub_.set(U::PointLightCount, 0);
 
-    // Bind scene copy for water reflections (ssr_tex has the scene before water)
-    bool has_reflection = (res.t4.ssr_tex != INVALID_TEXTURE);
+    // Bind SSR snapshot textures (copied before water pass to avoid read-write hazard).
+    // These are format-matched copies: RGBA16F for color, DEPTH_COMPONENT24 for depth.
+    bool has_reflection = (res.t4.ssr_color_snapshot != INVALID_TEXTURE &&
+                           res.t4.ssr_depth_snapshot != INVALID_TEXTURE);
     if (has_reflection) {
-        r->bindTextureUnit(5, res.t4.ssr_tex);
+        r->bindTextureUnit(5, res.t4.ssr_color_snapshot);
         ub_.set(U::ReflectionTex, 5);
-        r->bindTextureUnit(6, res.t4.hdr_depth_tex);
+        r->bindTextureUnit(6, res.t4.ssr_depth_snapshot);
         ub_.set(U::DepthTex, 6);
         ub_.set(U::HasReflection, 1.0f);
         ub_.set(U::ScreenSize,
@@ -88,8 +90,13 @@ void WaterPass::execute(Renderer* r, FrameData& fd,
         ub_.set(U::VertexWind, 0.0f);
         ub_.set(U::IsWater, 1.0f);
 
+        // Water needs alpha blending for shore transparency
+        r->setBlending(true);
+        r->setDepthMask(false);
         if (obj.two_sided) r->setCullFace(false);
         r->drawMesh(obj.mesh);
         if (obj.two_sided) r->setCullFace(true);
+        r->setBlending(false);
+        r->setDepthMask(true);
     }
 }

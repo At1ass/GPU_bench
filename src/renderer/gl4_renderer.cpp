@@ -572,6 +572,79 @@ void GL4Renderer::imageMemoryBarrier() {
 #endif
 }
 
+// --- Texture copy (glCopyImageSubData) ---
+
+void GL4Renderer::copyImageSubData(TextureHandle src, TextureHandle dst, int w, int h) {
+    if (!isValidTexture(src) || !isValidTexture(dst)) return;
+    GLuint src_id = textures_[src].id;
+    GLuint dst_id = textures_[dst].id;
+#ifdef CB_NEED_GL_LOAD
+    if (cb_glCopyImageSubData)
+        cb_glCopyImageSubData(src_id, GL_TEXTURE_2D, 0, 0, 0, 0,
+                              dst_id, GL_TEXTURE_2D, 0, 0, 0, 0,
+                              w, h, 1);
+#else
+    glCopyImageSubData(src_id, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       dst_id, GL_TEXTURE_2D, 0, 0, 0, 0,
+                       w, h, 1);
+#endif
+}
+
+// --- RGBA16F texture (matching HDR render target color format) ---
+
+TextureHandle GL4Renderer::createFloat16Texture(int w, int h) {
+    GLTex tex;
+    glGenTextures(1, &tex.id);
+    glBindTexture(GL_TEXTURE_2D, tex.id);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA16F), w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    tex.valid = true;
+
+    TextureHandle handle;
+    if (!free_tex_slots_.empty()) {
+        handle = free_tex_slots_.back();
+        free_tex_slots_.pop_back();
+        textures_[handle] = tex;
+    } else {
+        handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
+        textures_.push_back(tex);
+    }
+    LOG_DBG("GL4: createFloat16Texture %dx%d -> handle %u", w, h, (unsigned)handle);
+    return handle;
+}
+
+// --- Depth texture (GL_DEPTH_COMPONENT24, matching HDR RT depth format) ---
+
+TextureHandle GL4Renderer::createDepthTexture(int w, int h) {
+    GLTex tex;
+    glGenTextures(1, &tex.id);
+    glBindTexture(GL_TEXTURE_2D, tex.id);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH_COMPONENT24), w, h, 0,
+                 GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    tex.valid = true;
+
+    TextureHandle handle;
+    if (!free_tex_slots_.empty()) {
+        handle = free_tex_slots_.back();
+        free_tex_slots_.pop_back();
+        textures_[handle] = tex;
+    } else {
+        handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
+        textures_.push_back(tex);
+    }
+    LOG_DBG("GL4: createDepthTexture %dx%d -> handle %u", w, h, (unsigned)handle);
+    return handle;
+}
+
 // --- Persistent mapping ---
 
 BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {

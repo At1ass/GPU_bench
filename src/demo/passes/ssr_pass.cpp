@@ -56,19 +56,12 @@ void SSRPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::Aspect, aspect);
     ub_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
 
-    // Pass puddle positions so SSR skips water (water has its own reflections)
-    // Array uniforms kept as string-based calls
-    if (cfg.enable_ssr) {
-        ub_.set(U::PuddleCount, 3);
-        res.t4.ssr_shader->set3f("u_puddle_pos[0]", 2.5f, 0.0f, 0.8f);
-        res.t4.ssr_shader->set3f("u_puddle_pos[1]", -1.8f, 0.0f, 2.2f);
-        res.t4.ssr_shader->set3f("u_puddle_pos[2]", 0.5f, 0.0f, -2.5f);
-        res.t4.ssr_shader->set1f("u_puddle_radius[0]", 1.5f);
-        res.t4.ssr_shader->set1f("u_puddle_radius[1]", 1.2f);
-        res.t4.ssr_shader->set1f("u_puddle_radius[2]", 1.0f);
-    } else {
-        ub_.set(U::PuddleCount, 0);
-    }
+    // Pond exclusion: SSR compute pass should NOT process water pixels
+    // (water has its own SSR in the fragment shader).
+    // Pond behind arch at (0.0, y, -3.5), disc radius 2.5.
+    ub_.set(U::PuddleCount, 1);
+    res.t4.ssr_shader->set3f("u_puddle_pos[0]", 0.0f, 0.0f, -3.5f);
+    res.t4.ssr_shader->set1f("u_puddle_radius[0]", 3.0f);
 
     int gx = (fd.viewport_w + 15) / 16;
     int gy = (fd.viewport_h + 15) / 16;

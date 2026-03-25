@@ -188,6 +188,7 @@ set(SOURCES
     src/demo/passes/sky_pass.cpp
     src/demo/passes/shadow_pass.cpp
     src/demo/passes/particle_pass.cpp
+    src/demo/passes/torch_pass.cpp
     src/demo/passes/opaque_pass.cpp
     src/demo/passes/grass_instanced_pass.cpp
     src/demo/passes/fur_pass.cpp

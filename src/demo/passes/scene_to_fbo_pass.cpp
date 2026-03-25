@@ -20,6 +20,8 @@ void SceneToFBOPass::execute(Renderer* r, FrameData& fd, const TierResourceView&
         grass_pass_->execute(r, fd, res, cfg, scene);
     if (fur_pass_)
         fur_pass_->execute(r, fd, res, cfg, scene);
+    if (torch_pass_)
+        torch_pass_->execute(r, fd, res, cfg, scene);
     if (particle_pass_)
         particle_pass_->execute(r, fd, res, cfg, scene);
 

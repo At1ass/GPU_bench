@@ -76,13 +76,9 @@ void GrassInstancedPass::execute(Renderer* r, FrameData& fd,
 
     // Puddle exclusion zones (T4 Ultra) -- array uniforms, keep string-based
     if (cfg.enable_ssr) {
-        ub_.set(U::PuddleCount, 3);
-        res.grass.shader->set3f("u_puddle_pos[0]", 2.5f, 0.0f, 0.8f);
-        res.grass.shader->set3f("u_puddle_pos[1]", -1.8f, 0.0f, 2.2f);
-        res.grass.shader->set3f("u_puddle_pos[2]", 0.5f, 0.0f, -2.5f);
-        res.grass.shader->set1f("u_puddle_radius[0]", 1.5f);
-        res.grass.shader->set1f("u_puddle_radius[1]", 1.2f);
-        res.grass.shader->set1f("u_puddle_radius[2]", 1.0f);
+        ub_.set(U::PuddleCount, 1);
+        res.grass.shader->set3f("u_puddle_pos[0]", 0.0f, 0.0f, -3.5f);
+        res.grass.shader->set1f("u_puddle_radius[0]", 3.0f);
     } else {
         ub_.set(U::PuddleCount, 0);
     }

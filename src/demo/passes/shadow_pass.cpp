@@ -34,6 +34,7 @@ void ShadowPass::execute(Renderer* r, FrameData& fd,
     const std::vector<SceneObject>& objects = *scene.opaque_objects;
     for (size_t i = 0; i < objects.size(); i++) {
         const SceneObject& obj = objects[i];
+        if (obj.is_water) continue;  // water doesn't cast shadows
         ub_.set(U::Model, obj.transform);
         r->drawMesh(obj.mesh);
     }

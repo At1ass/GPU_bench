@@ -3,29 +3,26 @@
 #include "demo/uniform_block.h"
 #include "demo/demo_scene.h"
 
-class SSRPass : public DemoRenderPass {
+class TorchPass : public DemoRenderPass {
 public:
-    const char* name() const override { return "ssr"; }
+    const char* name() const override { return "torch"; }
     void init(const TierResourceView& res);
     void execute(Renderer* r, FrameData& fd, const TierResourceView& res,
                  const DemoTierConfig& cfg, const SceneData& scene) override;
 
     const ResourceDecl* resourceDecls() const override {
-        // NOTE: SSR reads HDRColor/HDRDepth via texture binding, but declaring
-        // READ HDRColor creates a cycle with WaterPass (which writes HDRColor
-        // and reads SSRResult). Ordering enforced by executionOrder (55 < 60).
         static const ResourceDecl d[] = {
-            { ResourceId::SSRResult, ResourceDecl::WRITE }
+            { ResourceId::HDRColor, ResourceDecl::WRITE }
         };
         return d;
     }
     int resourceDeclCount() const override { return 1; }
-    DemoTier minTier() const override { return DemoTier::Ultra; }
+    DemoTier minTier() const override { return DemoTier::Quality; }
     bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides&) const override {
-        return cfg.enable_ssr;
+        return cfg.point_light_count >= 3;
     }
-    int executionOrder() const override { return 55; }
-    QueueType queueType() const override { return QueueType::Compute; }
+    int executionOrder() const override { return 48; } // after opaque (20), before particles (50)
+    QueueType queueType() const override { return QueueType::Graphics; }
 
 private:
     UniformBlock ub_;

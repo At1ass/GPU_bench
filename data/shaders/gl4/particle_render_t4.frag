@@ -6,25 +6,20 @@ in float v_life_ratio;
 out vec4 FragColor;
 
 void main() {
-    // Soft circular glow centered on quad
     vec2 center = v_quad_uv - 0.5;
-    float dist = length(center) * 2.0; // 0 at center, 1 at edge
+    float dist = length(center) * 2.0;
 
-    // Tighter falloff for smaller, subtler glow
-    float glow = exp(-dist * dist * 5.0);
+    // Multi-layer glow
+    float outer_glow = exp(-dist * dist * 3.0);
+    float core = exp(-dist * dist * 12.0);
+    float intensity = outer_glow * 0.6 + core * 0.8;
 
-    // Core hotspot (dim center)
-    float core = exp(-dist * dist * 16.0) * 0.3;
-
-    float intensity = (glow + core) * 0.8; // moderate intensity, HDR color does the bloom
-
-    // Modulate by particle color and alpha
+    // HDR color already set in compute shader
     vec3 color = v_color.rgb * intensity;
     float alpha = v_color.a * intensity;
 
-    // Discard nearly invisible fragments
-    if (alpha < 0.01) discard;
+    if (alpha < 0.005) discard;
 
-    // Output for additive blending (premultiplied alpha)
-    FragColor = vec4(color * alpha, alpha);
+    // Additive output (GL_ONE, GL_ONE): RGB added to scene
+    FragColor = vec4(color * alpha, 1.0);
 }

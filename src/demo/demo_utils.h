@@ -65,8 +65,27 @@ inline void computeLightMatrix(FrameData& fd) {
     if (fabsf(Vec3::dot(fd.sun_dir, up)) > 0.99f)
         up = Vec3(1.0f, 0.0f, 0.0f);
     Mat4 light_view = Mat4::lookAt(light_pos, Vec3(0.0f, 0.0f, 0.0f), up);
-    Mat4 light_proj = Mat4::ortho(-6.0f, 6.0f, -6.0f, 6.0f, 0.1f, 30.0f);
+    Mat4 light_proj = Mat4::ortho(-8.0f, 8.0f, -8.0f, 8.0f, 0.1f, 30.0f);
     fd.light_vp = light_proj * light_view;
+}
+
+// Terrain height sampling (matches heightmap in demo_resources.cpp)
+inline float sampleTerrainHeight(float x, float z) {
+    float h = 0.0f;
+    h += sinf(x * 0.4f) * cosf(z * 0.3f) * 0.6f;
+    h += sinf(x * 0.7f + 1.3f) * sinf(z * 0.5f + 0.7f) * 0.3f;
+    float cd = sqrtf(x * x + z * z);
+    float ft = cd < 2.5f ? (cd < 1.0f ? 1.0f : (2.5f - cd) / 1.5f) : 0.0f;
+    ft = ft * ft * (3.0f - 2.0f * ft);
+    h *= (1.0f - ft);
+    // Pond depression behind arch at (0.0, -3.5), radius ~3.0
+    // Applied AFTER center flattening so the depression isn't attenuated
+    float pdx = x - 0.0f, pdz = z - (-3.5f);
+    float pd = sqrtf(pdx * pdx + pdz * pdz);
+    float pt = pd < 3.0f ? (3.0f - pd) / 3.0f : 0.0f;
+    pt = pt * pt * (3.0f - 2.0f * pt);
+    h -= pt * 0.5f;
+    return h - 1.0f;
 }
 
 // Set point light uniforms (array uniforms, string-based)
@@ -76,22 +95,28 @@ inline void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd, in
         return;
     }
     shader->set1i("u_point_light_count", point_light_count);
-    // 3 animated point lights orbiting at different heights
+    // 3 animated point lights orbiting around scene landmarks:
+    //   0 (warm orange): obelisk at (-3.5, -2.0) — torch glow
+    //   1 (cold blue):   arch gateway at (0, -2.5) — mystical light
+    //   2 (green):       fallen column area at (-3.2, 1.0) — nature wisp
+    static const float centers[][2] = { {-3.5f, -2.0f}, {0.0f, -2.5f}, {-3.2f, 1.0f} };
+    static const float orbit_r[] = { 1.5f, 2.2f, 1.8f };
+    static const float heights[] = { 0.6f, 1.2f, 0.4f };
+    static const float speeds[] = { 0.8f, 1.1f, 1.4f };
+    static const float colors[][3] = {
+        { 4.0f, 2.8f, 1.2f },   // warm orange (strong)
+        { 1.2f, 2.8f, 4.0f },   // cold blue (strong)
+        { 2.8f, 4.0f, 1.2f }    // green (strong)
+    };
     for (int i = 0; i < point_light_count && i < 3; i++) {
-        float angle = fd.time * (0.8f + 0.3f * static_cast<float>(i)) + static_cast<float>(i) * 2.094f;
-        float radius = 3.0f + static_cast<float>(i) * 0.5f;
-        float px = cosf(angle) * radius;
-        float py = 0.5f + static_cast<float>(i) * 0.8f;
-        float pz = sinf(angle) * radius;
+        float angle = fd.time * speeds[i] + static_cast<float>(i) * 2.094f;
+        float px = centers[i][0] + cosf(angle) * orbit_r[i];
+        float py = heights[i];
+        float pz = centers[i][1] + sinf(angle) * orbit_r[i];
         char name[32];
         snprintf(name, sizeof(name), "u_point_lights[%d]", i);
         shader->set3f(name, px, py, pz);
         snprintf(name, sizeof(name), "u_point_colors[%d]", i);
-        static const float colors[][3] = {
-            { 1.0f, 0.7f, 0.3f },
-            { 0.3f, 0.7f, 1.0f },
-            { 0.7f, 1.0f, 0.3f }
-        };
-        shader->set3f(name, colors[i][0] * 2.0f, colors[i][1] * 2.0f, colors[i][2] * 2.0f);
+        shader->set3f(name, colors[i][0], colors[i][1], colors[i][2]);
     }
 }

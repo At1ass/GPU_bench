@@ -83,6 +83,11 @@ namespace MeshGen {
     // Simple procedural tree: cylinder trunk + 2 overlapping cones for crown (legacy).
     MeshData simpleTree(float trunk_height, float trunk_radius, float crown_height, float crown_radius, int segments = 12);
 
+    // Billboard quads for torch flames.
+    // Generates 'count' unit quads (-1..1 in XY), each with a_uv.x = quad index.
+    // Used by TorchPass to position flames at point light locations.
+    MeshData torchQuads(int count);
+
     // Append src mesh into dst, transforming all vertices by the given matrix.
     // Indices are offset by the current dst vertex count.
     // Useful for merging multi-part objects (e.g. column + base ring) into a single draw call.

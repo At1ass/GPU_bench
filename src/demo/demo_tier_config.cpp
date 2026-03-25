@@ -140,13 +140,13 @@ DemoTierConfig getTierConfig(DemoTier tier) {
             c.enable_ssao = true;
             c.ssao_radius = 0.5f;
             c.ssao_intensity = 1.0f;
-            c.point_light_count = 0;
+            c.point_light_count = 3;
             c.enable_normal_map_texture = true;
             c.enable_pbr = true;
             c.enable_tessellation = true;
             c.tess_level = 6;
             c.enable_compute_particles = true;
-            c.compute_particle_count = 4096;
+            c.compute_particle_count = 1024;
             c.enable_volumetric_fog = true;
             c.enable_hdr = true;
             // T4 Ultra enhancements

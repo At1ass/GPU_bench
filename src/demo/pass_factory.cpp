@@ -22,6 +22,7 @@
 #include "demo/passes/ssr_pass.h"
 #include "demo/passes/ssr_copy_pass.h"
 #include "demo/passes/dof_pass.h"
+#include "demo/passes/torch_pass.h"
 #include <cstring>
 
 // Helper: create, init, push to vector.
@@ -44,7 +45,7 @@ void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
                   const TierResourceView& res,
                   const DemoTierConfig& cfg) {
     out.clear();
-    out.reserve(22);
+    out.reserve(24);
     (void)cfg;
 
     // Core passes (all tiers)
@@ -54,6 +55,9 @@ void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
     make<GrassInstancedPass>(out, res);
     make<FurPass>(out, res);
     make<ParticlePass>(out, res);
+
+    // T3+ torch flames at point lights
+    make<TorchPass>(out, res);
 
     // T2+ post-processing
     make<SSAOPass>(out, res);
@@ -82,7 +86,8 @@ void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
             findByName(out, "opaque"),
             findByName(out, "grass_instanced"),
             findByName(out, "fur"),
-            findByName(out, "particle"));
+            findByName(out, "particle"),
+            findByName(out, "torch"));
     }
 
     // TessellatedModelPass (needs init + setFurPass)

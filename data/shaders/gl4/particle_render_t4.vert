@@ -20,6 +20,11 @@ out vec2 v_quad_uv;
 out vec4 v_color;
 out float v_life_ratio;
 
+// Must match particles_t4.comp layout
+const uint FIREFLY_COUNT = 256u;
+const uint TORCH_COUNT = 2u;
+const float EMBER_RATIO = 0.2;
+
 void main() {
     // Each particle is a quad (6 vertices = 2 triangles): particle index = gl_VertexID / 6
     uint particle_idx = uint(gl_VertexID) / 6u;
@@ -42,9 +47,28 @@ void main() {
     }
 
     float life_ratio = p.pos.w / max(p.vel.w, 0.01);
+    bool is_firefly = (particle_idx < FIREFLY_COUNT);
 
-    // Billboard size: visible but not overwhelming
-    float size = 0.015 + 0.02 * smoothstep(0.0, 0.2, life_ratio) * smoothstep(1.0, 0.5, life_ratio);
+    // Determine sub-type for fire particles
+    uint sparks_total = particles.length() - FIREFLY_COUNT;
+    uint sparks_per_torch = sparks_total / TORCH_COUNT;
+    uint spark_idx = particle_idx - FIREFLY_COUNT;
+    uint local_idx = spark_idx % sparks_per_torch;
+    uint ember_threshold = uint(float(sparks_per_torch) * (1.0 - EMBER_RATIO));
+    bool is_ember = !is_firefly && (local_idx >= ember_threshold);
+
+    float size;
+    if (is_firefly) {
+        // Firefly: moderate size, pulses with brightness
+        float base = 0.025 + 0.015 * smoothstep(0.0, 0.2, life_ratio) * smoothstep(1.0, 0.5, life_ratio);
+        size = base * (1.0 + 0.3 * p.color.a);
+    } else if (is_ember) {
+        // Ember: larger chunk, shrinks slowly
+        size = 0.025 + 0.020 * life_ratio;
+    } else {
+        // Spark: tiny, fast-fading
+        size = 0.006 + 0.008 * life_ratio;
+    }
 
     // Quad corner offsets (camera-facing billboard)
     // Corners: 0=BL, 1=BR, 2=TL, 3=TR

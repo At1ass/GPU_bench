@@ -21,7 +21,7 @@ float noise(vec2 p) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-float noise3(vec3 p) {
+float noise3d(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
     f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);

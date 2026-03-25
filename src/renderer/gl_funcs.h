@@ -404,6 +404,11 @@
   using PFNCB_glBufferStorage   = void   (APIENTRY *)(GLenum, GLsizeiptr, const void*, GLbitfield);
   using PFNCB_glMapBufferRange  = void*  (APIENTRY *)(GLenum, GLintptr, GLsizeiptr, GLbitfield);
 
+  // GL 4.3+ copy image (for SSR snapshot)
+  using PFNCB_glCopyImageSubData = void  (APIENTRY *)(GLuint, GLenum, GLint, GLint, GLint, GLint,
+                                                       GLuint, GLenum, GLint, GLint, GLint, GLint,
+                                                       GLsizei, GLsizei, GLsizei);
+
   // GL 3.2+ sync objects (needed for persistent mapping)
   using PFNCB_glFenceSync       = GLsync (APIENTRY *)(GLenum, GLbitfield);
   using PFNCB_glClientWaitSync  = GLenum (APIENTRY *)(GLsync, GLbitfield, GLuint64);
@@ -478,7 +483,8 @@
       X(glMapBufferRange) \
       X(glFenceSync) \
       X(glClientWaitSync) \
-      X(glDeleteSync)
+      X(glDeleteSync) \
+      X(glCopyImageSubData)
 
   // =========================================================================
   // Extern declarations — generated from X-macro lists
@@ -561,6 +567,9 @@
   // GL 4.4 buffer storage + persistent mapping
   #define glBufferStorage                 cb_glBufferStorage
   #define glMapBufferRange                cb_glMapBufferRange
+
+  // GL 4.3+ copy image
+  #define glCopyImageSubData              cb_glCopyImageSubData
 
   // GL 3.2+ sync objects
   #define glFenceSync                     cb_glFenceSync

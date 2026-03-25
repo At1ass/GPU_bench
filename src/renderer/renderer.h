@@ -101,6 +101,7 @@ public:
 
     // State
     virtual void setBlending(bool enable) = 0;
+    virtual void setBlendingAdditive(bool enable) = 0;
     virtual void setDepthTest(bool enable) = 0;
     virtual void setCullFace(bool enable) = 0;
     virtual void setDepthMask(bool write) = 0;
@@ -135,6 +136,7 @@ public:
     // Render target with sampleable depth texture (for SSAO etc). Default: falls back to regular RT.
     virtual RenderTargetHandle createRenderTargetWithDepth(int w, int h) { return createRenderTarget(w, h); }
     virtual TextureHandle      getRTDepthTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
+    virtual TextureHandle      getRTColorTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
 
     // Bind a render target's color texture to a texture unit (for post-process chains).
     virtual void bindRenderTargetTexture(RenderTargetHandle rt, int unit) { (void)rt; (void)unit; }

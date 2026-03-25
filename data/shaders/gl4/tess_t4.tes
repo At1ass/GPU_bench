@@ -16,6 +16,7 @@ uniform mat4 u_model;
 uniform mat4 u_light_vp;
 uniform float u_time;
 uniform float u_displacement_strength;
+uniform float u_displacement_freq;
 
 // Simple hash for displacement noise (self-contained, no includes needed)
 float pn_hash(vec3 p) {
@@ -114,7 +115,8 @@ void main() {
     vec2 uv = uv0 * w + uv1 * u + uv2 * v;
 
     // Noise-based displacement along normal for organic detail
-    float disp_noise = pn_fbm(pos * 5.0 + u_time * 0.1) * 2.0 - 1.0;
+    float freq = u_displacement_freq > 0.0 ? u_displacement_freq : 5.0;
+    float disp_noise = pn_fbm(pos * freq + u_time * 0.1) * 2.0 - 1.0;
     float disp = disp_noise * u_displacement_strength;
     pos += normal * disp;
 

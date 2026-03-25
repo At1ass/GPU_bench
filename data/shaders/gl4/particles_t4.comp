@@ -15,7 +15,16 @@ uniform float u_time;
 uniform float u_dt;
 uniform vec3 u_emitter_pos;
 
-// Simple hash from invocation ID for pseudo-random numbers
+// Fixed torch positions (2 gateway columns)
+uniform vec3 u_torch_pos_0;
+uniform vec3 u_torch_pos_1;
+
+// Layout: [0..255] fireflies | [256..1023] fire particles (per torch)
+const uint FIREFLY_COUNT = 256u;
+const uint TORCH_COUNT = 2u;
+// Per-torch: first 80% are sparks (small, fast), last 20% are embers (large, slow)
+const float EMBER_RATIO = 0.2;
+
 uint hash_uint(uint x) {
     x ^= x >> 16;
     x *= 0x45d9f3bu;
@@ -25,8 +34,17 @@ uint hash_uint(uint x) {
     return x;
 }
 
+float rand_stable(uint id, uint seed) {
+    return float(hash_uint(id * 1973u + seed * 9277u)) / 4294967295.0;
+}
+
 float rand_from_id(uint id, uint seed) {
     return float(hash_uint(id * 1973u + seed * 9277u + uint(u_time * 1000.0) * 26699u)) / 4294967295.0;
+}
+
+vec3 getTorchPos(uint spark_idx, uint sparks_per_torch) {
+    uint torch_id = spark_idx / max(sparks_per_torch, 1u);
+    return (torch_id == 0u) ? u_torch_pos_0 : u_torch_pos_1;
 }
 
 void main() {
@@ -34,15 +52,26 @@ void main() {
     if (idx >= particles.length()) return;
 
     Particle p = particles[idx];
+    bool is_firefly = (idx < FIREFLY_COUNT);
 
     float lifetime = p.pos.w;
     float max_life = p.vel.w;
 
-    // Update lifetime
+    float phase_x = rand_stable(idx, 10u) * 6.2832;
+    float phase_y = rand_stable(idx, 11u) * 6.2832;
+    float phase_z = rand_stable(idx, 12u) * 6.2832;
+
+    // Determine fire particle sub-type
+    uint sparks_total = particles.length() - FIREFLY_COUNT;
+    uint sparks_per_torch = sparks_total / TORCH_COUNT;
+    uint spark_idx = idx - FIREFLY_COUNT;  // only valid if !is_firefly
+    uint local_idx = spark_idx % sparks_per_torch;
+    uint ember_threshold = uint(float(sparks_per_torch) * (1.0 - EMBER_RATIO));
+    bool is_ember = !is_firefly && (local_idx >= ember_threshold);
+
     lifetime -= u_dt;
 
     if (lifetime <= 0.0) {
-        // Respawn dead particle at random position around emitter
         float r0 = rand_from_id(idx, 0u);
         float r1 = rand_from_id(idx, 1u);
         float r2 = rand_from_id(idx, 2u);
@@ -50,90 +79,138 @@ void main() {
         float r4 = rand_from_id(idx, 4u);
         float r5 = rand_from_id(idx, 5u);
 
-        // Random position on a sphere around emitter
-        float theta = r0 * 6.2832;
-        float phi = acos(2.0 * r1 - 1.0);
-        float radius = 0.5 + r2 * 1.5;
-        vec3 offset = vec3(
-            sin(phi) * cos(theta),
-            sin(phi) * sin(theta),
-            cos(phi)
-        ) * radius;
+        if (is_firefly) {
+            // FIREFLY: scattered across scene
+            float theta = r0 * 6.2832;
+            float radius = 1.5 + r2 * 6.5;
+            p.pos.x = cos(theta) * radius;
+            p.pos.z = sin(theta) * radius;
+            p.pos.y = -0.5 + r1 * 2.5;
+            p.vel.xyz = vec3((r3 - 0.5) * 0.1, 0.05 + r4 * 0.15, (r5 - 0.5) * 0.1);
+            max_life = 5.0 + r0 * 7.0;
 
-        p.pos.xyz = u_emitter_pos + offset;
+        } else if (is_ember) {
+            // EMBER: large glowing chunk, slow, far range, rare
+            vec3 torch_pos = getTorchPos(spark_idx, sparks_per_torch);
+            p.pos.xyz = torch_pos + vec3((r0 - 0.5) * 0.1, r1 * 0.3, (r2 - 0.5) * 0.1);
 
-        // Gentle upward drift (firefly-like)
-        p.vel.xyz = vec3(
-            (r3 - 0.5) * 0.4,
-            0.3 + r4 * 0.6,
-            (r5 - 0.5) * 0.4
-        );
+            // Wider spread, gentler upward, longer flight
+            p.vel.xyz = vec3(
+                (r3 - 0.5) * 0.8,   // wide horizontal
+                0.3 + r4 * 0.8,     // gentle up
+                (r5 - 0.5) * 0.8
+            );
+            // Long, varied lifetime (2..7 seconds)
+            max_life = 2.0 + r0 * 3.0 + r1 * 2.0;
 
-        // Random max lifetime
-        max_life = 3.0 + r0 * 4.0;
+        } else {
+            // SPARK: small, tight cluster, quick
+            vec3 torch_pos = getTorchPos(spark_idx, sparks_per_torch);
+            p.pos.xyz = torch_pos + vec3((r0 - 0.5) * 0.08, r1 * 0.15, (r2 - 0.5) * 0.08);
+
+            // Tight upward burst, small horizontal spread
+            p.vel.xyz = vec3(
+                (r3 - 0.5) * 0.25,
+                0.3 + r4 * 0.5,
+                (r5 - 0.5) * 0.25
+            );
+            // Short lifetime (0.3..1.2 seconds)
+            max_life = 0.3 + r0 * 0.5 + r1 * 0.4;
+        }
+
         lifetime = max_life;
         p.vel.w = max_life;
-
-        // Color: warm embers (orange to yellow) - HDR bright for bloom pickup
-        float color_rand = r3;
-        p.color = vec4(
-            0.9 + color_rand * 0.1,
-            0.4 + color_rand * 0.4,
-            0.1 + color_rand * 0.1,
-            1.0
-        );
+        p.color = vec4(1.0, 0.7, 0.2, 1.0);
     } else {
-        // Physics simulation
+        // === PHYSICS ===
         vec3 pos = p.pos.xyz;
         vec3 vel = p.vel.xyz;
 
-        // Gravity
-        vel.y -= 1.2 * u_dt;
+        if (is_firefly) {
+            float wander_freq = 0.2 + rand_stable(idx, 13u) * 0.4;
+            vec3 wander;
+            wander.x = sin(u_time * wander_freq * 0.5 + phase_x) * 0.2;
+            wander.y = sin(u_time * wander_freq * 0.3 + phase_y) * 0.15 + 0.05;
+            wander.z = cos(u_time * wander_freq * 0.4 + phase_z) * 0.2;
+            vel += wander * u_dt;
+            vel.y -= 0.1 * u_dt;
+            vel *= exp(-1.5 * u_dt);
 
-        // Wind (oscillating)
-        float wind_x = sin(u_time * 0.7 + pos.y * 0.5) * 0.4;
-        float wind_z = cos(u_time * 0.5 + pos.x * 0.3) * 0.3;
-        vel.x += wind_x * u_dt;
-        vel.z += wind_z * u_dt;
+            float horiz_dist = length(pos.xz);
+            if (horiz_dist > 7.0) {
+                vec2 pull = -normalize(pos.xz) * (horiz_dist - 7.0) * 0.5;
+                vel.x += pull.x * u_dt;
+                vel.z += pull.y * u_dt;
+            }
+            if (pos.y < -0.8) vel.y += (-0.8 - pos.y) * 2.0 * u_dt;
 
-        // Figure-eight orbit around bunny
-        float orbit_time = u_time * 0.8 + float(idx) * 0.003;
-        vec3 target;
-        target.x = sin(orbit_time) * 2.0;
-        target.y = sin(orbit_time * 2.0) * 0.5 + 0.5;
-        target.z = sin(orbit_time) * cos(orbit_time) * 2.0; // lemniscate
-        target += u_emitter_pos;
+        } else if (is_ember) {
+            // EMBER: slow drift with wide sinusoidal curves
+            vel.y -= 0.3 * u_dt;  // very light gravity
 
-        vec3 to_target = target - pos;
-        float dist = length(to_target);
-        if (dist > 0.01) {
-            vel += normalize(to_target) * min(dist, 2.0) * u_dt * 3.0;
+            // Wide, slow sinusoidal drift for graceful curved paths
+            float drift_freq = 0.5 + rand_stable(idx, 16u) * 0.8;
+            float drift_amp = 0.4 + rand_stable(idx, 17u) * 0.3;
+            vel.x += sin(u_time * drift_freq + phase_x) * drift_amp * u_dt;
+            vel.z += cos(u_time * drift_freq * 0.6 + phase_z) * drift_amp * u_dt;
+
+            // Light drag — embers float
+            vel *= exp(-0.5 * u_dt);
+
+        } else {
+            // SPARK: quick, mostly upward, slight jitter
+            vel.y -= 0.8 * u_dt;  // moderate gravity
+
+            // Small high-freq jitter for sparkle
+            float jitter_freq = 3.0 + rand_stable(idx, 16u) * 4.0;
+            vel.x += sin(u_time * jitter_freq + phase_x) * 0.15 * u_dt;
+            vel.z += cos(u_time * jitter_freq + phase_z) * 0.15 * u_dt;
+
+            vel *= exp(-1.5 * u_dt);
         }
 
-        // Damping
-        vel *= 1.0 - 0.3 * u_dt;
-
-        // Integrate position
         pos += vel * u_dt;
-
         p.pos.xyz = pos;
         p.vel.xyz = vel;
 
-        // Fade alpha over lifetime
+        // === COLOR & ALPHA ===
         float life_ratio = lifetime / max_life;
-        float base_alpha = smoothstep(0.0, 0.3, life_ratio) * smoothstep(1.0, 0.7, life_ratio);
+        float fade = smoothstep(0.0, 0.08, life_ratio) * smoothstep(1.0, 0.7, life_ratio);
 
-        // Flicker: modulate alpha with per-particle sin wave
-        float flicker_freq = 6.0 + float(hash_uint(idx * 37u) % 100u) * 0.1;
-        float flicker = 0.7 + 0.3 * sin(u_time * flicker_freq + float(idx) * 1.618);
-        p.color.a = base_alpha * flicker;
+        if (is_firefly) {
+            float pulse_freq = 4.0 + rand_stable(idx, 14u) * 6.0;
+            float pulse_phase = rand_stable(idx, 15u) * 6.2832;
+            float pulse = pow(max(sin(u_time * pulse_freq + pulse_phase), 0.0), 2.0);
 
-        // Color: warm firefly glow, dims over life (absolute set, no compounding)
-        float hdr_boost = 1.2; // subtle HDR glow, not overpowering
-        float color_var = fract(float(idx) * 0.37);
-        p.color.r = (0.7 + 0.1 * color_var) * hdr_boost * life_ratio;
-        p.color.g = (0.4 + 0.3 * color_var) * hdr_boost * life_ratio * (0.5 + 0.5 * life_ratio);
-        p.color.b = (0.1 + 0.1 * color_var) * hdr_boost * life_ratio * life_ratio;
+            p.color.a = fade * (0.1 + 0.9 * pulse);
+            float color_var = rand_stable(idx, 20u);
+            float hdr = 2.0 + 1.0 * pulse;
+            p.color.r = (0.85 + 0.15 * color_var) * hdr;
+            p.color.g = (0.70 + 0.20 * color_var) * hdr;
+            p.color.b = (0.15 + 0.10 * color_var) * hdr * 0.2;
+
+        } else if (is_ember) {
+            // EMBER: bright orange chunk that cools slowly
+            p.color.a = fade;
+            float color_var = rand_stable(idx, 20u);
+            float temp = life_ratio;
+            // Moderate HDR (2.0 fresh → 1.0 dying), visible but not blinding
+            float hdr = 1.0 + 1.0 * temp;
+            p.color.r = mix(0.4, 1.0, temp) * hdr;
+            p.color.g = mix(0.05, 0.45 + 0.15 * color_var, temp * temp) * hdr;
+            p.color.b = mix(0.0, 0.08, temp * temp * temp) * hdr;
+
+        } else {
+            // SPARK: bright point, quick fade
+            float quick_fade = smoothstep(0.0, 0.05, life_ratio) * smoothstep(1.0, 0.5, life_ratio);
+            p.color.a = quick_fade;
+            float color_var = rand_stable(idx, 20u);
+            float temp = life_ratio;
+            float hdr = 1.5 + 1.5 * temp;
+            p.color.r = mix(0.6, 1.0, temp) * hdr;
+            p.color.g = mix(0.1, 0.5 + 0.2 * color_var, temp) * hdr;
+            p.color.b = mix(0.0, 0.1, temp * temp) * hdr;
+        }
     }
 
     p.pos.w = lifetime;

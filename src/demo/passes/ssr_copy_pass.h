@@ -25,5 +25,5 @@ public:
     int resourceDeclCount() const override { return 1; }
     DemoTier minTier() const override { return DemoTier::Ultra; }
     bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides& dbg) const override;
-    int executionOrder() const override { return 55; }
+    int executionOrder() const override { return 56; }
 };

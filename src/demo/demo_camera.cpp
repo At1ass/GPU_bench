@@ -28,12 +28,12 @@ CameraPath::CameraPath() {
 
     // 1. Start: high front-right, looking slightly above center
     keypoints_[0] = { Vec3( r*0.7f,  2.0f, -r*0.6f),  Vec3(0, 0.2f, 0) };
-    // 2. Pond flyby, medium angle
+    // 2. Sweeping right, medium height
     keypoints_[1] = { Vec3( r*0.6f,  0.8f,  r*0.6f),   Vec3(0, -0.2f, 0) };
     // 3. Right side, above terrain
     keypoints_[2] = { Vec3( r,       0.5f,  0.0f),     Vec3(0, 0.1f, 0) };
-    // 4. Rise behind arch, look through it
-    keypoints_[3] = { Vec3( 0.5f,    1.5f, -r*0.8f),   Vec3(0, 0, 0) };
+    // 4. Behind arch, looking through at bunny — shows pond under arch
+    keypoints_[3] = { Vec3( 0.5f,    1.0f, -r*0.8f),   Vec3(0, -0.3f, -2.5f) };
     // 5. High back-left, overview
     keypoints_[4] = { Vec3(-r*0.5f,  3.2f,  r*0.5f),   Vec3(0, 0, 0) };
     // 6. Back-left, above terrain

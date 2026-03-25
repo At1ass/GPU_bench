@@ -98,6 +98,7 @@ U(SssStrength,       "u_sss_strength",       F)
 U(TessInner,         "u_tess_inner",         F)
 U(TessOuter,         "u_tess_outer",         F)
 U(DisplacementStr,   "u_displacement_strength", F)
+U(DisplacementFreq,  "u_displacement_freq",     F)
 
 // Compute particles
 U(Dt,                "u_dt",                 F)

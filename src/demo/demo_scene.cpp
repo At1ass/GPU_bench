@@ -7,27 +7,7 @@
 #include <cstring>
 #include <cstdio>
 
-// ============================================================
-// Terrain height sampling (matches heightmap in demo_resources.cpp)
-// ============================================================
-
-static float sampleTerrainHeight(float x, float z) {
-    float h = 0.0f;
-    h += sinf(x * 0.4f) * cosf(z * 0.3f) * 0.6f;
-    h += sinf(x * 0.7f + 1.3f) * sinf(z * 0.5f + 0.7f) * 0.3f;
-    // Pond depression
-    float pdx = x - 3.5f, pdz = z - 3.5f;
-    float pd = sqrtf(pdx * pdx + pdz * pdz);
-    float pt = pd < 3.0f ? (3.0f - pd) / 3.0f : 0.0f;
-    pt = pt * pt * (3.0f - 2.0f * pt);
-    h -= pt * 0.3f;
-    // Center flattening
-    float cd = sqrtf(x * x + z * z);
-    float ft = cd < 2.5f ? (cd < 1.0f ? 1.0f : (2.5f - cd) / 1.5f) : 0.0f;
-    ft = ft * ft * (3.0f - 2.0f * ft);
-    h *= (1.0f - ft);
-    return h - 1.0f;
-}
+// sampleTerrainHeight() is in demo_utils.h (shared with torch_pass.cpp)
 
 // ============================================================
 // DemoScene implementation
@@ -95,6 +75,7 @@ void DemoScene::placeModel(Renderer* r) {
     obj.specular = 0.08f;
     obj.metallic = 0.0f;    // dielectric (organic)
     obj.roughness = 0.85f;  // matte surface (fur/skin, not plastic)
+    obj.tessellated = config_.enable_tessellation;
     setBounds(obj, res_.core.model_bounding_radius);
     opaque_objects_.push_back(obj);
 }
@@ -112,6 +93,7 @@ void DemoScene::placeGroundPlane(Renderer* r) {
     ground.material = MaterialType::Island;
     ground.color = Vec3(0.45f, 0.42f, 0.38f);
     ground.specular = 0.05f;
+    ground.tessellated = config_.enable_tessellation;
     setBounds(ground, 12.0f);
     opaque_objects_.push_back(ground);
 }
@@ -167,11 +149,16 @@ void DemoScene::placePuddles(Renderer* r) {
     (void)r;
     if (!config_.enable_ssr) return;
 
-    // Use single large pond if available, otherwise fall back to 3 small puddles
+    // Pond right next to pedestal in the flat center zone.
+    // Center flattening makes terrain nearly flat within radius ~2.0 from origin.
+    // Place water as a horizontal plane at a fixed Y near ground level.
     if (res_.core.pond_mesh != MeshHandle()) {
         SceneObject pond;
         pond.mesh = res_.core.pond_mesh;
-        pond.transform = Mat4::translate(3.5f, -1.25f, 3.5f);
+        float pond_x = 0.0f, pond_z = -3.5f;
+        // Behind the arch/columns. Terrain has a deep depression here.
+        float pond_y = sampleTerrainHeight(pond_x, pond_z) + 0.45f;
+        pond.transform = Mat4::translate(pond_x, pond_y, pond_z);
         pond.material = MaterialType::Model;
         pond.color = Vec3(0.06f, 0.08f, 0.12f);
         pond.specular = 0.95f;
@@ -229,6 +216,7 @@ void DemoScene::placePedestal(Renderer* r) {
     obj.specular = 0.06f;
     obj.metallic = 0.0f;
     obj.roughness = 0.85f;
+    obj.tessellated = config_.enable_tessellation;
     setBounds(obj, 1.5f);  // covers full height (1.1) + width (1.4)
     opaque_objects_.push_back(obj);
 }
@@ -260,6 +248,7 @@ void DemoScene::placeColumns(Renderer* r) {
         obj.color = col_color;
         obj.specular = 0.05f;
         obj.roughness = 0.90f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 2.0f);
         opaque_objects_.push_back(obj);
     }
@@ -275,6 +264,7 @@ void DemoScene::placeColumns(Renderer* r) {
         obj.color = col_color;
         obj.specular = 0.05f;
         obj.roughness = 0.90f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
     }
@@ -286,6 +276,7 @@ void DemoScene::placeColumns(Renderer* r) {
         obj.color = col_color;
         obj.specular = 0.05f;
         obj.roughness = 0.90f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
     }
@@ -313,6 +304,7 @@ void DemoScene::placeArch(Renderer* r) {
     obj.color = Vec3(0.48f, 0.45f, 0.40f);
     obj.specular = 0.04f;
     obj.roughness = 0.92f;
+    obj.tessellated = config_.enable_tessellation;
     setBounds(obj, 2.5f);
     opaque_objects_.push_back(obj);
 }
@@ -333,6 +325,7 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.52f, 0.49f, 0.44f);
         obj.specular = 0.05f;
         obj.roughness = 0.88f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
     }
@@ -347,6 +340,7 @@ void DemoScene::placeRuins(Renderer* r) {
             obj.color = Vec3(0.50f, 0.48f, 0.43f);
             obj.specular = 0.06f;
             obj.roughness = 0.80f;
+            obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 0.35f);
             opaque_objects_.push_back(obj);
         }
@@ -358,6 +352,7 @@ void DemoScene::placeRuins(Renderer* r) {
             obj.color = Vec3(0.50f, 0.48f, 0.43f);
             obj.specular = 0.06f;
             obj.roughness = 0.80f;
+            obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 0.30f);
             opaque_objects_.push_back(obj);
         }
@@ -372,6 +367,7 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.53f, 0.50f, 0.45f);
         obj.specular = 0.04f;
         obj.roughness = 0.90f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 1.5f);
         opaque_objects_.push_back(obj);
     }
@@ -385,6 +381,7 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.35f, 0.42f, 0.30f);
         obj.specular = 0.03f;
         obj.roughness = 0.95f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 0.8f);
         opaque_objects_.push_back(obj);
     }
@@ -398,6 +395,7 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.45f, 0.42f, 0.38f);
         obj.specular = 0.08f;
         obj.roughness = 0.75f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 0.40f);
         opaque_objects_.push_back(obj);
     }
@@ -411,6 +409,7 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.42f, 0.40f, 0.36f);
         obj.specular = 0.05f;
         obj.roughness = 0.85f;
+        obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 1.5f);
         opaque_objects_.push_back(obj);
     }
@@ -425,6 +424,7 @@ void DemoScene::placeRuins(Renderer* r) {
             obj.color = Vec3(0.50f, 0.47f, 0.42f);
             obj.specular = 0.05f;
             obj.roughness = 0.85f;
+            obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 1.7f);
             opaque_objects_.push_back(obj);
         }
@@ -436,6 +436,7 @@ void DemoScene::placeRuins(Renderer* r) {
             obj.color = Vec3(0.48f, 0.45f, 0.40f);
             obj.specular = 0.05f;
             obj.roughness = 0.87f;
+            obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 2.4f);
             opaque_objects_.push_back(obj);
         }

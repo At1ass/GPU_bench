@@ -59,6 +59,9 @@ private:
     ShaderProgram particle_shader_;              // legacy fallback
     ShaderProgram* particle_cache_;              // non-owning, from ShaderCache
 
+    // Torch shader (T3+, point light flames)
+    ShaderProgram* torch_cache_;                 // non-owning, from ShaderCache
+
     // T2+ shadow mapping
     ShaderProgram shadow_shader_;                // legacy fallback
     ShaderProgram* shadow_cache_;                // non-owning, from ShaderCache
@@ -100,6 +103,7 @@ private:
     MeshHandle ring_inner_mesh_;
     MeshHandle ring_outer_mesh_;
     MeshHandle pond_mesh_;
+    MeshHandle torch_mesh_;
     MeshHandle tree_meshes_[3];
 
     // T2+ SSAO
@@ -127,6 +131,7 @@ private:
     ScopedRenderTarget hdr_scene_rt_;
     ScopedRenderTarget hdr_bright_rt_;
     TextureHandle hdr_depth_tex_;
+    TextureHandle hdr_color_tex_;  // non-owning view of HDR RT color (for copyImageSubData)
     ScopedRenderTarget fog_rt_;
 
     // T4 Ultra: Compute GTAO
@@ -149,7 +154,9 @@ private:
 
     // T4 Ultra: SSR
     ShaderProgram ssr_shader_;
-    ScopedTexture ssr_tex_;  // float texture for SSR result
+    ScopedTexture ssr_tex_;  // float texture for SSR compute result
+    ScopedTexture ssr_color_snapshot_;  // RGBA16F snapshot of HDR color (for water SSR)
+    ScopedTexture ssr_depth_snapshot_;  // DEPTH_COMPONENT24 snapshot of HDR depth (for water SSR)
 
     // T4 Ultra: DoF
     ShaderProgram dof_shader_;

@@ -121,7 +121,7 @@ void main() {
         vec3 to_light = u_point_lights[i] - v_world_pos;
         float d = length(to_light);
         vec3 pl_dir = to_light / d;
-        float atten = 1.0 / (1.0 + 0.3 * d + 0.4 * d * d);
+        float atten = 1.0 / (1.0 + 0.14 * d + 0.07 * d * d);
 
         float pl_diff = max(dot(n, pl_dir), 0.0);
         vec3 pl_h = normalize(pl_dir + vd);

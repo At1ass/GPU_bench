@@ -714,6 +714,29 @@ TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
     return th;
 }
 
+TextureHandle GL3Renderer::getRTColorTexture(RenderTargetHandle rt) {
+    if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
+    GLuint tex_id = render_targets_[rt].color_tex;
+    if (!tex_id) return INVALID_TEXTURE;
+
+    // Wrap raw GL texture in a TextureHandle (non-owning view)
+    GLTex gt;
+    gt.id = tex_id;
+    gt.valid = true;
+    gt.rt_owned = true;
+
+    TextureHandle th;
+    if (!free_tex_slots_.empty()) {
+        th = free_tex_slots_.back();
+        free_tex_slots_.pop_back();
+        textures_[th] = gt;
+    } else {
+        th = TextureHandle(static_cast<unsigned int>(textures_.size()));
+        textures_.push_back(gt);
+    }
+    return th;
+}
+
 TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
     // For depth-only FBOs, we stored the depth texture in color_tex

@@ -17,6 +17,8 @@ struct TierResourceView {
         MeshHandle stone_sphere_mesh, mossy_block_mesh, bowl_mesh;
         MeshHandle obelisk_mesh, ring_inner_mesh, ring_outer_mesh;
         MeshHandle pond_mesh;
+        MeshHandle torch_mesh;
+        ShaderProgram* torch_shader;
         MeshHandle tree_meshes[3];
         TextureHandle fur_tex, fur_mask_tex;
         float model_bounding_radius;
@@ -76,6 +78,7 @@ struct TierResourceView {
         // HDR
         RenderTargetHandle hdr_scene_rt, hdr_bright_rt;
         TextureHandle hdr_depth_tex;
+        TextureHandle hdr_color_tex;  // non-owning view of HDR RT color
         RenderTargetHandle fog_rt;
 
         // GTAO
@@ -97,6 +100,8 @@ struct TierResourceView {
         // SSR
         ShaderProgram* ssr_shader;
         TextureHandle ssr_tex;
+        TextureHandle ssr_color_snapshot;  // RGBA16F copy of HDR color (for water SSR)
+        TextureHandle ssr_depth_snapshot;  // DEPTH_COMPONENT24 copy of HDR depth (for water SSR)
 
         // DoF
         ShaderProgram* dof_shader;
@@ -109,12 +114,12 @@ struct TierResourceView {
         T4() : tess_shader(nullptr), compute_particle_shader(nullptr),
                particle_render_shader(nullptr), volumetric_fog_shader(nullptr),
                tone_map_shader(nullptr), particle_ssbo(), compute_particle_count(0),
-               hdr_scene_rt(), hdr_bright_rt(), hdr_depth_tex(), fog_rt(),
+               hdr_scene_rt(), hdr_bright_rt(), hdr_depth_tex(), hdr_color_tex(), fog_rt(),
                gtao_shader(nullptr), gtao_blur_shader(nullptr), gtao_tex(), gtao_blur_tex(),
                bloom_down_compute(nullptr), bloom_up_compute(nullptr),
                histogram_shader(nullptr), exposure_shader(nullptr),
                histogram_ssbo(), exposure_ssbo(),
-               ssr_shader(nullptr), ssr_tex(),
+               ssr_shader(nullptr), ssr_tex(), ssr_color_snapshot(), ssr_depth_snapshot(),
                dof_shader(nullptr), dof_tex() {
             for (int i = 0; i < BLOOM_MIP_COUNT; i++) bloom_mips[i] = TextureHandle();
             for (int i = 0; i < PUDDLE_COUNT; i++) puddle_meshes[i] = MeshHandle();
@@ -126,6 +131,7 @@ struct TierResourceView {
         core.island_shader = nullptr;
         core.fur_shader = nullptr;
         core.particle_shader = nullptr;
+        core.torch_shader = nullptr;
         core.model_bounding_radius = 0.0f;
     }
 };

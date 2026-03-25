@@ -92,6 +92,8 @@ void OpaquePass::execute(Renderer* r, FrameData& fd,
         const SceneObject& obj = objects[i];
         // Skip water -- rendered separately in renderWaterPass after scene copy
         if (obj.is_water) continue;
+        // Skip tessellated objects -- rendered by TessellatedModelPass with displacement
+        if (obj.tessellated) continue;
         if (!sphereInFrustum(fd.frustum, obj.bounds_center, obj.bounds_radius))
             continue;
 

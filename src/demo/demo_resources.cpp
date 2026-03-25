@@ -39,6 +39,7 @@ DemoResources::DemoResources()
     , model_bounding_radius_(0.0f)
     , sky_shader_from_cache_(nullptr)
     , particle_cache_(nullptr)
+    , torch_cache_(nullptr)
     , shadow_cache_(nullptr)
     , shadow_depth_tex_()
     , shadow_map_size_(0)
@@ -104,17 +105,18 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
             // Rolling hills
             h += sinf(x * 0.4f) * cosf(z * 0.3f) * 0.6f;
             h += sinf(x * 0.7f + 1.3f) * sinf(z * 0.5f + 0.7f) * 0.3f;
-            // Pond depression at (3.5, 3.5)
-            float pdx = x - 3.5f, pdz = z - 3.5f;
-            float pond_dist = sqrtf(pdx * pdx + pdz * pdz);
-            float pond_t = pond_dist < 3.0f ? (3.0f - pond_dist) / 3.0f : 0.0f;
-            pond_t = pond_t * pond_t * (3.0f - 2.0f * pond_t);  // smoothstep
-            h -= pond_t * 0.3f;
             // Flatten center for pedestal
             float cd = sqrtf(x * x + z * z);
             float flat_t = cd < 2.5f ? (cd < 1.0f ? 1.0f : (2.5f - cd) / 1.5f) : 0.0f;
             flat_t = flat_t * flat_t * (3.0f - 2.0f * flat_t);  // smoothstep
             h = h * (1.0f - flat_t);
+            // Pond depression behind arch at (0.0, -3.5), radius ~3.0
+            // Applied AFTER center flattening so the depression isn't attenuated
+            float pdx = x - 0.0f, pdz = z - (-3.5f);
+            float pond_dist = sqrtf(pdx * pdx + pdz * pdz);
+            float pond_t = pond_dist < 3.0f ? (3.0f - pond_dist) / 3.0f : 0.0f;
+            pond_t = pond_t * pond_t * (3.0f - 2.0f * pond_t);
+            h -= pond_t * 0.5f;
             gd.vertices[i].pos.y = h;
         }
         MeshGen::recomputeNormals(gd);
@@ -123,14 +125,14 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
 
     // Scattered rocks
     {
-        MeshData rocks = MeshGen::scatteredRocks(15, 8.0f, 0.1f, 0.3f, 137u);
+        MeshData rocks = MeshGen::scatteredRocks(25, 8.0f, 0.1f, 0.3f, 137u);
         // Apply terrain heightmap to rock positions
         for (size_t i = 0; i < rocks.vertices.size(); i++) {
             rocks.vertices[i].pos.y += terrainHeightRaw(rocks.vertices[i].pos.x, rocks.vertices[i].pos.z);
         }
         rock_mesh_ = scene_meshes_.add(rocks);
         LOG_INF("Resources: generated %d scattered rocks (%d verts)",
-                  15, static_cast<int>(rocks.vertices.size()));
+                  25, static_cast<int>(rocks.vertices.size()));
     }
 
     // Scattered grass (batched for T1, same blade shape as instanced version)
@@ -242,6 +244,12 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     {
         MeshData md = MeshGen::disc(2.5f, 64, 0);
         pond_mesh_ = scene_meshes_.add(md);
+    }
+
+    // Torch billboard quads (3 quads for 3 point lights)
+    {
+        MeshData md = MeshGen::torchQuads(2);
+        torch_mesh_ = scene_meshes_.add(md);
     }
 
     // Procedural tree meshes: 3 variants with different seeds for variety
@@ -368,6 +376,12 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         grass_t3_cache_ = shader_cache_.get("grass", feat, feat);
         if (!grass_t3_cache_) {
             LOG_WRN("Resources: failed to compile grass shader via cache (non-critical)");
+        }
+
+        // Torch T3+ via cache (point light flame billboards)
+        torch_cache_ = shader_cache_.get("torch", feat, feat);
+        if (!torch_cache_) {
+            LOG_WRN("Resources: failed to compile torch shader via cache (non-critical)");
         }
 
         // Procedural normal map texture (256x256)
@@ -719,7 +733,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
 
     // Create particle SSBO
     if (cf && cf->hasCompute() && compute_particle_shader_) {
-        compute_particle_count_ = 2048;
+        compute_particle_count_ = 1024;
         int particle_size = static_cast<int>(12 * sizeof(float)); // 3 vec4s
         BufferHandle ssbo = cf->createSSBO(compute_particle_count_ * particle_size);
         if (ssbo != INVALID_BUFFER) {
@@ -766,6 +780,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (hrt != INVALID_RENDER_TARGET) {
             hdr_scene_rt_.assign(r, hrt);
             hdr_depth_tex_ = r->getRTDepthTexture(hrt);
+            hdr_color_tex_ = r->getRTColorTexture(hrt);
             LOG_INF("Resources: HDR scene FBO created %dx%d", render_w, render_h);
         } else {
             LOG_WRN("Resources: failed to create HDR FBO, falling back to LDR");
@@ -940,6 +955,22 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         }
     }
 
+    // SSR snapshot textures for water fragment SSR (format must match HDR RT)
+    if (g4) {
+        TextureHandle col_snap = g4->createFloat16Texture(render_w, render_h);
+        if (col_snap != INVALID_TEXTURE) {
+            ssr_color_snapshot_.assign(r, col_snap);
+        }
+        TextureHandle depth_snap = g4->createDepthTexture(render_w, render_h);
+        if (depth_snap != INVALID_TEXTURE) {
+            ssr_depth_snapshot_.assign(r, depth_snap);
+        }
+        if (ssr_color_snapshot_ && ssr_depth_snapshot_) {
+            LOG_INF("Resources: SSR snapshot textures created (RGBA16F + DEPTH24) %dx%d",
+                    render_w, render_h);
+        }
+    }
+
     // DoF compute shader + output texture
     if (cf && cf->hasCompute() && g4 && g4->hasImageLoadStore()) {
         std::string dof_src = ShaderLoader::load("gl4/dof_t4.comp");
@@ -975,6 +1006,7 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     // Reset all cache pointers
     sky_shader_from_cache_ = nullptr;
     particle_cache_ = nullptr;
+    torch_cache_ = nullptr;
     shadow_cache_ = nullptr;
     bloom_extract_cache_ = nullptr;
     bloom_blur_cache_ = nullptr;
@@ -1065,6 +1097,8 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
     view.core.ring_inner_mesh = ring_inner_mesh_;
     view.core.ring_outer_mesh = ring_outer_mesh_;
     view.core.pond_mesh = pond_mesh_;
+    view.core.torch_mesh = torch_mesh_;
+    view.core.torch_shader = torch_cache_;
     for (int i = 0; i < 3; i++) view.core.tree_meshes[i] = tree_meshes_[i];
     view.core.model_bounding_radius = model_bounding_radius_;
     view.core.particle_shader = particle_cache_ ? particle_cache_
@@ -1169,6 +1203,7 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
         if (hdr_scene_rt_) {
             view.t4.hdr_scene_rt = hdr_scene_rt_.get();
             view.t4.hdr_depth_tex = hdr_depth_tex_;
+            view.t4.hdr_color_tex = hdr_color_tex_;
             // Override scene_depth_tex for SSAO to use HDR depth
             view.ssao.scene_depth_tex = hdr_depth_tex_;
         }
@@ -1197,6 +1232,8 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
         // T4 Ultra: SSR
         if (ssr_shader_) view.t4.ssr_shader = &ssr_shader_;
         if (ssr_tex_) view.t4.ssr_tex = ssr_tex_.get();
+        if (ssr_color_snapshot_) view.t4.ssr_color_snapshot = ssr_color_snapshot_.get();
+        if (ssr_depth_snapshot_) view.t4.ssr_depth_snapshot = ssr_depth_snapshot_.get();
 
         // T4 Ultra: DoF
         if (dof_shader_) view.t4.dof_shader = &dof_shader_;
@@ -1226,6 +1263,7 @@ void DemoResources::destroy() {
         fur_cache_[i] = nullptr;
     }
     particle_cache_ = nullptr;
+    torch_cache_ = nullptr;
     shadow_cache_ = nullptr;
     bloom_extract_cache_ = nullptr;
     bloom_blur_cache_ = nullptr;

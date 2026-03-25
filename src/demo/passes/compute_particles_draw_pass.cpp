@@ -34,13 +34,13 @@ void ComputeParticlesDrawPass::execute(Renderer* r, FrameData& fd,
 
     r->setDepthTest(true);
     r->setDepthMask(false);
-    r->setBlending(true);
+    r->setBlendingAdditive(true);
     r->setCullFace(false);
 
     // Draw quads: 6 vertices per particle (2 triangles each, no strip artifacts)
     glDrawArrays(GL_TRIANGLES, 0, res.t4.compute_particle_count * 6);
 
     r->setDepthMask(true);
-    r->setBlending(false);
+    r->setBlendingAdditive(false);
     r->setCullFace(true);
 }

@@ -121,6 +121,15 @@ public:
                                    bool read, bool write) = 0;
     virtual void imageMemoryBarrier() = 0;
 
+    // Texture copy (glCopyImageSubData — format must match between src and dst)
+    virtual void copyImageSubData(TextureHandle src, TextureHandle dst, int w, int h) = 0;
+
+    // RGBA16F texture (matching HDR RT color format)
+    virtual TextureHandle createFloat16Texture(int w, int h) = 0;
+
+    // Depth texture (GL_DEPTH_COMPONENT24, matching HDR RT depth format)
+    virtual TextureHandle createDepthTexture(int w, int h) = 0;
+
     // Persistent mapping (buffer storage)
     virtual BufferHandle createPersistentBuffer(int size_bytes) = 0;
     virtual void* mapPersistentBuffer(BufferHandle h) = 0;

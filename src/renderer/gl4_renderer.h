@@ -35,13 +35,22 @@ public:
                                   const char* tes, const char* fs) override;
     void         drawMeshAsPatches(MeshHandle h) override;
 
-    // Float texture (RGBA16F)
+    // Float texture (RGBA32F for compute image load/store)
     TextureHandle createFloatTexture(int w, int h) override;
 
     // Image load/store
     void         bindImageTexture(TextureHandle h, int unit,
                                    bool read, bool write) override;
     void         imageMemoryBarrier() override;
+
+    // Texture copy (glCopyImageSubData)
+    void         copyImageSubData(TextureHandle src, TextureHandle dst, int w, int h) override;
+
+    // RGBA16F texture (matching HDR RT color format)
+    TextureHandle createFloat16Texture(int w, int h) override;
+
+    // Depth texture (GL_DEPTH_COMPONENT24)
+    TextureHandle createDepthTexture(int w, int h) override;
 
     // Persistent mapping
     BufferHandle createPersistentBuffer(int size_bytes) override;

@@ -873,6 +873,15 @@ void GL2Renderer::setBlending(bool enable) {
     }
 }
 
+void GL2Renderer::setBlendingAdditive(bool enable) {
+    if (enable) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
+    } else {
+        glDisable(GL_BLEND);
+    }
+}
+
 void GL2Renderer::setDepthTest(bool enable) {
     if (enable)
         glEnable(GL_DEPTH_TEST);

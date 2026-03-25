@@ -18,12 +18,13 @@ struct SceneObject {
     float metallic;       // PBR metallic override (-1 = use default)
     float roughness;      // PBR roughness override (-1 = use default)
     bool is_water;        // water material with ripples + Fresnel
+    bool tessellated;     // render via TessellatedModelPass with displacement (T4)
 
     SceneObject() : mesh(), transform(), material(MaterialType::Model),
         color(0.0f, 0.0f, 0.0f), specular(0.0f),
         bounds_center(0.0f, 0.0f, 0.0f), bounds_radius(0.0f),
         vertex_wind(false), two_sided(false),
-        metallic(-1.0f), roughness(-1.0f), is_water(false) {}
+        metallic(-1.0f), roughness(-1.0f), is_water(false), tessellated(false) {}
 };
 
 // Shared scene geometry data — passed to render passes by const reference.

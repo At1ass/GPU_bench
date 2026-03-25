@@ -51,6 +51,7 @@ public:
     void setColorMask(bool r, bool g, bool b, bool a) override;
 
     void setBlending(bool enable) override;
+    void setBlendingAdditive(bool enable) override;
     void setDepthTest(bool enable) override;
     void setCullFace(bool enable) override;
     void setDepthMask(bool write) override;
