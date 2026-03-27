@@ -693,6 +693,9 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
 
 TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
+    if (render_targets_[rt].cached_depth_th != INVALID_TEXTURE)
+        return render_targets_[rt].cached_depth_th;
+
     GLuint tex_id = render_targets_[rt].depth_tex;
     if (!tex_id) return INVALID_TEXTURE;
 
@@ -711,11 +714,15 @@ TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
+    render_targets_[rt].cached_depth_th = th;
     return th;
 }
 
 TextureHandle GL3Renderer::getRTColorTexture(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
+    if (render_targets_[rt].cached_color_th != INVALID_TEXTURE)
+        return render_targets_[rt].cached_color_th;
+
     GLuint tex_id = render_targets_[rt].color_tex;
     if (!tex_id) return INVALID_TEXTURE;
 
@@ -734,6 +741,7 @@ TextureHandle GL3Renderer::getRTColorTexture(RenderTargetHandle rt) {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(gt);
     }
+    render_targets_[rt].cached_color_th = th;
     return th;
 }
 

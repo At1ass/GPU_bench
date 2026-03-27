@@ -2,6 +2,7 @@
 #include "tests/tests.h"
 #include "tests/test_registry.h"
 #include "renderer/renderer.h"
+#include "renderer/features.h"
 #include "renderer/render_context.h"
 #include "platform/logger.h"
 #include <cmath>
@@ -18,8 +19,17 @@ static const int PROBE_GEOM_GRID   = 25;
 static const int PROBE_WARMUP      = 5;
 static const double PROBE_WARMUP_BUDGET = 0.5; // seconds for warmup
 
-// Trim fraction for probe measurements (drop top/bottom 15%)
+// Trim fraction for measurements (drop top/bottom 15%)
 static const double PROBE_TRIM_FRAC = 0.15;
+
+// Trim outliers from sorted times: drop PROBE_TRIM_FRAC from each end
+static std::vector<double> trimmedTimes(std::vector<double> times) {
+    std::sort(times.begin(), times.end());
+    int n = static_cast<int>(times.size());
+    int trim = static_cast<int>(n * PROBE_TRIM_FRAC);
+    if (trim * 2 >= n) trim = 0;
+    return std::vector<double>(times.begin() + trim, times.end() - trim);
+}
 
 BenchRunner::BenchRunner()
     : progress_(0), active_(false), bench_rt_(INVALID_RENDER_TARGET) {}
@@ -111,21 +121,38 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         test->render(r);
         r->finish();
 
-        // Sanity check after first warmup frame
+        // Sanity check after first warmup frame (per-test-type dispatch)
         if (i == 0) {
-            unsigned char px[4 * 4 * 4] = {0};
-            int cx = cfg.render_w / 2 - 2, cy = cfg.render_h / 2 - 2;
-            if (cx < 0) cx = 0;
-            if (cy < 0) cy = 0;
-            r->readPixels(cx, cy, 4, 4, px);
-            int nonzero = 0;
-            for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
-            if (nonzero == 0) {
-                sanity_ok = false;
-                LOG_WRN("Sanity check FAILED for '%s' — render output is black", test->name());
-                LOG_DBG("Bench: sanity pixel sample at (%d,%d): R=%d G=%d B=%d A=%d",
-                         cx, cy, px[0], px[1], px[2], px[3]);
+            SanityType stype = test->sanityType();
+            if (stype == SanityType::Framebuffer) {
+                unsigned char px[4 * 4 * 4] = {0};
+                int cx = cfg.render_w / 2 - 2, cy = cfg.render_h / 2 - 2;
+                if (cx < 0) cx = 0;
+                if (cy < 0) cy = 0;
+                r->readPixels(cx, cy, 4, 4, px);
+                int nonzero = 0;
+                for (int j = 0; j < 4 * 4 * 4; j++) nonzero += (px[j] > 0) ? 1 : 0;
+                if (nonzero == 0) {
+                    sanity_ok = false;
+                    LOG_WRN("Sanity check FAILED for '%s' — render output is black", test->name());
+                    LOG_DBG("Bench: sanity pixel sample at (%d,%d): R=%d G=%d B=%d A=%d",
+                             cx, cy, px[0], px[1], px[2], px[3]);
+                }
+            } else if (stype == SanityType::ComputeBuffer) {
+                BufferHandle buf = test->getOutputBuffer();
+                auto* comp = r->features<ComputeFeatures>();
+                if (comp && buf != INVALID_BUFFER) {
+                    unsigned char data[64] = {0};
+                    comp->readSSBO(buf, data, 0, 64);
+                    int nonzero = 0;
+                    for (int j = 0; j < 64; j++) nonzero += (data[j] != 0) ? 1 : 0;
+                    if (nonzero == 0) {
+                        sanity_ok = false;
+                        LOG_WRN("Sanity check FAILED for '%s' — compute output buffer is zero", test->name());
+                    }
+                }
             }
+            // SanityType::None — sanity_ok remains true
         }
 
         progress_ = static_cast<int>(100.0 * i / cfg.warmup_frames * 0.1);
@@ -179,9 +206,10 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);
 
         if (!gpu_times.empty()) {
+            auto trimmed_gpu = trimmedTimes(gpu_times);
             double gpu_sum = 0;
-            for (size_t i = 0; i < gpu_times.size(); i++) gpu_sum += gpu_times[i];
-            result.gpu_ms = gpu_sum / static_cast<double>(gpu_times.size());
+            for (size_t i = 0; i < trimmed_gpu.size(); i++) gpu_sum += trimmed_gpu[i];
+            result.gpu_ms = trimmed_gpu.empty() ? 0 : gpu_sum / static_cast<double>(trimmed_gpu.size());
         }
 
         result.sanity_ok = sanity_ok;
@@ -193,20 +221,13 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
     }
 
 cleanup:
+    if (bench_rt_ != INVALID_RENDER_TARGET)
+        r->bindRenderTarget(INVALID_RENDER_TARGET);
     test->cleanup(r);
     LOG_DBG("Bench: cleanup '%s'", test->name());
     active_ = false;
     status_ = "Done";
     ctx->setVSync(true);
-}
-
-// Trim outliers from sorted times: drop PROBE_TRIM_FRAC from each end
-static std::vector<double> trimmedTimes(std::vector<double> times) {
-    std::sort(times.begin(), times.end());
-    int n = static_cast<int>(times.size());
-    int trim = static_cast<int>(n * PROBE_TRIM_FRAC);
-    if (trim * 2 >= n) trim = 0;
-    return std::vector<double>(times.begin() + trim, times.end() - trim);
 }
 
 GPUTier BenchRunner::runQuickProbe(Renderer* r, RenderContext* ctx,

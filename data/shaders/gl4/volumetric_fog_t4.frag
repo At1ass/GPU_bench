@@ -19,21 +19,48 @@ float linearizeDepth(float d) {
     return u_near * u_far / (u_far - d * (u_far - u_near));
 }
 
-// Simple 3D noise (sin-based, no texture lookups)
-float fogNoise(vec3 p) {
-    float n = sin(p.x * 1.3 + p.z * 0.7 + u_time * 0.15)
-            * sin(p.y * 2.1 + p.x * 0.4 - u_time * 0.1)
-            * sin(p.z * 1.7 + p.y * 0.9 + u_time * 0.08);
-    n += sin(p.x * 3.7 + u_time * 0.2) * sin(p.z * 2.3 - u_time * 0.12) * 0.3;
-    // Third octave for more detail
-    n += sin(p.x * 5.1 - u_time * 0.08) * sin(p.y * 4.3 + u_time * 0.05) * sin(p.z * 3.9) * 0.15;
-    return n * 0.5 + 0.5;
+// Hash-based 3D value noise (replaces sin-based noise that had visible periodic patterns)
+float fogHash(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.zyx + 31.32);
+    return fract((p.x + p.y) * p.z);
 }
 
-// Henyey-Greenstein phase function for anisotropic scattering
+float fogNoise3D(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0); // Perlin C2 smoothstep
+
+    float a = fogHash(i);
+    float b = fogHash(i + vec3(1, 0, 0));
+    float c = fogHash(i + vec3(0, 1, 0));
+    float d = fogHash(i + vec3(1, 1, 0));
+    float e = fogHash(i + vec3(0, 0, 1));
+    float f1 = fogHash(i + vec3(1, 0, 1));
+    float g = fogHash(i + vec3(0, 1, 1));
+    float h = fogHash(i + vec3(1, 1, 1));
+
+    return mix(mix(mix(a, b, f.x), mix(c, d, f.x), f.y),
+               mix(mix(e, f1, f.x), mix(g, h, f.x), f.y), f.z);
+}
+
+float fogNoise(vec3 p) {
+    float val = 0.0;
+    float amp = 0.5;
+    for (int i = 0; i < 3; i++) {
+        val += amp * fogNoise3D(p);
+        p *= 2.03;
+        amp *= 0.5;
+    }
+    return val;
+}
+
+// Henyey-Greenstein phase function for anisotropic scattering (pbrt v3 reference)
 float henyeyGreenstein(float cosTheta, float g) {
     float g2 = g * g;
-    return (1.0 - g2) / (4.0 * 3.14159265 * pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5));
+    float denom = 1.0 + g2 - 2.0 * g * cosTheta;
+    denom = max(denom, 1e-5);
+    return (1.0 - g2) / (4.0 * 3.14159265 * denom * sqrt(denom));
 }
 
 void main() {
@@ -78,7 +105,7 @@ void main() {
         float height_fog = exp(-max(sample_pos.y + 1.0, 0.0) * 0.8);
 
         // Noise-based density variation
-        float noise_val = fogNoise(sample_pos * 0.4);
+        float noise_val = fogNoise(sample_pos * 0.4 + vec3(u_time * 0.15, -u_time * 0.1, u_time * 0.08));
         float density = u_fog_density * height_fog * (0.5 + noise_val * 0.5);
 
         if (density > 0.001) {

@@ -32,9 +32,11 @@ void exportText(FILE* out, const std::vector<BenchResult>& results,
     fprintf(out, "\n");
 
     if (composite && composite->overall > 0) {
-        fprintf(out, "Composite Score: %.1f\n", composite->overall);
-        fprintf(out, "  Fill: %.1f  Geometry: %.1f  Compute: %.1f  Overhead: %.1f\n",
+        fprintf(out, "Composite Score: %.1f (%d/4 categories)\n", composite->overall, composite->categories_present);
+        fprintf(out, "  Fill: %.1f  Geometry: %.1f  Compute: %.1f  Overhead: %.1f  (raw)\n",
                 composite->fill, composite->geometry, composite->compute, composite->overhead);
+        fprintf(out, "  Fill: %.0f%%  Geometry: %.0f%%  Compute: %.0f%%  Overhead: %.0f%%  (vs reference)\n",
+                composite->fill_norm, composite->geometry_norm, composite->compute_norm, composite->overhead_norm);
         fprintf(out, "\n");
     }
 
@@ -127,12 +129,12 @@ void exportJSON(FILE* out, const std::vector<BenchResult>& results,
                 const CompositeScore* composite,
                 const BottleneckInfo* bottleneck) {
     fprintf(out, "{\n");
-    fprintf(out, "  \"preset\": \"%s\",\n", preset_name);
+    fprintf(out, "  \"preset\": \""); jsonEscape(out, preset_name); fprintf(out, "\",\n");
     fprintf(out, "  \"system\": {\n");
     fprintf(out, "    \"cpu\": \""); jsonEscape(out, hw.cpu_name.c_str()); fprintf(out, "\",\n");
     fprintf(out, "    \"gpu\": \""); jsonEscape(out, gpu_name); fprintf(out, "\",\n");
     fprintf(out, "    \"gl_version\": \""); jsonEscape(out, gl_version); fprintf(out, "\",\n");
-    fprintf(out, "    \"renderer\": \"%s\",\n", renderer_name);
+    fprintf(out, "    \"renderer\": \""); jsonEscape(out, renderer_name); fprintf(out, "\",\n");
     fprintf(out, "    \"os\": \""); jsonEscape(out, hw.os_name.c_str()); fprintf(out, " ");
     jsonEscape(out, hw.os_version.c_str()); fprintf(out, "\",\n");
     fprintf(out, "    \"vram_mb\": %d\n", caps.estimated_vram_mb);
@@ -161,10 +163,15 @@ void exportJSON(FILE* out, const std::vector<BenchResult>& results,
     if (composite && composite->overall > 0) {
         fprintf(out, "  \"composite\": {\n");
         fprintf(out, "    \"overall\": %.2f,\n", composite->overall);
+        fprintf(out, "    \"categories_present\": %d,\n", composite->categories_present);
         fprintf(out, "    \"fill\": %.2f,\n", composite->fill);
         fprintf(out, "    \"geometry\": %.2f,\n", composite->geometry);
         fprintf(out, "    \"compute\": %.2f,\n", composite->compute);
-        fprintf(out, "    \"overhead\": %.2f\n", composite->overhead);
+        fprintf(out, "    \"overhead\": %.2f,\n", composite->overhead);
+        fprintf(out, "    \"fill_norm\": %.2f,\n", composite->fill_norm);
+        fprintf(out, "    \"geometry_norm\": %.2f,\n", composite->geometry_norm);
+        fprintf(out, "    \"compute_norm\": %.2f,\n", composite->compute_norm);
+        fprintf(out, "    \"overhead_norm\": %.2f\n", composite->overhead_norm);
         fprintf(out, "  },\n");
     }
 

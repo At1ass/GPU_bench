@@ -1,6 +1,7 @@
 #include "demo/demo_scene.h"
 #include "demo/demo_utils.h"
 #include "demo/tier_config_validate.h"
+#include "geometry/mesh_gen.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 #include <cmath>
@@ -201,6 +202,7 @@ void DemoScene::placePuddles(Renderer* r) {
     }
 }
 
+
 // ============================================================
 // placePedestal: hexagonal stone pedestal under bunny
 // ============================================================
@@ -216,7 +218,8 @@ void DemoScene::placePedestal(Renderer* r) {
     obj.specular = 0.06f;
     obj.metallic = 0.0f;
     obj.roughness = 0.85f;
-    obj.tessellated = config_.enable_tessellation;
+    // Pedestal is a frustum with hard edges — PN-triangles create gaps at 90° edges
+    obj.tessellated = false;
     setBounds(obj, 1.5f);  // covers full height (1.1) + width (1.4)
     opaque_objects_.push_back(obj);
 }
@@ -230,16 +233,11 @@ void DemoScene::placeColumns(Renderer* r) {
     if (res_.core.column_tall_mesh == MeshHandle()) return;
     Vec3 col_color(0.55f, 0.52f, 0.46f);
 
-    // Columns A & B form a unified gateway with the arch.
-    // Both at Z=-2.5, X=±1.8 (matching arch halfTorus endpoints at ±R=1.8).
-    // Use the LOWER terrain height so neither column floats; the other
-    // column's base simply sinks into the hill.  This guarantees both
-    // column tops are at the exact same Y — critical for arch alignment.
     float col_z = -2.5f;
     float col_x[2] = { -1.8f, 1.8f };
     float h0 = sampleTerrainHeight(col_x[0], col_z);
     float h1 = sampleTerrainHeight(col_x[1], col_z);
-    float col_base_y = (h0 < h1) ? h0 : h1;  // lower of the two
+    float col_base_y = (h0 < h1) ? h0 : h1;
     for (int i = 0; i < 2; i++) {
         SceneObject obj;
         obj.mesh = res_.core.column_tall_mesh;
@@ -248,14 +246,14 @@ void DemoScene::placeColumns(Renderer* r) {
         obj.color = col_color;
         obj.specular = 0.05f;
         obj.roughness = 0.90f;
-        obj.tessellated = config_.enable_tessellation;
+        // Cylinders with caps have hard edges — no PN-triangles
+        obj.tessellated = false;
         setBounds(obj, 2.0f);
         opaque_objects_.push_back(obj);
     }
 
-    // Column stumps C, D (T3+ only) — separate ruins, not part of gateway
     if (res_.core.column_stump_mesh == MeshHandle()) return;
-    if (config_.point_light_count < 3) return;  // T3+ has 3 point lights
+    if (config_.point_light_count < 3) return;
     {
         SceneObject obj;
         obj.mesh = res_.core.column_stump_mesh;
@@ -264,7 +262,7 @@ void DemoScene::placeColumns(Renderer* r) {
         obj.color = col_color;
         obj.specular = 0.05f;
         obj.roughness = 0.90f;
-        obj.tessellated = config_.enable_tessellation;
+        obj.tessellated = false;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
     }
@@ -276,7 +274,7 @@ void DemoScene::placeColumns(Renderer* r) {
         obj.color = col_color;
         obj.specular = 0.05f;
         obj.roughness = 0.90f;
-        obj.tessellated = config_.enable_tessellation;
+        obj.tessellated = false;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
     }
@@ -325,7 +323,8 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.52f, 0.49f, 0.44f);
         obj.specular = 0.05f;
         obj.roughness = 0.88f;
-        obj.tessellated = config_.enable_tessellation;
+        // Slab is a cube with hard edges — no PN-triangles
+        obj.tessellated = false;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
     }
@@ -367,7 +366,8 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.53f, 0.50f, 0.45f);
         obj.specular = 0.04f;
         obj.roughness = 0.90f;
-        obj.tessellated = config_.enable_tessellation;
+        // Fallen column is a cylinder — hard cap edges
+        obj.tessellated = false;
         setBounds(obj, 1.5f);
         opaque_objects_.push_back(obj);
     }
@@ -381,7 +381,8 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.35f, 0.42f, 0.30f);
         obj.specular = 0.03f;
         obj.roughness = 0.95f;
-        obj.tessellated = config_.enable_tessellation;
+        // Cube with hard edges
+        obj.tessellated = false;
         setBounds(obj, 0.8f);
         opaque_objects_.push_back(obj);
     }
@@ -409,7 +410,8 @@ void DemoScene::placeRuins(Renderer* r) {
         obj.color = Vec3(0.42f, 0.40f, 0.36f);
         obj.specular = 0.05f;
         obj.roughness = 0.85f;
-        obj.tessellated = config_.enable_tessellation;
+        // Obelisk is hexagonal with hard edges
+        obj.tessellated = false;
         setBounds(obj, 1.5f);
         opaque_objects_.push_back(obj);
     }

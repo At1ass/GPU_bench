@@ -187,70 +187,56 @@ PresetValidation validatePreset(const BenchPreset& p, const RenderCaps& caps) {
     PresetValidation v;
     v.ok = true;
 
+    char buf[256];
+    auto addError = [&v, &buf]() {
+        v.ok = false;
+        if (!v.reason.empty()) v.reason += '\n';
+        v.reason += buf;
+    };
+
     // Check texture sizes
     if (p.texturing.tex_size > caps.max_texture_size) {
-        v.ok = false;
-        char buf[256];
-        snprintf(buf, sizeof(buf), "Texturing test requires %d textures but GPU max is %d",
+        snprintf(buf, sizeof(buf), "Texturing: tex_size %d exceeds GPU max %d",
                  p.texturing.tex_size, caps.max_texture_size);
-        v.reason = buf;
-        LOG_DBG("Preset: clamped texturing tex_size %d -> %d (GPU max)", p.texturing.tex_size, caps.max_texture_size);
-        return v;
+        addError();
     }
     if (p.scene.terrain_tex > caps.max_texture_size) {
-        v.ok = false;
-        char buf[256];
-        snprintf(buf, sizeof(buf), "Scene test requires %d terrain texture but GPU max is %d",
+        snprintf(buf, sizeof(buf), "Scene: terrain_tex %d exceeds GPU max %d",
                  p.scene.terrain_tex, caps.max_texture_size);
-        v.reason = buf;
-        LOG_DBG("Preset: clamped scene terrain_tex %d -> %d (GPU max)", p.scene.terrain_tex, caps.max_texture_size);
-        return v;
+        addError();
     }
     if (p.scene.obj_tex > caps.max_texture_size) {
-        v.ok = false;
-        char buf[256];
-        snprintf(buf, sizeof(buf), "Scene test requires %d object texture but GPU max is %d",
+        snprintf(buf, sizeof(buf), "Scene: obj_tex %d exceeds GPU max %d",
                  p.scene.obj_tex, caps.max_texture_size);
-        v.reason = buf;
-        LOG_DBG("Preset: clamped scene obj_tex %d -> %d (GPU max)", p.scene.obj_tex, caps.max_texture_size);
-        return v;
+        addError();
     }
     if (p.texupload.tex_size > caps.max_texture_size) {
-        v.ok = false;
-        char buf[256];
-        snprintf(buf, sizeof(buf), "TexUpload test requires %d textures but GPU max is %d",
+        snprintf(buf, sizeof(buf), "TexUpload: tex_size %d exceeds GPU max %d",
                  p.texupload.tex_size, caps.max_texture_size);
-        v.reason = buf;
-        LOG_DBG("Preset: clamped texupload tex_size %d -> %d (GPU max)", p.texupload.tex_size, caps.max_texture_size);
-        return v;
+        addError();
     }
 
     // Check 16-bit index limits for geometry grid
     if (!caps.supports_32bit_indices) {
-        // cubeGrid: grid^3 * 24 vertices must fit in 16-bit (65535)
-        int max_grid = 13; // 13^3 * 24 = 52728
+        int max_grid = 13; // 13^3 * 24 = 52728 vertices fits in 16-bit
         if (p.geometry.grid_size > max_grid) {
-            v.ok = false;
-            char buf[256];
-            snprintf(buf, sizeof(buf), "Geometry grid %d requires 32-bit indices (max grid=%d for 16-bit)",
+            snprintf(buf, sizeof(buf), "Geometry: grid %d requires 32-bit indices (max=%d for 16-bit)",
                      p.geometry.grid_size, max_grid);
-            v.reason = buf;
-            LOG_DBG("Preset: geometry grid_size %d exceeds 16-bit index limit (max=%d)", p.geometry.grid_size, max_grid);
-            return v;
+            addError();
         }
         if (p.scene.cube_grid > max_grid) {
-            v.ok = false;
-            char buf[256];
-            snprintf(buf, sizeof(buf), "Scene cube grid %d requires 32-bit indices (max=%d for 16-bit)",
+            snprintf(buf, sizeof(buf), "Scene: cube_grid %d requires 32-bit indices (max=%d for 16-bit)",
                      p.scene.cube_grid, max_grid);
-            v.reason = buf;
-            LOG_DBG("Preset: scene cube_grid %d exceeds 16-bit index limit (max=%d)", p.scene.cube_grid, max_grid);
-            return v;
+            addError();
         }
     }
 
-    LOG_DBG("Preset: '%s' validated OK (max_tex=%d, 32bit_idx=%s)",
-             p.name, caps.max_texture_size, caps.supports_32bit_indices ? "yes" : "no");
+    if (v.ok) {
+        LOG_DBG("Preset: '%s' validated OK (max_tex=%d, 32bit_idx=%s)",
+                 p.name, caps.max_texture_size, caps.supports_32bit_indices ? "yes" : "no");
+    } else {
+        LOG_DBG("Preset: '%s' validation failed: %s", p.name, v.reason.c_str());
+    }
     return v;
 }
 

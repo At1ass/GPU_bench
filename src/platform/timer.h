@@ -9,11 +9,15 @@
 
 class Timer {
 public:
-    Timer() { reset(); }
+    Timer() {
+#ifdef _WIN32
+        QueryPerformanceFrequency(&freq_);
+#endif
+        reset();
+    }
 
     void reset() {
 #ifdef _WIN32
-        QueryPerformanceFrequency(&freq_);
         QueryPerformanceCounter(&start_);
 #else
         clock_gettime(CLOCK_MONOTONIC, &start_);

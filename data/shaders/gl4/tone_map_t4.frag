@@ -21,9 +21,8 @@ uniform float u_has_dof;
 
 // ACES filmic tone mapping (Narkowicz 2016 fit, pre-exposure corrected)
 vec3 acesToneMap(vec3 x) {
-    // Narkowicz fit is pre-exposed; multiply to match standard ACES RRT+ODT
-    // 0.6 is reference-correct but too dark for this scene; 0.7 balances accuracy and visibility
-    x *= 0.7;
+    // Narkowicz 2016 reference fit (pre-exposed)
+    x *= 0.6;
     float a = 2.51;
     float b = 0.03;
     float c = 2.43;
@@ -63,7 +62,7 @@ void main() {
         vec4 ssr = texture(u_ssr_tex, v_uv);
         ssr.rgb = sanitizeHDR(ssr.rgb);
         ssr.a = clamp(ssr.a, 0.0, 1.0);
-        hdr_color = mix(hdr_color, ssr.rgb, ssr.a * 0.5);
+        hdr_color = mix(hdr_color, ssr.rgb, ssr.a * 0.85);
     }
 
     // Blend volumetric fog

@@ -28,7 +28,7 @@ float pn_hash(vec3 p) {
 float pn_noise(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f); // hermite smoothstep
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0); // Perlin improved (C2 continuous)
 
     float a = pn_hash(i);
     float b = pn_hash(i + vec3(1, 0, 0));
@@ -108,22 +108,42 @@ void main() {
              + b102 * 3.0 * w * v2 + b012 * 3.0 * u * v2
              + b111 * 6.0 * w * u * v;
 
-    // Interpolate normal (quadratic PN normal for smooth shading)
-    vec3 normal = normalize(n0 * w + n1 * u + n2 * v);
+    // Two normals: linear for displacement (C0-continuous at edges),
+    // quadratic PN for shading (smooth across surface).
+    // Using quadratic normal for displacement would break edge continuity
+    // because PN edge normals depend on the third vertex of each triangle.
+    vec3 disp_normal = normalize(n0 * w + n1 * u + n2 * v); // linear — C0 safe
+
+    // Quadratic PN-triangle normal interpolation (Vlachos et al. 2001) — for shading only
+    vec3 d01 = p1 - p0;
+    vec3 d12 = p2 - p1;
+    vec3 d20 = p0 - p2;
+    float v01 = 2.0 * dot(d01, n0 + n1) / max(dot(d01, d01), 1e-8);
+    float v12 = 2.0 * dot(d12, n1 + n2) / max(dot(d12, d12), 1e-8);
+    float v20 = 2.0 * dot(d20, n2 + n0) / max(dot(d20, d20), 1e-8);
+    vec3 n110 = normalize(n0 + n1 - v01 * d01);
+    vec3 n011 = normalize(n1 + n2 - v12 * d12);
+    vec3 n101 = normalize(n2 + n0 - v20 * d20);
+
+    vec3 shading_normal = normalize(
+        n0 * w * w + n1 * u * u + n2 * v * v
+        + n110 * w * u + n011 * u * v + n101 * w * v
+    );
 
     // Interpolate UV
     vec2 uv = uv0 * w + uv1 * u + uv2 * v;
 
-    // Noise-based displacement along normal for organic detail
+    // Noise-based displacement along LINEAR normal (C0-continuous, no edge gaps)
     float freq = u_displacement_freq > 0.0 ? u_displacement_freq : 5.0;
     float disp_noise = pn_fbm(pos * freq + u_time * 0.1) * 2.0 - 1.0;
-    float disp = disp_noise * u_displacement_strength;
-    pos += normal * disp;
+    float disp = clamp(disp_noise * u_displacement_strength,
+                       -u_displacement_strength, u_displacement_strength);
+    pos += disp_normal * disp;
 
     // Transform to world space
     vec4 world = u_model * vec4(pos, 1.0);
     v_world_pos = world.xyz;
-    v_normal = normalize(mat3(u_model) * normal);
+    v_normal = normalize(mat3(u_model) * shading_normal);
     v_uv = uv;
     v_light_pos = u_light_vp * world;
 

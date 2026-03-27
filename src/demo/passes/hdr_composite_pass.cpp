@@ -85,7 +85,8 @@ void HDRCompositePass::execute(Renderer* r, FrameData& fd, const TierResourceVie
             if (exposure < 0.01f) exposure = 1.0f;
         }
     }
-    ub_tone_map_.set(U::Exposure, exposure);
+    // Compensate for canonical ACES pre-exposure (0.6 vs previous 0.7)
+    ub_tone_map_.set(U::Exposure, exposure * 1.167f);
     ub_tone_map_.set(U::ChromaticStrength, cfg.chromatic_strength);
     ub_tone_map_.set(U::GrainStrength, cfg.grain_strength);
 

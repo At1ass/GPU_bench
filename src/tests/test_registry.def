@@ -13,7 +13,7 @@ X(Overdraw,    OverdrawTest,    "Overdraw",    "overdraw",     Fill,     "ROP ov
 X(TexUpload,   TexUploadTest,   "TexUpload",   "texupload",    Overhead, "Texture upload bandwidth",             "MB/s",     texupload,   Cap_None)
 X(StateChange, StateChangeTest, "StateChange", "statechange",  Overhead, "Pipeline state change overhead",       "ops/s",    statechange, Cap_None)
 X(Vertex,      VertexTest,      "Vertex",      "vertex",       Geometry, "Vertex processing rate",               "Mverts/s", vertex,      Cap_None)
-X(ShaderALU,   ShaderALUTest,   "ShaderALU",   "shader_alu",   Compute,  "Shader ALU throughput (sin/cos/pow)",  "GFLOP/s",  shader_alu,  Cap_None)
+X(ShaderALU,   ShaderALUTest,   "ShaderALU",   "shader_alu",   Compute,  "Shader ALU throughput (sin/cos/pow)",  "GOps/s",   shader_alu,  Cap_None)
 X(ShaderFMA,   ShaderFMATest,   "ShaderFMA",   "shader_fma",   Compute,  "Shader FMA throughput (pure MAD)",     "GFLOP/s",  shader_fma,  Cap_None)
 X(DrawCallRaw,   DrawCallRawTest,   "DrawCallRaw",   "drawcall_raw",   Overhead,  "Raw driver submission (no uniforms)",       "calls/s",  drawcall,       Cap_None)
 X(InstancedDraw, InstancedDrawTest, "InstancedDraw", "instanced_draw", Geometry,  "Instanced rendering throughput (GL3+)",    "Mtri/s",   instanced_draw, Cap_Instancing)

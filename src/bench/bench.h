@@ -4,6 +4,13 @@
 #include <string>
 #include <vector>
 
+// Sanity check strategy per test type
+enum class SanityType {
+    Framebuffer,     // readPixels from center of framebuffer (default)
+    ComputeBuffer,   // readSSBO 64 bytes, check non-zero
+    None             // skip sanity check (TF, Vertex, PersistentMap — rely on CV stability)
+};
+
 struct BenchResult {
     std::string name;
     std::string unit;       // e.g. "Mpix/s", "Mtris/s"
@@ -55,6 +62,12 @@ public:
     // Compute a test-specific score from the collected frame times.
     virtual double computeScore(const std::vector<double>& frame_times_ms,
                                 int viewport_w, int viewport_h) = 0;
+
+    // Override to change sanity check strategy for non-framebuffer tests.
+    virtual SanityType sanityType() const { return SanityType::Framebuffer; }
+
+    // For SanityType::ComputeBuffer: return the output SSBO handle to validate.
+    virtual BufferHandle getOutputBuffer() const { return BufferHandle(); }
 };
 
 struct GL3Features;
@@ -110,6 +123,13 @@ struct CompositeScore {
     double geometry = 0;   // Geometry, Vertex
     double compute = 0;    // ShaderALU, ShaderFMA
     double overhead = 0;   // DrawCall, DrawCallRaw, StateChange, TexUpload
+
+    // Normalized scores (percentage of reference GPU, unitless)
+    double fill_norm = 0;
+    double geometry_norm = 0;
+    double compute_norm = 0;
+    double overhead_norm = 0;
+    int categories_present = 0;  // 0..4 — how many categories contributed to overall
 
     CompositeScore() = default;
 };

@@ -89,11 +89,11 @@ void waterGerstner(vec2 pos, float time, out float height, out vec3 normal) {
 }
 
 // Schlick Fresnel for water (IOR 1.33, F0 ≈ 0.02)
-// Artistic boost: minimum 8% reflection for visible SSR at steep angles
+// Minimum 15% reflection ensures SSR is visible even at steep viewing angles
 float waterFresnel(float NdotV) {
     float f0 = 0.02;
     float fresnel = f0 + (1.0 - f0) * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
-    return max(fresnel, 0.08);
+    return max(fresnel, 0.15);
 }
 
 // Beer's law: depth-based light absorption in water
@@ -106,88 +106,110 @@ vec3 waterAbsorption(float depth) {
     return mix(deep_color, shallow_color, extinction);
 }
 
-// Screen-space reflection for water with binary refinement
-// Depth buffer is GL_DEPTH_COMPONENT24: values in [0,1] (OpenGL maps NDC [-1,1] to [0,1])
+// Linearize depth from [0,1] depth buffer to view-space distance
 float waterLinearizeDepth(float d) {
-    // Reverse the OpenGL depth: d is in [0,1], maps back to linear eye-space depth
     return u_near * u_far / (u_far - d * (u_far - u_near));
 }
 
+// Project view-space position to screen pixel coords + linear depth
+vec3 waterProjectToScreen(vec3 viewPos, mat4 proj) {
+    vec4 clip = proj * vec4(viewPos, 1.0);
+    vec3 ndc = clip.xyz / clip.w;
+    return vec3((ndc.xy * 0.5 + 0.5) * u_screen_size, -viewPos.z);
+}
+
+// Screen-space DDA ray march for water reflections (Morgan McGuire 2014)
+// Traces ray pixel-by-pixel in screen space for clean, artifact-free reflections.
 vec4 waterSSR(vec3 fragPos, vec3 V, vec3 N, mat4 proj, mat4 view) {
     if (u_has_reflection < 0.5) return vec4(0.0);
 
-    // Reflect view direction around surface normal
+    // Reflect view direction around water surface normal
     vec3 reflDir = reflect(-V, N);
-    // Skip rays going into the water (downward)
-    if (reflDir.y < 0.02) return vec4(0.0);
+    if (reflDir.y < 0.01) return vec4(0.0); // skip rays into the water
 
-    // Transform start position to view space for ray-march
+    // Transform to view space
     vec3 vsOrigin = (view * vec4(fragPos, 1.0)).xyz;
-    // Transform reflection direction to view space (direction, not position)
-    vec3 vsReflDir = normalize((view * vec4(reflDir, 0.0)).xyz);
+    vec3 vsDir = normalize((view * vec4(reflDir, 0.0)).xyz);
 
-    // Bias origin slightly along normal to prevent self-intersection
+    // Bias along normal to prevent self-intersection
     vec3 vsNormal = normalize((view * vec4(N, 0.0)).xyz);
-    vsOrigin += vsNormal * 0.02;
+    vsOrigin += vsNormal * 0.05;
 
-    // Jitter start to reduce banding
-    float jitter = fract(dot(gl_FragCoord.xy, vec2(0.7548, 0.5698))) * 0.15;
+    // Project ray endpoints to screen space
+    float ray_length = 25.0;
+    vec3 vsEnd = vsOrigin + vsDir * ray_length;
 
-    float step_size = 0.12;
-    vec3 vsRay = vsOrigin + vsReflDir * jitter;
-    float traveled = jitter;
-    vec3 vsPrevRay = vsRay;
+    // Clip to near plane
+    if (vsEnd.z > -u_near) {
+        float t_clip = (-u_near - vsOrigin.z) / vsDir.z;
+        vsEnd = vsOrigin + vsDir * max(t_clip, 0.0);
+    }
 
-    for (int i = 0; i < 48; i++) {
-        vsPrevRay = vsRay;
-        vsRay += vsReflDir * step_size;
-        traveled += step_size;
-        if (traveled > 15.0) break;
+    vec3 screen0 = waterProjectToScreen(vsOrigin, proj);
+    vec3 screen1 = waterProjectToScreen(vsEnd, proj);
 
-        // Project ray position to clip space
-        vec4 clipPos = proj * vec4(vsRay, 1.0);
-        if (clipPos.w <= 0.0) break;
-        // NDC -> UV: [-1,1] -> [0,1]
-        vec2 sample_uv = clipPos.xy / clipPos.w * 0.5 + 0.5;
+    // Screen-space delta — march along the longest axis
+    vec2 delta = screen1.xy - screen0.xy;
+    float len = max(abs(delta.x), abs(delta.y));
+    if (len < 1.0) return vec4(0.0);
 
-        // Screen boundary check
-        if (sample_uv.x < 0.005 || sample_uv.x > 0.995 ||
-            sample_uv.y < 0.005 || sample_uv.y > 0.995) break;
+    int max_steps = min(int(len), 256);
+    vec2 step_dir = delta / len;
 
-        // Sample scene depth and linearize
-        float scene_depth = waterLinearizeDepth(texture(u_depth_tex, sample_uv).r);
-        // Ray depth in view space (positive = into screen)
-        float ray_depth = -vsRay.z;
-        float diff = ray_depth - scene_depth;
+    // Perspective-correct depth interpolation via 1/z
+    float invZ0 = 1.0 / screen0.z;
+    float invZ1 = 1.0 / screen1.z;
 
-        if (diff > 0.0 && diff < step_size * 4.0) {
-            // Binary refinement: 6 steps for sub-pixel precision
-            vec3 lo = vsPrevRay;
-            vec3 hi = vsRay;
-            for (int j = 0; j < 6; j++) {
-                vec3 mid = (lo + hi) * 0.5;
-                vec4 mp = proj * vec4(mid, 1.0);
-                vec2 muv = mp.xy / mp.w * 0.5 + 0.5;
-                float md = waterLinearizeDepth(texture(u_depth_tex, muv).r);
-                float mr = -mid.z;
-                if (mr > md) hi = mid; else lo = mid;
+    // Per-pixel jitter to reduce banding
+    float jitter = fract(dot(gl_FragCoord.xy, vec2(0.75487766, 0.56984029)));
+    vec2 pixel = screen0.xy + step_dir * jitter;
+    float t = jitter / len;
+    float prev_ray_z = screen0.z;
+
+    for (int i = 0; i < max_steps; i++) {
+        pixel += step_dir;
+        t += 1.0 / len;
+        if (t > 1.0) break;
+
+        vec2 uv = pixel / u_screen_size;
+        if (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995) break;
+
+        float ray_z = 1.0 / mix(invZ0, invZ1, t);
+        float scene_z = waterLinearizeDepth(texture(u_depth_tex, uv).r);
+
+        float diff = ray_z - scene_z;
+        float thickness = max(ray_z * 0.05, 0.1);
+
+        // Hit: ray crossed from in-front to behind geometry
+        if (diff > 0.0 && diff < thickness && prev_ray_z <= scene_z + 0.01) {
+            // Binary refinement for sub-pixel precision
+            vec2 ref_pixel = pixel - step_dir;
+            float ref_t = t - 1.0 / len;
+            float half_step = 0.5;
+            for (int j = 0; j < 8; j++) {
+                ref_pixel += step_dir * half_step;
+                ref_t += half_step / len;
+                float rz = 1.0 / mix(invZ0, invZ1, ref_t);
+                vec2 ruv = ref_pixel / u_screen_size;
+                float sz = waterLinearizeDepth(texture(u_depth_tex, ruv).r);
+                if (rz > sz) { ref_pixel -= step_dir * half_step; ref_t -= half_step / len; }
+                half_step *= 0.5;
             }
-            vec4 fp = proj * vec4((lo + hi) * 0.5, 1.0);
-            vec2 fuv = fp.xy / fp.w * 0.5 + 0.5;
-            vec3 hit_color = texture(u_reflection_tex, fuv).rgb;
 
-            // Confidence: edge fade + distance fade + thickness fade
-            float edge = smoothstep(0.0, 0.1, fuv.x) * smoothstep(1.0, 0.9, fuv.x)
-                       * smoothstep(0.0, 0.1, fuv.y) * smoothstep(1.0, 0.9, fuv.y);
-            float dist_fade = 1.0 - smoothstep(5.0, 15.0, traveled);
-            float thickness_fade = 1.0 - smoothstep(0.0, step_size * 3.0, diff);
-            float confidence = edge * dist_fade * thickness_fade * 0.8;
+            vec2 hit_uv = ref_pixel / u_screen_size;
+            vec3 hit_color = texture(u_reflection_tex, hit_uv).rgb;
+
+            // Confidence fading
+            float edge = smoothstep(0.0, 0.1, hit_uv.x) * smoothstep(1.0, 0.9, hit_uv.x)
+                       * smoothstep(0.0, 0.1, hit_uv.y) * smoothstep(1.0, 0.9, hit_uv.y);
+            float dist_fade = 1.0 - t;
+            float thick_fade = 1.0 - smoothstep(0.0, thickness, diff);
+            float confidence = edge * dist_fade * thick_fade * 0.95;
 
             return vec4(hit_color, confidence);
         }
 
-        // Accelerate step for distant rays
-        step_size *= 1.05;
+        prev_ray_z = ray_z;
     }
 
     return vec4(0.0);

@@ -17,8 +17,8 @@ struct DemoDebugOverrides {
         : skip_hdr(false)
         , skip_auto_exposure(false)
         , skip_gtao(false)
-        , skip_vol_fog(true)   // was DBG_SKIP_VOL_FOG=1
-        , skip_ssr(true)       // was DBG_SKIP_SSR=1
+        , skip_vol_fog(false)
+        , skip_ssr(false)      // not checked by any pass, kept for future use
         , skip_compute_bloom(false)
         , skip_dof(false) {}
 };

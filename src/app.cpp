@@ -106,6 +106,8 @@ bool App::init(const AppConfig& cfg) {
     LOG_DBG("App::init: CPU=%s, OS=%s %s",
              hw_info_.cpu_name.c_str(), hw_info_.os_name.c_str(), hw_info_.os_version.c_str());
 
+    cached_caps_ = getAvailableCaps(*renderer_);
+
     // Fallback to sync timing if GPU timer queries unavailable
     if (config_.timing_mode == TimingMode::GPU && !renderer_->hasTimerQueries()) {
         config_.timing_mode = TimingMode::Sync;
@@ -345,9 +347,8 @@ void App::runSelectedTests() {
     cfg.window_w = window_w_;
     cfg.window_h = window_h_;
 
-    uint32_t caps = getAvailableCaps(*renderer_);
     bench_runner_.runSelected(renderer_.get(), ctx_.get(), current_preset_, cfg,
-                              test_enabled_, caps, this);
+                              test_enabled_, cached_caps_, this);
 }
 
 void App::renderUI() {
@@ -358,7 +359,7 @@ void App::renderUI() {
     view.gl_version = renderer_->getGLVersion();
     view.renderer_name = renderer_->getRendererName();
     view.caps = &renderer_->getCaps();
-    view.available_caps = getAvailableCaps(*renderer_);
+    view.available_caps = cached_caps_;
     view.supports_render_targets = renderer_->supportsRenderTargets();
     view.gpu_tier = gpu_tier_;
     view.window_w = window_w_;
@@ -441,7 +442,7 @@ void App::exportResults() {
 
     const char* path = config_.output_file.empty() ? nullptr : config_.output_file.c_str();
     if (!writeBenchResults(config_.output_format, path, results, hw_info_,
-                           renderer_->getCaps(), getAvailableCaps(*renderer_),
+                           renderer_->getCaps(), cached_caps_,
                            renderer_->getGPURenderer(), renderer_->getGLVersion(),
                            renderer_->getRendererName(), current_preset_.name, ecfg,
                            &bench_runner_.compositeScore(), &bench_runner_.bottleneckInfo())) {
@@ -570,10 +571,14 @@ void App::run() {
         if (pending_action_ != PendingAction::None) {
             PendingAction action = pending_action_;
             pending_action_ = PendingAction::None;
-            if (action == PendingAction::RunAll) {
-                for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
+            if (!validation_error_.empty()) {
+                LOG_WRN("Cannot run: preset validation failed: %s", validation_error_.c_str());
+            } else {
+                if (action == PendingAction::RunAll) {
+                    for (int i = 0; i < NUM_TESTS; i++) test_enabled_[i] = true;
+                }
+                runSelectedTests();
             }
-            runSelectedTests();
         }
     }
 }

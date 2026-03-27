@@ -124,6 +124,7 @@ private:
     void updateRenderResolution();
 
     GPUTier gpu_tier_;
+    uint32_t cached_caps_ = 0;
     DemoUI demo_ui_;
     DemoResults demo_results_;
 

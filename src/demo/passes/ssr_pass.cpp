@@ -33,6 +33,7 @@ void SSRPass::execute(Renderer* r, FrameData& fd,
     g4->bindImageTexture(res.t4.ssr_tex, 0, false, true); // write-only
 
     ub_.set(U::Proj, fd.proj);
+    res.t4.ssr_shader->setMat4("u_view", fd.view);
 
     // Inverse view matrix (column-major: rotation = transpose, translation = -R^T * t)
     Mat4 vi;
@@ -56,12 +57,8 @@ void SSRPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::Aspect, aspect);
     ub_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
 
-    // Pond exclusion: SSR compute pass should NOT process water pixels
-    // (water has its own SSR in the fragment shader).
-    // Pond behind arch at (0.0, y, -3.5), disc radius 2.5.
-    ub_.set(U::PuddleCount, 1);
-    res.t4.ssr_shader->set3f("u_puddle_pos[0]", 0.0f, 0.0f, -3.5f);
-    res.t4.ssr_shader->set1f("u_puddle_radius[0]", 3.0f);
+    ub_.set(U::PuddleCount, 0);
+    res.t4.ssr_shader->set1i("u_has_mirror", 0);
 
     int gx = (fd.viewport_w + 15) / 16;
     int gy = (fd.viewport_h + 15) / 16;

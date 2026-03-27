@@ -70,7 +70,7 @@ ShaderALUTest::ShaderALUTest(const ShaderALUParams& params)
       shader_(INVALID_SHADER), u_iterations_loc_(-1), u_time_loc_(-1), time_(0.0f) {}
 
 const char* ShaderALUTest::name() const { return "ShaderALU"; }
-const char* ShaderALUTest::scoreUnit() const { return "Gops"; }
+const char* ShaderALUTest::scoreUnit() const { return "GOps/s"; }
 const char* ShaderALUTest::description() const {
     return "Fullscreen quad with heavy fragment shader (sin/cos/pow/sqrt).\n"
            "Measures fragment shader ALU throughput.";

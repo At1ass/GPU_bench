@@ -140,6 +140,8 @@ protected:
         int w = 0;
         int h = 0;
         bool valid = false;
+        TextureHandle cached_depth_th;  // cached getRTDepthTexture() result
+        TextureHandle cached_color_th;  // cached getRTColorTexture() result
         GLFBO() = default;
     };
     std::vector<GLFBO> render_targets_;

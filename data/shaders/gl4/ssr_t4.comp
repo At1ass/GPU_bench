@@ -7,17 +7,24 @@ uniform sampler2D u_depth_tex;
 layout(rgba32f, binding = 0) writeonly uniform image2D u_ssr_out;
 
 uniform mat4 u_proj;
-uniform mat4 u_view_inv;   // camera-to-world (for world-space normal check)
+uniform mat4 u_view;
+uniform mat4 u_view_inv;
 uniform vec2 u_screen_size;
 uniform float u_near;
 uniform float u_far;
 uniform float u_aspect;
 uniform float u_tan_half_fov;
 
-// Puddle exclusion: SSR skips water pixels (water shader handles its own reflections)
+// Puddle zones
 uniform vec3 u_puddle_pos[3];
 uniform float u_puddle_radius[3];
 uniform int u_puddle_count;
+
+// Mirror
+uniform vec3 u_mirror_pos;
+uniform vec3 u_mirror_normal;
+uniform vec2 u_mirror_half_size;
+uniform int u_has_mirror;
 
 float linearizeDepth(float d) {
     return u_near * u_far / (u_far - d * (u_far - u_near));
@@ -25,11 +32,9 @@ float linearizeDepth(float d) {
 
 vec3 viewPosFromUV(vec2 uv, float linearZ) {
     vec2 ndc = uv * 2.0 - 1.0;
-    return vec3(
-        ndc.x * u_tan_half_fov * u_aspect * linearZ,
-        ndc.y * u_tan_half_fov * linearZ,
-        -linearZ
-    );
+    return vec3(ndc.x * u_tan_half_fov * u_aspect * linearZ,
+                ndc.y * u_tan_half_fov * linearZ,
+                -linearZ);
 }
 
 vec3 reconstructViewNormal(vec2 uv, float centerZ) {
@@ -38,35 +43,118 @@ vec3 reconstructViewNormal(vec2 uv, float centerZ) {
     float dU = linearizeDepth(texture(u_depth_tex, uv + vec2(0.0, texel.y)).r);
     float dL = linearizeDepth(texture(u_depth_tex, uv - vec2(texel.x, 0.0)).r);
     float dD = linearizeDepth(texture(u_depth_tex, uv - vec2(0.0, texel.y)).r);
-
     vec3 center = viewPosFromUV(uv, centerZ);
-    vec3 right, up;
-    if (abs(dR - centerZ) < abs(dL - centerZ))
-        right = viewPosFromUV(uv + vec2(texel.x, 0.0), dR) - center;
-    else
-        right = center - viewPosFromUV(uv - vec2(texel.x, 0.0), dL);
-    if (abs(dU - centerZ) < abs(dD - centerZ))
-        up = viewPosFromUV(uv + vec2(0.0, texel.y), dU) - center;
-    else
-        up = center - viewPosFromUV(uv - vec2(0.0, texel.y), dD);
-
+    vec3 right = (abs(dR - centerZ) < abs(dL - centerZ))
+        ? viewPosFromUV(uv + vec2(texel.x, 0.0), dR) - center
+        : center - viewPosFromUV(uv - vec2(texel.x, 0.0), dL);
+    vec3 up = (abs(dU - centerZ) < abs(dD - centerZ))
+        ? viewPosFromUV(uv + vec2(0.0, texel.y), dU) - center
+        : center - viewPosFromUV(uv - vec2(0.0, texel.y), dD);
     return normalize(cross(right, up));
 }
 
-vec2 projectToUV(vec3 viewPos) {
+// Project view-space position to screen pixel coords + linear depth
+// Returns (pixel.x, pixel.y, linearZ)
+vec3 projectToScreen(vec3 viewPos) {
     vec4 clip = u_proj * vec4(viewPos, 1.0);
     vec3 ndc = clip.xyz / clip.w;
-    return ndc.xy * 0.5 + 0.5;
+    return vec3((ndc.xy * 0.5 + 0.5) * u_screen_size, -viewPos.z);
+}
+
+// ============================================================
+// Screen-space DDA ray march (Morgan McGuire 2014)
+// Traces a ray pixel-by-pixel in screen space for artifact-free SSR
+// ============================================================
+vec4 ssrTrace(vec3 vsOrigin, vec3 vsDir) {
+    // Project ray start and a point along the ray to screen space
+    float ray_length = 20.0;
+    vec3 vsEnd = vsOrigin + vsDir * ray_length;
+
+    // Clip ray end to near plane to avoid projection issues
+    if (vsEnd.z > -u_near) {
+        float t = (-u_near - vsOrigin.z) / vsDir.z;
+        vsEnd = vsOrigin + vsDir * max(t, 0.0);
+    }
+
+    vec3 screen0 = projectToScreen(vsOrigin); // (px, py, linearZ)
+    vec3 screen1 = projectToScreen(vsEnd);
+
+    // Screen-space delta
+    vec2 delta = screen1.xy - screen0.xy;
+    float len = max(abs(delta.x), abs(delta.y));
+
+    // Nothing to trace
+    if (len < 1.0) return vec4(0.0);
+
+    // Clamp max steps for performance
+    int max_steps = min(int(len), 256);
+    vec2 step_dir = delta / len; // normalized, 1 pixel per step along major axis
+
+    // Depth interpolation: we interpolate 1/z for perspective correctness
+    float invZ0 = 1.0 / screen0.z;
+    float invZ1 = 1.0 / screen1.z;
+
+    // Jitter start position to reduce banding
+    float jitter = fract(dot(vec2(gl_GlobalInvocationID.xy), vec2(0.75487766, 0.56984029)));
+    vec2 pixel = screen0.xy + step_dir * jitter;
+    float t = jitter / len;
+
+    float prev_ray_z = screen0.z;
+
+    for (int i = 0; i < max_steps; i++) {
+        pixel += step_dir;
+        t += 1.0 / len;
+        if (t > 1.0) break;
+
+        vec2 uv = pixel / u_screen_size;
+        if (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995) break;
+
+        // Perspective-correct depth interpolation along ray
+        float ray_z = 1.0 / mix(invZ0, invZ1, t);
+        float scene_z = linearizeDepth(texture(u_depth_tex, uv).r);
+
+        // Hit: ray went behind geometry
+        float diff = ray_z - scene_z;
+        float thickness = max(ray_z * 0.05, 0.1); // adaptive thickness: 5% of depth or 0.1m
+
+        if (diff > 0.0 && diff < thickness && prev_ray_z <= scene_z + 0.01) {
+            // Binary refinement: step back half, repeat
+            vec2 refine_pixel = pixel - step_dir;
+            float refine_t = t - 1.0 / len;
+            float half_step = 0.5;
+            for (int j = 0; j < 8; j++) {
+                refine_pixel += step_dir * half_step;
+                refine_t += half_step / len;
+                float rz = 1.0 / mix(invZ0, invZ1, refine_t);
+                vec2 ruv = refine_pixel / u_screen_size;
+                float sz = linearizeDepth(texture(u_depth_tex, ruv).r);
+                if (rz > sz)  { refine_pixel -= step_dir * half_step; refine_t -= half_step / len; }
+                half_step *= 0.5;
+            }
+
+            vec2 hit_uv = refine_pixel / u_screen_size;
+            vec3 hit_color = texture(u_scene_tex, hit_uv).rgb;
+
+            // Confidence fading
+            float edge = smoothstep(0.0, 0.1, hit_uv.x) * smoothstep(1.0, 0.9, hit_uv.x)
+                       * smoothstep(0.0, 0.1, hit_uv.y) * smoothstep(1.0, 0.9, hit_uv.y);
+            float dist_fade = 1.0 - t; // linear fade with ray progress
+            float thick_fade = 1.0 - smoothstep(0.0, thickness, diff);
+
+            return vec4(hit_color, edge * dist_fade * thick_fade);
+        }
+
+        prev_ray_z = ray_z;
+    }
+
+    return vec4(0.0);
 }
 
 void main() {
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 screen_size = ivec2(u_screen_size);
-
-    if (gid.x >= screen_size.x || gid.y >= screen_size.y) return;
+    if (gid.x >= int(u_screen_size.x) || gid.y >= int(u_screen_size.y)) return;
 
     vec2 uv = (vec2(gid) + 0.5) / u_screen_size;
-
     float depth = texture(u_depth_tex, uv).r;
     float linearZ = linearizeDepth(depth);
 
@@ -75,109 +163,61 @@ void main() {
         return;
     }
 
-    vec3 viewNormal = reconstructViewNormal(uv, linearZ);
     vec3 viewPos = viewPosFromUV(uv, linearZ);
-
-    // SSR only inside puddle zones (water surfaces)
     vec3 worldPos = (u_view_inv * vec4(viewPos, 1.0)).xyz;
-    bool in_puddle = false;
-    for (int p = 0; p < u_puddle_count && p < 3; p++) {
-        vec2 delta = worldPos.xz - u_puddle_pos[p].xz;
-        if (dot(delta, delta) < u_puddle_radius[p] * u_puddle_radius[p]) {
-            in_puddle = true;
-            break;
-        }
-    }
-    if (!in_puddle) {
-        imageStore(u_ssr_out, gid, vec4(0.0));
-        return;
-    }
     vec3 viewDir = normalize(viewPos);
 
-    // Convert normal to WORLD space for proper "upward-facing" check
-    vec3 worldNormal = normalize((u_view_inv * vec4(viewNormal, 0.0)).xyz);
+    // Determine reflective surface and get normal
+    vec3 reflNormal_view = vec3(0.0);
+    float reflectivity = 0.0;
 
-    // Depth variance check: reject noisy normals at depth discontinuities
-    // (curved surfaces like the bunny produce unreliable depth-reconstructed normals)
-    vec2 texel = 1.0 / u_screen_size;
-    float dR = linearizeDepth(texture(u_depth_tex, uv + vec2(texel.x, 0.0)).r);
-    float dL = linearizeDepth(texture(u_depth_tex, uv - vec2(texel.x, 0.0)).r);
-    float dU = linearizeDepth(texture(u_depth_tex, uv + vec2(0.0, texel.y)).r);
-    float dD = linearizeDepth(texture(u_depth_tex, uv - vec2(0.0, texel.y)).r);
-    float depth_variance = abs(dR - dL) + abs(dU - dD);
-    float depth_threshold = linearZ * 0.08; // 8% of current depth
-    float normal_confidence = 1.0 - smoothstep(0.0, depth_threshold, depth_variance);
+    // --- Mirror: known normal, no depth-reconstruction artifacts ---
+    if (u_has_mirror > 0) {
+        vec3 toPixel = worldPos - u_mirror_pos;
+        float distAlongNormal = abs(dot(toPixel, u_mirror_normal));
+        vec3 up_ref = abs(u_mirror_normal.y) > 0.9 ? vec3(1, 0, 0) : vec3(0, 1, 0);
+        vec3 tangent = normalize(cross(up_ref, u_mirror_normal));
+        vec3 bitangent = cross(u_mirror_normal, tangent);
+        float uc = dot(toPixel, tangent);
+        float vc = dot(toPixel, bitangent);
 
-    // Reflectivity: horizontal surfaces (puddles, flat terrain)
-    float up_facing = max(worldNormal.y, 0.0);
-    float horizontal = smoothstep(0.88, 0.98, up_facing);
-    float reflectivity = horizontal * normal_confidence * 0.7;
+        if (distAlongNormal < 0.15 &&
+            abs(uc) < u_mirror_half_size.x &&
+            abs(vc) < u_mirror_half_size.y) {
+            reflNormal_view = normalize((u_view * vec4(u_mirror_normal, 0.0)).xyz);
+            float edgeU = 1.0 - smoothstep(u_mirror_half_size.x * 0.9, u_mirror_half_size.x, abs(uc));
+            float edgeV = 1.0 - smoothstep(u_mirror_half_size.y * 0.9, u_mirror_half_size.y, abs(vc));
+            reflectivity = edgeU * edgeV * 0.95;
+        }
+    }
 
-    if (reflectivity < 0.05) {
+    // --- Puddles ---
+    if (reflectivity < 0.01) {
+        for (int p = 0; p < u_puddle_count && p < 3; p++) {
+            vec2 d = worldPos.xz - u_puddle_pos[p].xz;
+            if (dot(d, d) < u_puddle_radius[p] * u_puddle_radius[p]) {
+                vec3 vn = reconstructViewNormal(uv, linearZ);
+                vec3 wn = normalize((u_view_inv * vec4(vn, 0.0)).xyz);
+                reflNormal_view = vn;
+                reflectivity = smoothstep(0.88, 0.98, max(wn.y, 0.0)) * 0.7;
+                break;
+            }
+        }
+    }
+
+    if (reflectivity < 0.01) {
         imageStore(u_ssr_out, gid, vec4(0.0));
         return;
     }
 
-    // Reflection direction in view space
-    vec3 reflDir = reflect(viewDir, viewNormal);
+    // Compute reflection direction and trace
+    vec3 reflDir = reflect(viewDir, reflNormal_view);
 
-    // Ray march with jitter to reduce banding
-    float jitter = fract(dot(vec2(gid), vec2(0.75487766, 0.56984029)));
+    // Bias origin along reflection normal to avoid self-hit
+    vec3 origin = viewPos + reflNormal_view * 0.05;
 
-    vec3 ray_pos = viewPos;
-    float step_size = 0.12;   // initial step
-    float max_dist = 15.0;
-    float traveled = step_size * jitter;  // jittered start
-    ray_pos += reflDir * traveled;
+    vec4 result = ssrTrace(origin, reflDir);
+    result.a *= reflectivity;
 
-    vec3 hit_color = vec3(0.0);
-    float confidence = 0.0;
-
-    for (int i = 0; i < 48; i++) {
-        ray_pos += reflDir * step_size;
-        traveled += step_size;
-        if (traveled > max_dist) break;
-
-        vec2 sample_uv = projectToUV(ray_pos);
-        if (sample_uv.x < 0.01 || sample_uv.x > 0.99 || sample_uv.y < 0.01 || sample_uv.y > 0.99)
-            break;
-
-        float sample_depth = linearizeDepth(texture(u_depth_tex, sample_uv).r);
-        float ray_depth = -ray_pos.z;
-        float depth_diff = ray_depth - sample_depth;
-
-        // Hit: ray went behind geometry, but not too far behind (thickness check)
-        if (depth_diff > 0.0 && depth_diff < step_size * 4.0) {
-            // Binary refinement (6 steps for sub-pixel precision)
-            vec3 refine_pos = ray_pos - reflDir * step_size;
-            float refine_step = step_size * 0.5;
-            for (int j = 0; j < 6; j++) {
-                refine_pos += reflDir * refine_step;
-                vec2 ref_uv = projectToUV(refine_pos);
-                float ref_depth = linearizeDepth(texture(u_depth_tex, ref_uv).r);
-                if (-refine_pos.z > ref_depth)
-                    refine_pos -= reflDir * refine_step;
-                refine_step *= 0.5;
-            }
-
-            vec2 final_uv = projectToUV(refine_pos);
-            hit_color = texture(u_scene_tex, final_uv).rgb;
-
-            // Confidence: fade at screen edges, distance, depth thickness
-            float edge_fade = 1.0;
-            edge_fade *= smoothstep(0.0, 0.1, final_uv.x) * smoothstep(1.0, 0.9, final_uv.x);
-            edge_fade *= smoothstep(0.0, 0.1, final_uv.y) * smoothstep(1.0, 0.9, final_uv.y);
-            float dist_fade = 1.0 - smoothstep(max_dist * 0.3, max_dist, traveled);
-            // Thin-geometry rejection: if depth difference is large, it's behind something thick
-            float thickness_fade = 1.0 - smoothstep(step_size * 1.5, step_size * 4.0, depth_diff);
-
-            confidence = edge_fade * dist_fade * thickness_fade * reflectivity;
-            break;
-        }
-
-        // Adaptive step: grow slowly to cover more distance
-        step_size *= 1.04;
-    }
-
-    imageStore(u_ssr_out, gid, vec4(hit_color, confidence));
+    imageStore(u_ssr_out, gid, result);
 }

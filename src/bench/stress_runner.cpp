@@ -12,8 +12,8 @@ static constexpr double STRESS_TARGET_FRAME_MS  = 40.0;
 static constexpr double STRESS_REPORT_INTERVAL  = 10.0;
 static constexpr int    STRESS_MAX_PASSES        = 10000;
 static constexpr double STRESS_CALIBRATION_RATIO = 0.8;
-static constexpr double STRESS_THROTTLE_WARN     = 5.0;
-static constexpr double STRESS_THROTTLE_SEVERE   = 2.0;
+static constexpr double STRESS_THROTTLE_SEVERE   = 5.0;
+static constexpr double STRESS_THROTTLE_WARN     = 2.0;
 
 void StressRunner::run(Renderer* r, RenderContext* ctx,
                        int shader_iterations,
@@ -210,10 +210,10 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
                 } else {
                     double degradation = (baseline_fps > 0)
                         ? (baseline_fps - fps) / baseline_fps * 100.0 : 0;
-                    if (degradation > STRESS_THROTTLE_WARN) {
+                    if (degradation > STRESS_THROTTLE_SEVERE) {
                         LOG_WRN("[%3.0fs] %.1f FPS (avg %.1f ms) — THROTTLING: %.1f%% degradation",
                                 stress_timer.elapsed_sec(), fps, avg_ms, degradation);
-                    } else if (degradation > STRESS_THROTTLE_SEVERE) {
+                    } else if (degradation > STRESS_THROTTLE_WARN) {
                         LOG_INF("[%3.0fs] %.1f FPS (avg %.1f ms) — minor degradation: %.1f%%",
                                 stress_timer.elapsed_sec(), fps, avg_ms, degradation);
                     } else {

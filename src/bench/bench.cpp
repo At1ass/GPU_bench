@@ -91,6 +91,14 @@ static constexpr int TIER_HIGH_MAX_VRAM   = 6144;
 static constexpr int TIER_LEGACY_MAX_TEXSIZE = 2048;
 static constexpr int TIER_LOW_MAX_TEXSIZE    = 4096;
 
+// Reference scores calibrated on RTX 4070 Ti, Medium preset, 800x600.
+// Used for cross-category normalization. Score of 100.0 = reference GPU performance.
+// To recalibrate: run full benchmark, take geomean per category from JSON output.
+static constexpr double REF_FILL     = 242895.9;   // MPix/s (geomean of Fill tests)
+static constexpr double REF_GEOMETRY = 8717.84;     // Mtri/s (geomean of Geometry tests)
+static constexpr double REF_COMPUTE  = 2257.25;     // GOps/s (geomean of Compute tests)
+static constexpr double REF_OVERHEAD = 30993.39;     // ops/s  (geomean of Overhead tests)
+
 // Bottleneck detection thresholds
 static constexpr double BOTTLENECK_SIGNIFICANT_RATIO = 0.5;
 static constexpr double BOTTLENECK_WEAKNESS_RATIO    = 0.8;
@@ -210,9 +218,17 @@ CompositeScore computeCompositeScores(const std::vector<BenchResult>& results) {
     cs.compute  = geomean(cat_vals[ci_comp], cat_count[ci_comp]);
     cs.overhead = geomean(cat_vals[ci_over], cat_count[ci_over]);
 
-    // Overall: geometric mean of category scores (excluding Mixed)
-    double cats[4] = { cs.fill, cs.geometry, cs.compute, cs.overhead };
-    cs.overall = geomean(cats, 4);
+    // Normalize each category to % of reference GPU
+    cs.fill_norm     = (REF_FILL > 0 && cs.fill > 0)         ? (cs.fill / REF_FILL) * 100.0         : 0;
+    cs.geometry_norm = (REF_GEOMETRY > 0 && cs.geometry > 0)  ? (cs.geometry / REF_GEOMETRY) * 100.0 : 0;
+    cs.compute_norm  = (REF_COMPUTE > 0 && cs.compute > 0)   ? (cs.compute / REF_COMPUTE) * 100.0   : 0;
+    cs.overhead_norm = (REF_OVERHEAD > 0 && cs.overhead > 0)  ? (cs.overhead / REF_OVERHEAD) * 100.0 : 0;
+
+    // Overall: geometric mean of normalized category scores (unitless, comparable across GPU classes)
+    double norm_cats[4] = { cs.fill_norm, cs.geometry_norm, cs.compute_norm, cs.overhead_norm };
+    cs.categories_present = 0;
+    for (int i = 0; i < 4; i++) if (norm_cats[i] > 0) cs.categories_present++;
+    cs.overall = geomean(norm_cats, 4);
 
     return cs;
 }
@@ -279,12 +295,12 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     BottleneckInfo info;
     auto idx = buildResultIndex(results);
 
-    // Find weakest category relative to others
+    // Find weakest category relative to others (using normalized scores for apples-to-apples comparison)
     struct { const char* name; double score; } cats[] = {
-        {"Fill", scores.fill},
-        {"Geometry", scores.geometry},
-        {"Compute", scores.compute},
-        {"Overhead", scores.overhead}
+        {"Fill", scores.fill_norm},
+        {"Geometry", scores.geometry_norm},
+        {"Compute", scores.compute_norm},
+        {"Overhead", scores.overhead_norm}
     };
 
     // Count non-zero categories

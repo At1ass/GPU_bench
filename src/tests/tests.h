@@ -178,6 +178,7 @@ public:
     void render(Renderer* r) override;
     void cleanup(Renderer* r) override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::None; }
 private:
     VertexParams params_;
     int actual_vertex_count_;
@@ -256,6 +257,8 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::ComputeBuffer; }
+    BufferHandle getOutputBuffer() const override { return ssbo_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -392,6 +395,7 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::None; }
 protected:
     void setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) override;
     void renderGL3(Renderer& r, GL3Features& gl3) override;
@@ -412,6 +416,8 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::ComputeBuffer; }
+    BufferHandle getOutputBuffer() const override { return ssbo_out_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -452,6 +458,8 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::ComputeBuffer; }
+    BufferHandle getOutputBuffer() const override { return ssbo_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -471,6 +479,8 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::ComputeBuffer; }
+    BufferHandle getOutputBuffer() const override { return ssbo_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -530,6 +540,8 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::ComputeBuffer; }
+    BufferHandle getOutputBuffer() const override { return ssbo_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -549,6 +561,8 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::ComputeBuffer; }
+    BufferHandle getOutputBuffer() const override { return ssbo_out_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -569,6 +583,7 @@ public:
     const char* scoreUnit() const override;
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
+    SanityType sanityType() const override { return SanityType::None; }
 protected:
     void setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) override;
     void renderGL4(Renderer& r, GL4Features& gl4) override;
