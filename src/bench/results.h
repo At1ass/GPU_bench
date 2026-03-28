@@ -1,11 +1,10 @@
 #pragma once
+#include "core/app_config.h"
 #include "bench/bench.h"
 #include "renderer/renderer.h"
 #include "platform/hwinfo.h"
 #include <vector>
 #include <cstdio>
-
-enum class OutputFormat : int { Text = 0, CSV, JSON };
 
 struct ExportConfig {
     int width = 0;

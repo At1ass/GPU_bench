@@ -1,4 +1,5 @@
 #pragma once
+#include "core/app_config.h"
 #include "bench/bench.h"
 #include "bench/poll_callback.h"
 #include "tests/test_registry.h"
@@ -8,12 +9,6 @@
 
 class RenderContext;
 struct BenchPreset;
-
-// Timing mode for benchmark measurements
-enum class TimingMode {
-    Sync = 0,  // CPU timer + glFinish
-    GPU        // GPU timer queries
-};
 
 // Callback interface for frame presentation during benchmarking.
 // Implemented by the application to handle events, UI, and buffer swaps.

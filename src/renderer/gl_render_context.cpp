@@ -1,5 +1,5 @@
 #include "renderer/gl_render_context.h"
-#include "app.h"
+#include "core/app_config.h"
 #include "renderer/gl_loader.h"
 #include "platform/logger.h"
 #include <imgui.h>

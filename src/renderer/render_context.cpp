@@ -1,5 +1,5 @@
 #include "renderer/render_context.h"
-#include "app.h"
+#include "core/app_config.h"
 #include "platform/logger.h"
 #include <cstdio>
 

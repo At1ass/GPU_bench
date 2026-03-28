@@ -1,4 +1,5 @@
 #pragma once
+#include "core/app_config.h"
 #include "demo/demo_runner.h"
 #include "platform/hwinfo.h"
 #include <cstdio>
@@ -18,7 +19,6 @@ void exportDemoJSON(FILE* out, const DemoResults& results,
 
 // Format-dispatching write: opens file (or stdout), calls exportDemoText/CSV/JSON, closes.
 // Returns false on file open error.
-enum class OutputFormat : int;
 bool writeDemoResults(OutputFormat fmt, const char* output_file,
                       const DemoResults& results, const HWInfo& hw,
                       const char* gpu_name, const char* gl_version,

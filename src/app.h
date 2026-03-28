@@ -1,4 +1,5 @@
 #pragma once
+#include "core/app_config.h"
 #include "renderer/renderer.h"
 #include "renderer/render_context.h"
 #include "bench/bench.h"
@@ -14,38 +15,6 @@
 #include <SDL.h>
 #include <memory>
 #include <string>
-
-// OutputFormat is defined in bench/results.h
-// TimingMode is defined in bench_runner.h
-
-#include "renderer/renderer_backend.h"
-
-struct AppConfig {
-    int width  = 800;
-    int height = 600;
-    int render_width  = 0;      // 0 = use window size (native)
-    int render_height = 0;      // 0 = use window size (native)
-    int preset_index  = static_cast<int>(PresetIndex::Medium);
-    RendererBackend backend = RendererBackend::Auto;
-    bool headless = false;
-    OutputFormat output_format = OutputFormat::Text;
-    TimingMode timing_mode = TimingMode::Sync;
-    std::string output_file;
-    std::string config_path;
-    std::string test_filter = "all";    // comma-separated test names or "all"
-    int stress_duration_sec = 0;        // 0 = disabled
-    bool demo_mode    = false;          // --demo
-    int demo_tier     = 0;              // 0 = auto, 1-4 = specific tier
-    int demo_duration = 15;             // seconds per tier
-    int gpu_index     = -1;              // -1 = default, >=0 = select GPU
-    bool debug        = false;           // --debug: enable debug logging
-
-    AppConfig() = default;
-    AppConfig(const AppConfig&) = default;
-    AppConfig& operator=(const AppConfig&) = default;
-    AppConfig(AppConfig&&) noexcept = default;
-    AppConfig& operator=(AppConfig&&) noexcept = default;
-};
 
 // NUM_TESTS is defined in test_registry.h
 

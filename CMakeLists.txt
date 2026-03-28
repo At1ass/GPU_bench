@@ -82,6 +82,7 @@ add_library(imgui_lib STATIC
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 target_include_directories(imgui_lib PUBLIC
     ${IMGUI_DIR}
@@ -221,14 +222,11 @@ set(SOURCES
     src/platform/stb_image_impl.cpp
     src/demo/demo_resources.cpp
 
-    # ImGui backend
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 # Suppress warnings for third-party source files compiled in our target
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set_source_files_properties(
-        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
         src/platform/stb_image_impl.cpp
         PROPERTIES COMPILE_FLAGS "-w"
     )
