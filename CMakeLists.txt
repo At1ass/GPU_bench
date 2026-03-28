@@ -153,11 +153,9 @@ if(PORTABLE_BUILD AND NOT WIN32)
     target_compile_definitions(gpubench_core PUBLIC CB_STATIC_GL)
 endif()
 
-# --- Main executable (links core library) ---
-set(SOURCES
-    # App
-    src/main.cpp
-    src/app.cpp
+# --- Benchmark executable ---
+set(BENCH_SOURCES
+    src/main_bench.cpp
 
     # Bench engine
     src/bench/bench.cpp
@@ -167,7 +165,7 @@ set(SOURCES
     src/bench/results.cpp
     src/bench/preset_io.cpp
 
-    # Tests
+    # Tests (30)
     src/tests/test_registry.cpp
     src/tests/test_fillrate.cpp
     src/tests/test_geometry.cpp
@@ -200,49 +198,11 @@ set(SOURCES
     src/tests/test_persistent_map.cpp
     src/tests/test_bindless_tex.cpp
 
-    # Demo
-    src/demo/demo_camera.cpp
-    src/demo/shader_loader.cpp
-    src/demo/demo_scene.cpp
-    src/demo/materials.cpp
-    src/demo/demo_tier_config.cpp
-    src/demo/tier_config_validate.cpp
-    src/demo/demo_runner.cpp
-    src/demo/demo_ui.cpp
-    src/demo/demo_export.cpp
-    src/demo/demo_resources.cpp
-    src/demo/pass_factory.cpp
-    src/demo/pipeline_builder.cpp
-    src/demo/shader_cache.cpp
-    src/demo/passes/sky_pass.cpp
-    src/demo/passes/shadow_pass.cpp
-    src/demo/passes/particle_pass.cpp
-    src/demo/passes/torch_pass.cpp
-    src/demo/passes/opaque_pass.cpp
-    src/demo/passes/grass_instanced_pass.cpp
-    src/demo/passes/fur_pass.cpp
-    src/demo/passes/ssao_pass.cpp
-    src/demo/passes/bloom_pass.cpp
-    src/demo/passes/composite_pass.cpp
-    src/demo/passes/scene_to_fbo_pass.cpp
-    src/demo/passes/hdr_composite_pass.cpp
-    src/demo/passes/compute_particles_pass.cpp
-    src/demo/passes/compute_particles_draw_pass.cpp
-    src/demo/passes/tessellated_model_pass.cpp
-    src/demo/passes/gtao_pass.cpp
-    src/demo/passes/bloom_compute_pass.cpp
-    src/demo/passes/auto_exposure_pass.cpp
-    src/demo/passes/volumetric_fog_pass.cpp
-    src/demo/passes/water_pass.cpp
-    src/demo/passes/ssr_pass.cpp
-    src/demo/passes/ssr_copy_pass.cpp
-    src/demo/passes/dof_pass.cpp
-
     # UI
     src/ui/bench_ui.cpp
 )
 
-add_executable(gpu_benchmark ${SOURCES})
+add_executable(gpu_benchmark ${BENCH_SOURCES})
 target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
 # --- Demo executable ---
