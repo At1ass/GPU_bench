@@ -243,37 +243,79 @@ set(SOURCES
 )
 
 add_executable(gpu_benchmark ${SOURCES})
-# SDL2, OpenGL, ImGui come transitively from gpubench_core (PUBLIC)
 target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
-# SDL2main needed on some platforms for WinMain entry point
-if(TARGET SDL2::SDL2main)
-    target_link_libraries(gpu_benchmark PRIVATE SDL2::SDL2main)
-endif()
+# --- Demo executable ---
+set(DEMO_SOURCES
+    src/main_demo.cpp
+    src/demo/demo_camera.cpp
+    src/demo/shader_loader.cpp
+    src/demo/demo_scene.cpp
+    src/demo/materials.cpp
+    src/demo/demo_tier_config.cpp
+    src/demo/tier_config_validate.cpp
+    src/demo/demo_runner.cpp
+    src/demo/demo_ui.cpp
+    src/demo/demo_export.cpp
+    src/demo/demo_resources.cpp
+    src/demo/pass_factory.cpp
+    src/demo/pipeline_builder.cpp
+    src/demo/shader_cache.cpp
+    src/demo/passes/sky_pass.cpp
+    src/demo/passes/shadow_pass.cpp
+    src/demo/passes/particle_pass.cpp
+    src/demo/passes/torch_pass.cpp
+    src/demo/passes/opaque_pass.cpp
+    src/demo/passes/grass_instanced_pass.cpp
+    src/demo/passes/fur_pass.cpp
+    src/demo/passes/ssao_pass.cpp
+    src/demo/passes/bloom_pass.cpp
+    src/demo/passes/composite_pass.cpp
+    src/demo/passes/scene_to_fbo_pass.cpp
+    src/demo/passes/hdr_composite_pass.cpp
+    src/demo/passes/compute_particles_pass.cpp
+    src/demo/passes/compute_particles_draw_pass.cpp
+    src/demo/passes/tessellated_model_pass.cpp
+    src/demo/passes/gtao_pass.cpp
+    src/demo/passes/bloom_compute_pass.cpp
+    src/demo/passes/auto_exposure_pass.cpp
+    src/demo/passes/volumetric_fog_pass.cpp
+    src/demo/passes/water_pass.cpp
+    src/demo/passes/ssr_pass.cpp
+    src/demo/passes/ssr_copy_pass.cpp
+    src/demo/passes/dof_pass.cpp
+)
 
-# --- Platform link flags ---
-if(APPLE)
-    target_link_libraries(gpu_benchmark PRIVATE pthread)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-    target_link_libraries(gpu_benchmark PRIVATE pthread)
-elseif(UNIX)
-    target_link_libraries(gpu_benchmark PRIVATE dl pthread)
-    if(PORTABLE_BUILD AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_link_libraries(gpu_benchmark PRIVATE -static-libgcc -static-libstdc++)
-    endif()
-endif()
+add_executable(gpu_demo ${DEMO_SOURCES})
+target_link_libraries(gpu_demo PRIVATE gpubench_core)
 
-if(WIN32)
-    target_link_libraries(gpu_benchmark PRIVATE advapi32)
-    if(MINGW)
-        target_link_libraries(gpu_benchmark PRIVATE -mconsole -static-libgcc -static-libstdc++)
-    elseif(MSVC)
-        set_target_properties(gpu_benchmark PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+# --- Platform link flags (both executables) ---
+foreach(target gpu_benchmark gpu_demo)
+    if(TARGET SDL2::SDL2main)
+        target_link_libraries(${target} PRIVATE SDL2::SDL2main)
     endif()
-endif()
+    if(APPLE)
+        target_link_libraries(${target} PRIVATE pthread)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+        target_link_libraries(${target} PRIVATE pthread)
+    elseif(UNIX)
+        target_link_libraries(${target} PRIVATE dl pthread)
+        if(PORTABLE_BUILD AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+            target_link_libraries(${target} PRIVATE -static-libgcc -static-libstdc++)
+        endif()
+    endif()
+    if(WIN32)
+        target_link_libraries(${target} PRIVATE advapi32)
+        if(MINGW)
+            target_link_libraries(${target} PRIVATE -mconsole -static-libgcc -static-libstdc++)
+        elseif(MSVC)
+            set_target_properties(${target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+        endif()
+    endif()
+endforeach()
 
 # --- Install ---
-install(TARGETS gpu_benchmark RUNTIME DESTINATION bin)
+install(TARGETS gpu_benchmark gpu_demo RUNTIME DESTINATION bin)
 install(DIRECTORY data/ DESTINATION share/gpu_benchmark/data
         FILES_MATCHING
         PATTERN "*.glsl"
