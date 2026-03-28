@@ -1,7 +1,7 @@
 #pragma once
 #include "core/app_config.h"
 #include "bench/bench.h"
-#include "bench/poll_callback.h"
+#include "core/poll_callback.h"
 #include "tests/test_registry.h"
 #include "platform/timer.h"
 #include <vector>

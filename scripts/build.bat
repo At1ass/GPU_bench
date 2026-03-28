@@ -49,7 +49,9 @@ cmake --build . -- -j%NUMBER_OF_PROCESSORS%
 if errorlevel 1 exit /b 1
 
 echo.
-echo Done: %BUILD_DIR%\gpu_benchmark.exe
+echo Done:
+echo   %BUILD_DIR%\gpu_benchmark.exe  (benchmark)
+echo   %BUILD_DIR%\gpu_demo.exe       (visual demo)
 exit /b 0
 
 :build_msvc
@@ -80,8 +82,10 @@ cmake --build .
 if errorlevel 1 exit /b 1
 
 echo.
-echo Done: %BUILD_DIR%\gpu_benchmark.exe
-echo Note: copy SDL2.dll next to the exe before running.
+echo Done:
+echo   %BUILD_DIR%\gpu_benchmark.exe  (benchmark)
+echo   %BUILD_DIR%\gpu_demo.exe       (visual demo)
+echo Note: copy SDL2.dll next to the exes before running.
 exit /b 0
 
 :clean

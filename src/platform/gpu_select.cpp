@@ -418,8 +418,21 @@ std::vector<GPUDevice> enumerateGPUs() {
     // Load DXGI dynamically — not available on Windows XP
     HMODULE dxgi_dll = LoadLibraryA("dxgi.dll");
     if (!dxgi_dll) {
-        // Windows XP or very old system — no DXGI
-        fprintf(stderr, "Note: DXGI not available (Windows XP?), GPU enumeration skipped.\n");
+        // Windows XP fallback: EnumDisplayDevices (user32.dll, Win2000+)
+        DISPLAY_DEVICEA dd;
+        dd.cb = sizeof(dd);
+        for (DWORD i = 0; EnumDisplayDevicesA(NULL, i, &dd, 0); i++) {
+            if (dd.DeviceString[0] == '\0') continue;
+            if (dd.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) continue;
+
+            GPUDevice gpu;
+            gpu.index = static_cast<int>(i);
+            gpu.name = dd.DeviceString;
+            gpu.is_integrated = false;
+            gpus.push_back(gpu);
+
+            dd.cb = sizeof(dd);
+        }
         return gpus;
     }
 

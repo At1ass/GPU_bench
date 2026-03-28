@@ -9,7 +9,7 @@
 #include "bench/preset_io.h"
 #include "bench/results.h"
 #include "tests/test_registry.h"
-#include "ui/bench_ui.h"
+#include "bench/bench_ui.h"
 #include "platform/hwinfo.h"
 #include "platform/gpu_select.h"
 #include "platform/logger.h"

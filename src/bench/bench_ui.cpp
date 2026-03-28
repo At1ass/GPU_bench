@@ -1,4 +1,4 @@
-#include "ui/bench_ui.h"
+#include "bench/bench_ui.h"
 #include "renderer/render_context.h"
 #include "renderer/renderer.h"
 #include <imgui.h>

@@ -1,5 +1,5 @@
 #include "bench/stress_runner.h"
-#include "bench/poll_callback.h"
+#include "core/poll_callback.h"
 #include "renderer/renderer.h"
 #include "renderer/render_context.h"
 #include "geometry/mesh_gen.h"

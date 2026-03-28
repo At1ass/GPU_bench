@@ -155,7 +155,7 @@ endif()
 
 # --- Benchmark executable ---
 set(BENCH_SOURCES
-    src/main_bench.cpp
+    src/bench/main.cpp
 
     # Bench engine
     src/bench/bench.cpp
@@ -199,7 +199,7 @@ set(BENCH_SOURCES
     src/tests/test_bindless_tex.cpp
 
     # UI
-    src/ui/bench_ui.cpp
+    src/bench/bench_ui.cpp
 )
 
 add_executable(gpu_benchmark ${BENCH_SOURCES})
@@ -207,7 +207,7 @@ target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
 # --- Demo executable ---
 set(DEMO_SOURCES
-    src/main_demo.cpp
+    src/demo/main.cpp
     src/demo/demo_camera.cpp
     src/demo/shader_loader.cpp
     src/demo/demo_scene.cpp

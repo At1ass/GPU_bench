@@ -5,7 +5,7 @@
 #include "demo/demo_runner.h"
 #include "demo/demo_ui.h"
 #include "demo/demo_export.h"
-#include "bench/poll_callback.h"
+#include "core/poll_callback.h"
 #include "platform/hwinfo.h"
 #include "platform/gpu_select.h"
 #include "platform/logger.h"

@@ -43,7 +43,9 @@ build_native() {
     cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     $MAKE_CMD -j"$JOBS"
     echo ""
-    echo "Done: $build_dir/gpu_benchmark"
+    echo "Done:"
+    echo "  $build_dir/gpu_benchmark  (benchmark)"
+    echo "  $build_dir/gpu_demo       (visual demo)"
 }
 
 build_mingw64() {
@@ -72,7 +74,9 @@ build_mingw64() {
     done
 
     echo ""
-    echo "Done: $build_dir/gpu_benchmark.exe"
+    echo "Done:"
+    echo "  $build_dir/gpu_benchmark.exe  (benchmark)"
+    echo "  $build_dir/gpu_demo.exe       (visual demo)"
 }
 
 build_mingw32() {
@@ -101,7 +105,9 @@ build_mingw32() {
     done
 
     echo ""
-    echo "Done: $build_dir/gpu_benchmark.exe"
+    echo "Done:"
+    echo "  $build_dir/gpu_benchmark.exe  (benchmark)"
+    echo "  $build_dir/gpu_demo.exe       (visual demo)"
 }
 
 build_portable() {
@@ -120,7 +126,9 @@ build_portable() {
     echo "Checking dynamic dependencies:"
     ldd "$build_dir/gpu_benchmark" 2>/dev/null | grep -v 'linux-vdso\|ld-linux' || true
     echo ""
-    echo "Done: $build_dir/gpu_benchmark"
+    echo "Done:"
+    echo "  $build_dir/gpu_benchmark  (benchmark)"
+    echo "  $build_dir/gpu_demo       (visual demo)"
 }
 
 clean() {
@@ -137,9 +145,9 @@ build_all() {
     build_mingw32
     echo ""
     echo "=== All targets built ==="
-    echo "  Native:  $PROJECT_DIR/build_native/gpu_benchmark"
-    echo "  Win64:   $PROJECT_DIR/build_mingw64/gpu_benchmark.exe"
-    echo "  Win32:   $PROJECT_DIR/build_mingw32/gpu_benchmark.exe"
+    echo "  Native:  $PROJECT_DIR/build_native/gpu_benchmark + gpu_demo"
+    echo "  Win64:   $PROJECT_DIR/build_mingw64/gpu_benchmark.exe + gpu_demo.exe"
+    echo "  Win32:   $PROJECT_DIR/build_mingw32/gpu_benchmark.exe + gpu_demo.exe"
 }
 
 case "${1:-}" in
