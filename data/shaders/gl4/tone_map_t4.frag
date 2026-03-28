@@ -18,6 +18,8 @@ uniform sampler2D u_ssr_tex;   // SSR reflection (rgb = color, a = confidence)
 uniform float u_has_ssr;
 uniform sampler2D u_dof_tex;   // DoF result
 uniform float u_has_dof;
+uniform vec2 u_sun_screen_pos;
+uniform float u_sun_visible;
 
 // ACES filmic tone mapping (Narkowicz 2016 fit, pre-exposure corrected)
 vec3 acesToneMap(vec3 x) {
@@ -141,11 +143,45 @@ void main() {
     vec3 grade = mix(cool_tint, warm_tint, smoothstep(0.2, 0.8, luminance));
     ldr *= grade;
 
-    // Film grain
+    // Lens flare: anamorphic streak + ghost elements + starburst
+    if (u_sun_visible > 0.5) {
+        vec2 delta = v_uv - u_sun_screen_pos;
+        float sun_dist = length(delta);
+
+        // Anamorphic streak (horizontal light bar)
+        float streak = exp(-abs(delta.y) * 80.0) * exp(-abs(delta.x) * 3.0);
+        streak *= smoothstep(0.5, 0.0, sun_dist);
+        ldr += vec3(1.0, 0.9, 0.7) * streak * 0.15;
+
+        // Ghost elements: reflections through screen center
+        for (int i = 0; i < 4; i++) {
+            float scale = -0.3 - float(i) * 0.15;
+            vec2 ghost_pos = u_sun_screen_pos + delta * scale;
+            float ghost_dist = length(v_uv - ghost_pos);
+            float ghost_size = 0.03 + float(i) * 0.01;
+            float ghost = smoothstep(ghost_size, ghost_size * 0.3, ghost_dist);
+            vec3 ghost_color = vec3(0.5, 0.7, 1.0) * (1.0 - float(i) * 0.15);
+            ldr += ghost_color * ghost * 0.05;
+        }
+
+        // Starburst: aperture diffraction pattern
+        float angle = atan(delta.y, delta.x);
+        float starburst = pow(abs(sin(angle * 8.0)), 32.0);
+        ldr += vec3(1.0, 0.95, 0.8) * starburst * exp(-sun_dist * 8.0) * 0.08;
+    }
+
+    // Luminance-aware film grain (ISO-style: stronger in shadows, subtle chroma noise)
     if (u_grain_strength > 0.0) {
-        float grain = grainHash(gl_FragCoord.xy + fract(u_time * 7.23) * 100.0);
-        grain = grain * 2.0 - 1.0; // remap to [-1, 1]
-        ldr += grain * u_grain_strength;
+        float lum = dot(ldr, vec3(0.2126, 0.7152, 0.0722));
+        float grain_intensity = u_grain_strength * (1.0 + 2.0 * (1.0 - lum));
+        vec2 grain_uv = gl_FragCoord.xy + fract(u_time * 7.23) * 100.0;
+        float grain_luma = grainHash(grain_uv) * 2.0 - 1.0;
+        float grain_r = grainHash(grain_uv + vec2(1.7, 0.0)) * 2.0 - 1.0;
+        float grain_b = grainHash(grain_uv + vec2(0.0, 1.3)) * 2.0 - 1.0;
+        // 80% luminance grain + 20% chroma for photographic feel
+        ldr.r += grain_luma * grain_intensity + grain_r * grain_intensity * 0.2;
+        ldr.g += grain_luma * grain_intensity;
+        ldr.b += grain_luma * grain_intensity + grain_b * grain_intensity * 0.2;
     }
 
     // Final clamp to valid LDR range

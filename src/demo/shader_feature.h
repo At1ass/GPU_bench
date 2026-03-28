@@ -29,6 +29,9 @@ enum ShaderFeature : uint32_t {
     SF_VIGNETTE       = 1u << 14,  // Vignette + color grading (T1 forward)
     SF_INSTANCING     = 1u << 15,  // gl_InstanceID-based rendering (T2+ grass/fur)
     SF_PUDDLE_EXCLUDE = 1u << 16,  // Puddle exclusion zones in grass (T4)
+    SF_DOMAIN_WARP    = 1u << 17,  // Domain-warped clouds (T2+)
+    SF_PHYSICAL_SKY   = 1u << 18,  // Physical atmosphere Rayleigh+Mie (T3+)
+    SF_FILM_GRAIN     = 1u << 19,  // Luminance-aware film grain (T2+)
 };
 
 using ShaderFeatureSet = uint32_t;

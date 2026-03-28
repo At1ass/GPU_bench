@@ -90,37 +90,29 @@ void OpaquePass::execute(Renderer* r, FrameData& fd,
     const std::vector<SceneObject>& objects = *scene.opaque_objects;
     for (size_t i = 0; i < objects.size(); i++) {
         const SceneObject& obj = objects[i];
-        // Skip water -- rendered separately in renderWaterPass after scene copy
         if (obj.is_water) continue;
-        // Skip tessellated objects -- rendered by TessellatedModelPass with displacement
         if (obj.tessellated) continue;
         if (!sphereInFrustum(fd.frustum, obj.bounds_center, obj.bounds_radius))
             continue;
 
+        const MaterialDef& m = obj.mat;
         ub_.set(U::Model, obj.transform);
-        ub_.set(U::MatColor, obj.color);
-        ub_.set(U::MatSpec, obj.specular);
+        ub_.set(U::MatColor, m.color_a);
+        ub_.set(U::MatColorB, m.color_b);
+        ub_.set(U::MatSpec, m.specular);
         ub_.set(U::Alpha, 1.0f);
-        ub_.set(U::ProcTex, obj.material == MaterialType::Island ? 1.0f : 0.0f);
+        ub_.set(U::MaterialId, static_cast<int>(m.proc_type));
+        ub_.set(U::NoiseScale, m.noise_scale);
+        ub_.set(U::NoiseIntensity, m.noise_intensity);
+        ub_.set(U::WarpStrength, m.warp_strength);
+        ub_.set(U::DetailScale, m.detail_scale);
         ub_.set(U::VertexWind, obj.vertex_wind ? 1.0f : 0.0f);
-
-        // Per-object PBR overrides
-        if (cfg.enable_pbr && obj.metallic >= 0.0f) {
-            ub_.set(U::Metallic, obj.metallic);
-            ub_.set(U::Roughness, obj.roughness);
-        }
-
-        // Water flag
+        ub_.set(U::Metallic, m.metallic);
+        ub_.set(U::Roughness, m.roughness);
         ub_.set(U::IsWater, 0.0f);
 
-        if (obj.two_sided) r->setCullFace(false);
+        if (m.two_sided) r->setCullFace(false);
         r->drawMesh(obj.mesh);
-        if (obj.two_sided) r->setCullFace(true);
-
-        // Restore defaults after per-object override
-        if (cfg.enable_pbr && obj.metallic >= 0.0f) {
-            ub_.set(U::Metallic, default_metallic);
-            ub_.set(U::Roughness, default_roughness);
-        }
+        if (m.two_sided) r->setCullFace(true);
     }
 }

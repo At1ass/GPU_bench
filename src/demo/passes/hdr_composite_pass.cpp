@@ -87,6 +87,33 @@ void HDRCompositePass::execute(Renderer* r, FrameData& fd, const TierResourceVie
     }
     // Compensate for canonical ACES pre-exposure (0.6 vs previous 0.7)
     ub_tone_map_.set(U::Exposure, exposure * 1.167f);
+
+    // Lens flare: compute sun screen position
+    // sun_dir → view space → clip space → screen UV
+    float sun_vis = 0.0f;
+    float sun_sx = 0.5f, sun_sy = 0.5f;
+    if (fd.sun_dir.y > -0.05f) { // sun above horizon
+        // Project sun direction as a distant point
+        float sw = fd.view.m[0] * fd.sun_dir.x + fd.view.m[4] * fd.sun_dir.y + fd.view.m[8] * fd.sun_dir.z;
+        float sh = fd.view.m[1] * fd.sun_dir.x + fd.view.m[5] * fd.sun_dir.y + fd.view.m[9] * fd.sun_dir.z;
+        float sz = fd.view.m[2] * fd.sun_dir.x + fd.view.m[6] * fd.sun_dir.y + fd.view.m[10] * fd.sun_dir.z;
+        if (sz < 0.0f) { // sun in front of camera (view space -Z is forward)
+            // Project to clip space using projection matrix
+            float cx = fd.proj.m[0] * sw + fd.proj.m[8] * sz;
+            float cy = fd.proj.m[5] * sh + fd.proj.m[9] * sz;
+            float cw = fd.proj.m[10] * sz + fd.proj.m[14];
+            if (cw < 0.0f) { // valid perspective divide
+                sun_sx = (cx / cw) * 0.5f + 0.5f;
+                sun_sy = (cy / cw) * 0.5f + 0.5f;
+                // Visible if within screen bounds (with margin for off-screen glow)
+                if (sun_sx > -0.3f && sun_sx < 1.3f && sun_sy > -0.3f && sun_sy < 1.3f) {
+                    sun_vis = 1.0f;
+                }
+            }
+        }
+    }
+    ub_tone_map_.set(U::SunScreenPos, sun_sx, sun_sy);
+    ub_tone_map_.set(U::SunVisible, sun_vis);
     ub_tone_map_.set(U::ChromaticStrength, cfg.chromatic_strength);
     ub_tone_map_.set(U::GrainStrength, cfg.grain_strength);
 

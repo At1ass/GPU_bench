@@ -7,52 +7,17 @@ uniform float u_near;
 uniform float u_far;
 uniform float u_aspect;
 uniform float u_tan_half_fov;
-uniform mat4 u_view_inv; // inverse view matrix (camera-to-world)
+uniform mat4 u_view_inv;
 uniform float u_time;
 uniform vec3 u_sun_dir;
 uniform float u_fog_density;
 uniform vec3 u_fog_color;
 uniform int u_fog_steps;
 
-// Linearize depth from depth buffer [0,1] to view-space distance
+#pragma include "noise_lib.glsl"
+
 float linearizeDepth(float d) {
     return u_near * u_far / (u_far - d * (u_far - u_near));
-}
-
-// Hash-based 3D value noise (replaces sin-based noise that had visible periodic patterns)
-float fogHash(vec3 p) {
-    p = fract(p * 0.1031);
-    p += dot(p, p.zyx + 31.32);
-    return fract((p.x + p.y) * p.z);
-}
-
-float fogNoise3D(vec3 p) {
-    vec3 i = floor(p);
-    vec3 f = fract(p);
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0); // Perlin C2 smoothstep
-
-    float a = fogHash(i);
-    float b = fogHash(i + vec3(1, 0, 0));
-    float c = fogHash(i + vec3(0, 1, 0));
-    float d = fogHash(i + vec3(1, 1, 0));
-    float e = fogHash(i + vec3(0, 0, 1));
-    float f1 = fogHash(i + vec3(1, 0, 1));
-    float g = fogHash(i + vec3(0, 1, 1));
-    float h = fogHash(i + vec3(1, 1, 1));
-
-    return mix(mix(mix(a, b, f.x), mix(c, d, f.x), f.y),
-               mix(mix(e, f1, f.x), mix(g, h, f.x), f.y), f.z);
-}
-
-float fogNoise(vec3 p) {
-    float val = 0.0;
-    float amp = 0.5;
-    for (int i = 0; i < 3; i++) {
-        val += amp * fogNoise3D(p);
-        p *= 2.03;
-        amp *= 0.5;
-    }
-    return val;
 }
 
 // Henyey-Greenstein phase function for anisotropic scattering (pbrt v3 reference)
@@ -105,19 +70,20 @@ void main() {
         float height_fog = exp(-max(sample_pos.y + 1.0, 0.0) * 0.8);
 
         // Noise-based density variation
-        float noise_val = fogNoise(sample_pos * 0.4 + vec3(u_time * 0.15, -u_time * 0.1, u_time * 0.08));
+        float noise_val = fbm3d(sample_pos * 0.4 + vec3(u_time * 0.15, -u_time * 0.1, u_time * 0.08), 3);
         float density = u_fog_density * height_fog * (0.5 + noise_val * 0.5);
 
         if (density > 0.001) {
             // Enhanced Henyey-Greenstein: stronger forward scattering for god rays
             float cos_angle = dot(ray_dir, sun_dir);
 
-            // Dual-lobe phase: strong forward scatter + mild back scatter
-            float phase_forward = henyeyGreenstein(cos_angle, 0.82); // strong forward lobe (god rays)
-            float phase_back = henyeyGreenstein(cos_angle, -0.3);    // mild back scatter
-            float phase = mix(phase_back, phase_forward, 0.85);      // 85% forward, 15% back
+            // Triple-lobe phase: narrow god rays + wide scatter + backscatter
+            float phase_narrow = henyeyGreenstein(cos_angle, 0.95);  // tight god ray core
+            float phase_wide   = henyeyGreenstein(cos_angle, 0.5);   // broad forward scatter
+            float phase_back   = henyeyGreenstein(cos_angle, -0.3);  // backscatter fill
+            float phase = phase_narrow * 0.4 + phase_wide * 0.35 + phase_back * 0.25;
 
-            // Sun light contribution through fog (increased intensity for god rays)
+            // Sun light contribution through fog
             vec3 sun_light = vec3(1.0, 0.95, 0.85) * phase * 2.5;
 
             // Ambient fog light (hemisphere)
@@ -126,8 +92,14 @@ void main() {
             // In-scattering at this step
             vec3 in_scatter = (sun_light + ambient_fog) * density * step_size;
 
-            // Beer-Lambert absorption
+            // Beer's law transmittance (always correct for extinction)
             float step_transmittance = exp(-density * step_size);
+
+            // Beer-Powder silver lining (Wrenninge 2015, Frostbite):
+            // boosts in-scattering at density edges for volumetric glow effect.
+            // This modulates scattering, NOT transmittance.
+            float powder = 1.0 - exp(-density * step_size * 2.0);
+            in_scatter *= (1.0 + powder * 0.3);
 
             accumulated_fog += in_scatter * transmittance;
             transmittance *= step_transmittance;

@@ -47,6 +47,22 @@ uniform float u_far;
 // WATER RENDERING: Gerstner waves, Beer's law, GGX specular, SSR
 // ============================================================
 
+// Tileable water caustics (Dave Hoskins, Shadertoy MdlXz8)
+float causticLayer(vec2 uv, float time) {
+    vec2 p = mod(uv * 6.28318, 6.28318) - 250.0;
+    vec2 i = p;
+    float c = 1.0;
+    float inten = 0.005;
+    for (int n = 0; n < 5; n++) {
+        float t = time * (1.0 - 3.5 / float(n + 1));
+        i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+        c += 1.0 / length(vec2(p.x / (sin(i.x + t) / inten), p.y / (cos(i.y + t) / inten)));
+    }
+    c /= 5.0;
+    c = 1.17 - pow(c, 1.4);
+    return pow(abs(c), 8.0);
+}
+
 // GGX normal distribution for water specular
 float waterGGX(float NdotH, float roughness) {
     float a2 = roughness * roughness;
@@ -269,10 +285,22 @@ void main() {
         // --- Refracted: Beer's law absorption + ground color ---
         float waterDepth = 0.25 + 0.15 * (1.0 - edgeDist); // deeper at center
         vec3 waterBody = waterAbsorption(waterDepth);
-        // Add subtle bottom caustic pattern
-        float caustic = 0.5 + 0.5 * sin(v_world_pos.x * 8.0 + u_time * 0.5)
-                       * sin(v_world_pos.z * 7.0 - u_time * 0.4);
-        waterBody += vec3(0.03, 0.04, 0.02) * caustic * NdotL * shoreFade;
+        // Animated caustics (Dave Hoskins iterative, two layered octaves)
+        float caustic = causticLayer(v_world_pos.xz * 1.2, u_time * 0.4) * 0.5
+                      + causticLayer(v_world_pos.xz * 1.7 + 0.5, u_time * 0.3) * 0.5;
+        waterBody += vec3(0.04, 0.06, 0.03) * caustic * NdotL * shoreFade;
+
+        // Shore foam: noisy foam band near disc edge
+        float foamEdge = smoothstep(0.7, 0.85, edgeDist) * (1.0 - smoothstep(0.9, 0.99, edgeDist));
+        float foamNoise = noise(v_world_pos.xz * 15.0 + vec2(u_time * 0.3, u_time * 0.2));
+        float foam = foamEdge * smoothstep(0.35, 0.65, foamNoise);
+        vec3 foamColor = vec3(0.9, 0.92, 0.88);
+        waterBody = mix(waterBody, foamColor, foam * 0.6 * shoreFade);
+
+        // Subsurface backlit glow: aquamarine scatter when looking toward sun
+        float VdotNL = pow(max(dot(V, -L), 0.0), 4.0);
+        vec3 waterSSSColor = vec3(0.1, 0.6, 0.4) * VdotNL * shoreFade * 0.5;
+        waterBody += waterSSSColor * (0.3 + 0.7 * (1.0 - edgeDist));
 
         // --- Reflected: sky gradient as fallback ---
         vec3 R = reflect(-V, N);

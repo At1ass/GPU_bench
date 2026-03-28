@@ -18,41 +18,7 @@ uniform float u_time;
 uniform float u_displacement_strength;
 uniform float u_displacement_freq;
 
-// Simple hash for displacement noise (self-contained, no includes needed)
-float pn_hash(vec3 p) {
-    p = fract(p * 0.1031);
-    p += dot(p, p.zyx + 31.32);
-    return fract((p.x + p.y) * p.z);
-}
-
-float pn_noise(vec3 p) {
-    vec3 i = floor(p);
-    vec3 f = fract(p);
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0); // Perlin improved (C2 continuous)
-
-    float a = pn_hash(i);
-    float b = pn_hash(i + vec3(1, 0, 0));
-    float c = pn_hash(i + vec3(0, 1, 0));
-    float d = pn_hash(i + vec3(1, 1, 0));
-    float e = pn_hash(i + vec3(0, 0, 1));
-    float f1 = pn_hash(i + vec3(1, 0, 1));
-    float g = pn_hash(i + vec3(0, 1, 1));
-    float h = pn_hash(i + vec3(1, 1, 1));
-
-    return mix(mix(mix(a, b, f.x), mix(c, d, f.x), f.y),
-               mix(mix(e, f1, f.x), mix(g, h, f.x), f.y), f.z);
-}
-
-float pn_fbm(vec3 p) {
-    float val = 0.0;
-    float amp = 0.5;
-    for (int i = 0; i < 4; i++) {
-        val += amp * pn_noise(p);
-        p *= 2.03;
-        amp *= 0.5;
-    }
-    return val;
-}
+#pragma include "noise_lib.glsl"
 
 // PN-Triangles: compute cubic Bezier control point for smooth interpolation
 // Given positions P[i] and normals N[i], compute b_{ij} control point
@@ -135,7 +101,7 @@ void main() {
 
     // Noise-based displacement along LINEAR normal (C0-continuous, no edge gaps)
     float freq = u_displacement_freq > 0.0 ? u_displacement_freq : 5.0;
-    float disp_noise = pn_fbm(pos * freq + u_time * 0.1) * 2.0 - 1.0;
+    float disp_noise = fbm3d(pos * freq + u_time * 0.1, 4) * 2.0 - 1.0;
     float disp = clamp(disp_noise * u_displacement_strength,
                        -u_displacement_strength, u_displacement_strength);
     pos += disp_normal * disp;

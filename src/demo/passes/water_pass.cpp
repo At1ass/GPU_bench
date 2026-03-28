@@ -83,19 +83,19 @@ void WaterPass::execute(Renderer* r, FrameData& fd,
             continue;
 
         ub_.set(U::Model, obj.transform);
-        ub_.set(U::MatColor, obj.color);
-        ub_.set(U::MatSpec, obj.specular);
+        ub_.set(U::MatColor, obj.mat.color_a);
+        ub_.set(U::MatSpec, obj.mat.specular);
         ub_.set(U::Alpha, 1.0f);
-        ub_.set(U::ProcTex, 0.0f);
+        ub_.set(U::MaterialId, 0);  // water has its own code path
         ub_.set(U::VertexWind, 0.0f);
         ub_.set(U::IsWater, 1.0f);
 
         // Water needs alpha blending for shore transparency
         r->setBlending(true);
         r->setDepthMask(false);
-        if (obj.two_sided) r->setCullFace(false);
+        if (obj.mat.two_sided) r->setCullFace(false);
         r->drawMesh(obj.mesh);
-        if (obj.two_sided) r->setCullFace(true);
+        if (obj.mat.two_sided) r->setCullFace(true);
         r->setBlending(false);
         r->setDepthMask(true);
     }

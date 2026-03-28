@@ -38,6 +38,7 @@ DemoResources::DemoResources()
     , particle_mesh_()
     , model_bounding_radius_(0.0f)
     , sky_shader_from_cache_(nullptr)
+    , sky_cache_()
     , particle_cache_(nullptr)
     , torch_cache_(nullptr)
     , shadow_cache_(nullptr)
@@ -308,6 +309,9 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
     if (idx < 0 || idx >= MAX_TIERS) return false;
 
     ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), r->isCoreProfile());
+
+    // Sky shader per-tier (domain warp T2+, physical atmosphere T3+)
+    sky_cache_[idx] = shader_cache_.get("sky", feat, feat);
 
     if (tier == 1) {
         // Island T1 via cache
@@ -1075,7 +1079,14 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
 TierResourceView DemoResources::viewForTier(DemoTier tier) {
     TierResourceView view;
 
-    view.core.sky_shader = sky_shader_from_cache_ ? sky_shader_from_cache_ : &sky_shader_;
+    // Use per-tier sky shader (with domain warp / physical atmosphere), fallback to base
+    {
+        int si = static_cast<int>(tier) - 1;
+        if (si >= 0 && si < MAX_TIERS && sky_cache_[si])
+            view.core.sky_shader = sky_cache_[si];
+        else
+            view.core.sky_shader = sky_shader_from_cache_ ? sky_shader_from_cache_ : &sky_shader_;
+    }
     view.core.model_mesh = model_mesh_;
     view.core.sky_mesh = sky_mesh_.get();
     view.core.ground_mesh = ground_mesh_;
@@ -1256,6 +1267,7 @@ void DemoResources::destroy() {
     fur_mask_tex_.reset();
     sky_shader_.reset();
     sky_shader_from_cache_ = nullptr;
+    for (int i = 0; i < MAX_TIERS; i++) sky_cache_[i] = nullptr;
 
     // Null out all cache pointers BEFORE destroying the cache (which frees the programs)
     for (int i = 0; i < MAX_TIERS; i++) {

@@ -8,23 +8,17 @@
 struct SceneObject {
     MeshHandle mesh;
     Mat4 transform;
-    MaterialType material;
-    Vec3 color;
-    float specular;
-    Vec3 bounds_center;   // world-space bounding sphere center
-    float bounds_radius;  // world-space bounding sphere radius
-    bool vertex_wind;     // enable wind vertex displacement (grass only)
-    bool two_sided;       // disable backface culling for this object
-    float metallic;       // PBR metallic override (-1 = use default)
-    float roughness;      // PBR roughness override (-1 = use default)
-    bool is_water;        // water material with ripples + Fresnel
-    bool tessellated;     // render via TessellatedModelPass with displacement (T4)
+    MaterialType shader_type;   // pipeline routing: Island (terrain shader) or Model
+    MaterialDef mat;            // all visual material properties
+    bool vertex_wind;           // enable wind vertex displacement (grass only)
+    bool is_water;              // water material with ripples + Fresnel
+    bool tessellated;           // render via TessellatedModelPass with displacement (T4)
+    Vec3 bounds_center;         // world-space bounding sphere center
+    float bounds_radius;        // world-space bounding sphere radius
 
-    SceneObject() : mesh(), transform(), material(MaterialType::Model),
-        color(0.0f, 0.0f, 0.0f), specular(0.0f),
-        bounds_center(0.0f, 0.0f, 0.0f), bounds_radius(0.0f),
-        vertex_wind(false), two_sided(false),
-        metallic(-1.0f), roughness(-1.0f), is_water(false), tessellated(false) {}
+    SceneObject() : mesh(), transform(), shader_type(MaterialType::Model),
+        mat(), vertex_wind(false), is_water(false), tessellated(false),
+        bounds_center(0.0f, 0.0f, 0.0f), bounds_radius(0.0f) {}
 };
 
 // Shared scene geometry data — passed to render passes by const reference.

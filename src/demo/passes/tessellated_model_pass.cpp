@@ -33,7 +33,7 @@ void TessellatedModelPass::execute(Renderer* r, FrameData& fd,
     ub_.set(U::Metallic, 0.0f);
     ub_.set(U::Roughness, 0.6f);
     ub_.set(U::MatColor, 0.55f, 0.35f, 0.20f);
-    ub_.set(U::ProcTex, 0.0f);
+    ub_.set(U::MaterialId, 0);
     ub_.set(U::NormalStrength, 0.0f);
 
     // SSS uniforms
@@ -115,20 +115,25 @@ void TessellatedModelPass::execute(Renderer* r, FrameData& fd,
                 if (!sphereInFrustum(fd.frustum, obj.bounds_center, obj.bounds_radius))
                     continue;
 
+                const MaterialDef& m = obj.mat;
                 ub_.set(U::Model, obj.transform);
-                ub_.set(U::MatColor, obj.color);
-                ub_.set(U::MatSpec, obj.specular);
-                ub_.set(U::ProcTex, obj.material == MaterialType::Island ? 1.0f : 0.0f);
+                ub_.set(U::MatColor, m.color_a);
+                ub_.set(U::MatColorB, m.color_b);
+                ub_.set(U::MatSpec, m.specular);
+                ub_.set(U::MaterialId, static_cast<int>(m.proc_type));
+                ub_.set(U::NoiseScale, m.noise_scale);
+                ub_.set(U::NoiseIntensity, m.noise_intensity);
+                ub_.set(U::WarpStrength, m.warp_strength);
+                ub_.set(U::DetailScale, m.detail_scale);
                 ub_.set(U::NormalStrength, 0.0f);
-                // Fine stone grain: high freq, low amplitude
                 ub_.set(U::DisplacementStr, 0.03f);
                 ub_.set(U::DisplacementFreq, 25.0f);
-                ub_.set(U::Metallic, obj.metallic >= 0.0f ? obj.metallic : 0.0f);
-                ub_.set(U::Roughness, obj.roughness >= 0.0f ? obj.roughness : 0.6f);
+                ub_.set(U::Metallic, m.metallic);
+                ub_.set(U::Roughness, m.roughness);
 
-                if (obj.two_sided) r->setCullFace(false);
+                if (m.two_sided) r->setCullFace(false);
                 g4->drawMeshAsPatches(obj.mesh);
-                if (obj.two_sided) r->setCullFace(true);
+                if (m.two_sided) r->setCullFace(true);
             }
         }
     }

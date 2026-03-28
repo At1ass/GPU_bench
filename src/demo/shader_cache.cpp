@@ -50,6 +50,9 @@ std::string ShaderCache::buildPreamble(ShaderFeatureSet features, bool is_fragme
     if (features & SF_VIGNETTE)       preamble += "#define HAS_VIGNETTE\n";
     if (features & SF_INSTANCING)     preamble += "#define HAS_INSTANCING\n";
     if (features & SF_PUDDLE_EXCLUDE) preamble += "#define HAS_PUDDLE_EXCLUDE\n";
+    if (features & SF_DOMAIN_WARP)    preamble += "#define HAS_DOMAIN_WARP\n";
+    if (features & SF_PHYSICAL_SKY)   preamble += "#define HAS_PHYSICAL_SKY\n";
+    if (features & SF_FILM_GRAIN)     preamble += "#define HAS_FILM_GRAIN\n";
 
     // 3. Fragment shader output declaration (non-120 only)
     if (is_fragment && !(features & SF_GLSL_120)) {
@@ -222,15 +225,18 @@ ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile) {
     case DemoTier::Enhanced:
         f |= core_profile ? SF_GLSL_150 : SF_GLSL_140;
         f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
+        f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
         break;
     case DemoTier::Quality:
         f |= SF_GLSL_330;
         f |= SF_SHADOWS | SF_SHADOW_PCF5 | SF_NORMAL_MAP | SF_POINT_LIGHTS | SF_INSTANCING;
+        f |= SF_DOMAIN_WARP | SF_PHYSICAL_SKY | SF_FILM_GRAIN;
         break;
     case DemoTier::Ultra:
         f |= SF_GLSL_430;
         f |= SF_SHADOWS | SF_SHADOW_PCSS | SF_NORMAL_MAP | SF_POINT_LIGHTS;
         f |= SF_PBR | SF_SSS | SF_WATER | SF_INSTANCING | SF_PUDDLE_EXCLUDE;
+        f |= SF_DOMAIN_WARP | SF_PHYSICAL_SKY | SF_FILM_GRAIN;
         break;
     }
 

@@ -28,10 +28,16 @@ U(PointLightCount,   "u_point_light_count",  I)
 
 // Material
 U(MatColor,          "u_mat_color",          V3)
+U(MatColorB,         "u_mat_color_b",        V3)
 U(MatSpec,           "u_mat_spec",           F)
 U(Metallic,          "u_metallic",           F)
 U(Roughness,         "u_roughness",          F)
 U(ProcTex,           "u_proc_tex",           F)
+U(MaterialId,        "u_material_id",        I)
+U(NoiseScale,        "u_noise_scale",        F)
+U(NoiseIntensity,    "u_noise_intensity",    F)
+U(WarpStrength,      "u_warp_strength",      F)
+U(DetailScale,       "u_detail_scale",       F)
 U(IsWater,           "u_is_water",           F)
 
 // Fog
@@ -131,6 +137,10 @@ U(HasFog,            "u_has_fog",            F)
 U(HasDof,            "u_has_dof",            F)
 U(FirstPass,         "u_first_pass",         I)
 U(Bias,              "u_bias",               F)
+
+// Lens flare
+U(SunScreenPos,      "u_sun_screen_pos",    V2)
+U(SunVisible,        "u_sun_visible",       F)
 
 // Auto-exposure
 U(MinLogLum,         "u_min_log_lum",        F)

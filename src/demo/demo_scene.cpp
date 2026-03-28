@@ -71,11 +71,8 @@ void DemoScene::placeModel(Renderer* r) {
     SceneObject obj;
     obj.mesh = res_.core.model_mesh;
     obj.transform = model_transform_;
-    obj.material = MaterialType::Model;
-    obj.color = Vec3(0.55f, 0.38f, 0.32f);  // pinkish skin visible under fur
-    obj.specular = 0.08f;
-    obj.metallic = 0.0f;    // dielectric (organic)
-    obj.roughness = 0.85f;  // matte surface (fur/skin, not plastic)
+    obj.shader_type = MaterialType::Model;
+    obj.mat = Materials::skin();
     obj.tessellated = config_.enable_tessellation;
     setBounds(obj, res_.core.model_bounding_radius);
     opaque_objects_.push_back(obj);
@@ -91,9 +88,8 @@ void DemoScene::placeGroundPlane(Renderer* r) {
     SceneObject ground;
     ground.mesh = res_.core.ground_mesh;
     ground.transform = Mat4::translate(0.0f, -1.0f, 0.0f);
-    ground.material = MaterialType::Island;
-    ground.color = Vec3(0.45f, 0.42f, 0.38f);
-    ground.specular = 0.05f;
+    ground.shader_type = MaterialType::Island;
+    ground.mat = Materials::terrain();
     ground.tessellated = config_.enable_tessellation;
     setBounds(ground, 12.0f);
     opaque_objects_.push_back(ground);
@@ -110,11 +106,8 @@ void DemoScene::placeRocks(Renderer* r) {
     SceneObject rocks;
     rocks.mesh = res_.core.rock_mesh;
     rocks.transform = Mat4();
-    rocks.material = MaterialType::Model;  // flat color, no procedural terrain
-    rocks.color = Vec3(0.45f, 0.42f, 0.38f);
-    rocks.specular = 0.08f;
-    rocks.vertex_wind = false;
-    rocks.two_sided = true;
+    rocks.shader_type = MaterialType::Model;
+    rocks.mat = Materials::rock();
     setBounds(rocks, 6.0f);
     opaque_objects_.push_back(rocks);
 }
@@ -133,11 +126,10 @@ void DemoScene::placeGrass(Renderer* r) {
     SceneObject grass;
     grass.mesh = res_.core.grass_mesh;
     grass.transform = Mat4();
-    grass.material = MaterialType::Model;  // flat color for grass
-    grass.color = Vec3(0.30f, 0.50f, 0.20f);
-    grass.specular = 0.02f;
+    grass.shader_type = MaterialType::Model;
+    grass.mat = Materials::foliage(Vec3(0.30f, 0.50f, 0.20f));
+    grass.mat.two_sided = true;
     grass.vertex_wind = true;
-    grass.two_sided = true;  // grass sways with wind
     setBounds(grass, 6.0f);
     opaque_objects_.push_back(grass);
 }
@@ -160,13 +152,8 @@ void DemoScene::placePuddles(Renderer* r) {
         // Behind the arch/columns. Terrain has a deep depression here.
         float pond_y = sampleTerrainHeight(pond_x, pond_z) + 0.45f;
         pond.transform = Mat4::translate(pond_x, pond_y, pond_z);
-        pond.material = MaterialType::Model;
-        pond.color = Vec3(0.06f, 0.08f, 0.12f);
-        pond.specular = 0.95f;
-        pond.vertex_wind = false;
-        pond.two_sided = true;
-        pond.metallic = 0.0f;
-        pond.roughness = 0.02f;
+        pond.shader_type = MaterialType::Model;
+        pond.mat = Materials::water();
         pond.is_water = true;
         setBounds(pond, 2.5f);
         opaque_objects_.push_back(pond);
@@ -189,13 +176,8 @@ void DemoScene::placePuddles(Renderer* r) {
         Mat4 s = Mat4::scale(scales[i], 1.0f, scales[i]);
         Mat4 t = Mat4::translate(positions[i][0], positions[i][1], positions[i][2]);
         puddle.transform = t * s;
-        puddle.material = MaterialType::Model;
-        puddle.color = Vec3(0.08f, 0.10f, 0.14f);
-        puddle.specular = 0.95f;
-        puddle.vertex_wind = false;
-        puddle.two_sided = true;
-        puddle.metallic = 0.0f;
-        puddle.roughness = 0.02f;
+        puddle.shader_type = MaterialType::Model;
+        puddle.mat = Materials::water(Vec3(0.08f, 0.10f, 0.14f));
         puddle.is_water = true;
         setBounds(puddle, 0.8f * scales[i]);
         opaque_objects_.push_back(puddle);
@@ -213,12 +195,10 @@ void DemoScene::placePedestal(Renderer* r) {
     SceneObject obj;
     obj.mesh = res_.core.pedestal_mesh;
     obj.transform = Mat4::translate(0.0f, -1.0f, 0.0f);
-    obj.material = MaterialType::Model;
-    obj.color = Vec3(0.50f, 0.47f, 0.42f);
-    obj.specular = 0.06f;
-    obj.metallic = 0.0f;
-    obj.roughness = 0.85f;
-    // Pedestal is a frustum with hard edges — PN-triangles create gaps at 90° edges
+    obj.shader_type = MaterialType::Model;
+    obj.mat = Materials::stone(Vec3(0.50f, 0.47f, 0.42f));
+    obj.mat.roughness = 0.85f;
+    obj.mat.noise_scale = 1.5f;  // finer grain on pedestal
     obj.tessellated = false;
     setBounds(obj, 1.5f);  // covers full height (1.1) + width (1.4)
     opaque_objects_.push_back(obj);
@@ -231,7 +211,8 @@ void DemoScene::placePedestal(Renderer* r) {
 void DemoScene::placeColumns(Renderer* r) {
     (void)r;
     if (res_.core.column_tall_mesh == MeshHandle()) return;
-    Vec3 col_color(0.55f, 0.52f, 0.46f);
+    MaterialDef col_mat = Materials::stone(Vec3(0.55f, 0.52f, 0.46f));
+    col_mat.roughness = 0.90f;
 
     float col_z = -2.5f;
     float col_x[2] = { -1.8f, 1.8f };
@@ -242,11 +223,8 @@ void DemoScene::placeColumns(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.column_tall_mesh;
         obj.transform = Mat4::translate(col_x[i], col_base_y, col_z);
-        obj.material = MaterialType::Model;
-        obj.color = col_color;
-        obj.specular = 0.05f;
-        obj.roughness = 0.90f;
-        // Cylinders with caps have hard edges — no PN-triangles
+        obj.shader_type = MaterialType::Model;
+        obj.mat = col_mat;
         obj.tessellated = false;
         setBounds(obj, 2.0f);
         opaque_objects_.push_back(obj);
@@ -258,10 +236,9 @@ void DemoScene::placeColumns(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.column_stump_mesh;
         obj.transform = Mat4::translate(-3.0f, sampleTerrainHeight(-3.0f, -0.5f), -0.5f) * Mat4::rotateZ(5.0f);
-        obj.material = MaterialType::Model;
-        obj.color = col_color;
-        obj.specular = 0.05f;
-        obj.roughness = 0.90f;
+        obj.shader_type = MaterialType::Model;
+        obj.mat = col_mat;
+        obj.mat.noise_scale = 0.8f;  // coarser weathered look
         obj.tessellated = false;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
@@ -270,10 +247,9 @@ void DemoScene::placeColumns(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.column_stump_mesh;
         obj.transform = Mat4::translate(3.0f, sampleTerrainHeight(3.0f, -0.5f), -0.5f) * Mat4::rotateZ(-3.0f);
-        obj.material = MaterialType::Model;
-        obj.color = col_color;
-        obj.specular = 0.05f;
-        obj.roughness = 0.90f;
+        obj.shader_type = MaterialType::Model;
+        obj.mat = col_mat;
+        obj.mat.noise_scale = 1.2f;
         obj.tessellated = false;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
@@ -298,10 +274,10 @@ void DemoScene::placeArch(Renderer* r) {
     float col_base_y = (h0 < h1) ? h0 : h1;
     float archY = col_base_y + 1.5f;  // column top = base + half_height
     obj.transform = Mat4::translate(0.0f, archY, -2.5f);
-    obj.material = MaterialType::Model;
-    obj.color = Vec3(0.48f, 0.45f, 0.40f);
-    obj.specular = 0.04f;
-    obj.roughness = 0.92f;
+    obj.shader_type = MaterialType::Model;
+    obj.mat = Materials::stone(Vec3(0.48f, 0.45f, 0.40f));
+    obj.mat.roughness = 0.92f;
+    obj.mat.warp_strength = 0.4f;  // more erosion on arch
     obj.tessellated = config_.enable_tessellation;
     setBounds(obj, 2.5f);
     opaque_objects_.push_back(obj);
@@ -319,11 +295,8 @@ void DemoScene::placeRuins(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.slab_mesh;
         obj.transform = Mat4::translate(3.0f, sampleTerrainHeight(3.0f, 0.5f) + 0.15f, 0.5f) * Mat4::rotateZ(12.0f) * Mat4::rotateY(45.0f) * Mat4::scale(1.2f, 0.12f, 0.7f);
-        obj.material = MaterialType::Model;
-        obj.color = Vec3(0.52f, 0.49f, 0.44f);
-        obj.specular = 0.05f;
-        obj.roughness = 0.88f;
-        // Slab is a cube with hard edges — no PN-triangles
+        obj.shader_type = MaterialType::Model;
+        obj.mat = Materials::stone(Vec3(0.52f, 0.49f, 0.44f));
         obj.tessellated = false;
         setBounds(obj, 1.0f);
         opaque_objects_.push_back(obj);
@@ -335,10 +308,9 @@ void DemoScene::placeRuins(Renderer* r) {
             SceneObject obj;
             obj.mesh = res_.core.stone_sphere_mesh;
             obj.transform = Mat4::translate(-2.8f, sampleTerrainHeight(-2.8f, 1.5f) + 0.25f, 1.5f) * Mat4::scale(0.30f, 0.28f, 0.30f);
-            obj.material = MaterialType::Model;
-            obj.color = Vec3(0.50f, 0.48f, 0.43f);
-            obj.specular = 0.06f;
-            obj.roughness = 0.80f;
+            obj.shader_type = MaterialType::Model;
+            obj.mat = Materials::stone(Vec3(0.50f, 0.48f, 0.43f));
+            obj.mat.roughness = 0.80f;
             obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 0.35f);
             opaque_objects_.push_back(obj);
@@ -347,10 +319,10 @@ void DemoScene::placeRuins(Renderer* r) {
             SceneObject obj;
             obj.mesh = res_.core.stone_sphere_mesh;
             obj.transform = Mat4::translate(3.5f, sampleTerrainHeight(3.5f, -1.5f) + 0.20f, -1.5f) * Mat4::scale(0.25f, 0.25f, 0.25f);
-            obj.material = MaterialType::Model;
-            obj.color = Vec3(0.50f, 0.48f, 0.43f);
-            obj.specular = 0.06f;
-            obj.roughness = 0.80f;
+            obj.shader_type = MaterialType::Model;
+            obj.mat = Materials::stone(Vec3(0.50f, 0.48f, 0.43f));
+            obj.mat.roughness = 0.80f;
+            obj.mat.noise_scale = 1.3f;  // slightly different grain
             obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 0.30f);
             opaque_objects_.push_back(obj);
@@ -362,11 +334,10 @@ void DemoScene::placeRuins(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.fallen_column_mesh;
         obj.transform = Mat4::translate(-3.2f, sampleTerrainHeight(-3.2f, 1.0f) + 0.28f, 1.0f) * Mat4::rotateZ(85.0f) * Mat4::rotateY(30.0f);
-        obj.material = MaterialType::Model;
-        obj.color = Vec3(0.53f, 0.50f, 0.45f);
-        obj.specular = 0.04f;
-        obj.roughness = 0.90f;
-        // Fallen column is a cylinder — hard cap edges
+        obj.shader_type = MaterialType::Model;
+        obj.mat = Materials::stone(Vec3(0.53f, 0.50f, 0.45f));
+        obj.mat.roughness = 0.90f;
+        obj.mat.warp_strength = 0.5f;  // more weathered
         obj.tessellated = false;
         setBounds(obj, 1.5f);
         opaque_objects_.push_back(obj);
@@ -377,11 +348,8 @@ void DemoScene::placeRuins(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.mossy_block_mesh;
         obj.transform = Mat4::translate(3.8f, sampleTerrainHeight(3.8f, 2.5f) + 0.25f, 2.5f) * Mat4::rotateY(25.0f) * Mat4::scale(0.7f, 0.5f, 0.6f);
-        obj.material = MaterialType::Island;
-        obj.color = Vec3(0.35f, 0.42f, 0.30f);
-        obj.specular = 0.03f;
-        obj.roughness = 0.95f;
-        // Cube with hard edges
+        obj.shader_type = MaterialType::Island;
+        obj.mat = Materials::moss();
         obj.tessellated = false;
         setBounds(obj, 0.8f);
         opaque_objects_.push_back(obj);
@@ -392,10 +360,9 @@ void DemoScene::placeRuins(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.bowl_mesh;
         obj.transform = Mat4::translate(1.8f, sampleTerrainHeight(1.8f, 1.2f) + 0.1f, 1.2f);
-        obj.material = MaterialType::Model;
-        obj.color = Vec3(0.45f, 0.42f, 0.38f);
-        obj.specular = 0.08f;
-        obj.roughness = 0.75f;
+        obj.shader_type = MaterialType::Model;
+        obj.mat = Materials::stone(Vec3(0.45f, 0.42f, 0.38f));
+        obj.mat.roughness = 0.75f;
         obj.tessellated = config_.enable_tessellation;
         setBounds(obj, 0.40f);
         opaque_objects_.push_back(obj);
@@ -406,11 +373,9 @@ void DemoScene::placeRuins(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.obelisk_mesh;
         obj.transform = Mat4::translate(-3.5f, sampleTerrainHeight(-3.5f, -2.0f), -2.0f) * Mat4::rotateZ(3.0f);
-        obj.material = MaterialType::Model;
-        obj.color = Vec3(0.42f, 0.40f, 0.36f);
-        obj.specular = 0.05f;
-        obj.roughness = 0.85f;
-        // Obelisk is hexagonal with hard edges
+        obj.shader_type = MaterialType::Model;
+        obj.mat = Materials::stone(Vec3(0.42f, 0.40f, 0.36f));
+        obj.mat.noise_scale = 0.7f;  // larger stone blocks
         obj.tessellated = false;
         setBounds(obj, 1.5f);
         opaque_objects_.push_back(obj);
@@ -422,10 +387,8 @@ void DemoScene::placeRuins(Renderer* r) {
             SceneObject obj;
             obj.mesh = res_.core.ring_inner_mesh;
             obj.transform = Mat4::translate(0.0f, -0.93f, 0.0f);
-            obj.material = MaterialType::Model;
-            obj.color = Vec3(0.50f, 0.47f, 0.42f);
-            obj.specular = 0.05f;
-            obj.roughness = 0.85f;
+            obj.shader_type = MaterialType::Model;
+            obj.mat = Materials::stone(Vec3(0.50f, 0.47f, 0.42f));
             obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 1.7f);
             opaque_objects_.push_back(obj);
@@ -434,10 +397,9 @@ void DemoScene::placeRuins(Renderer* r) {
             SceneObject obj;
             obj.mesh = res_.core.ring_outer_mesh;
             obj.transform = Mat4::translate(0.0f, -0.95f, 0.0f);
-            obj.material = MaterialType::Model;
-            obj.color = Vec3(0.48f, 0.45f, 0.40f);
-            obj.specular = 0.05f;
-            obj.roughness = 0.87f;
+            obj.shader_type = MaterialType::Model;
+            obj.mat = Materials::stone(Vec3(0.48f, 0.45f, 0.40f));
+            obj.mat.roughness = 0.87f;
             obj.tessellated = config_.enable_tessellation;
             setBounds(obj, 2.4f);
             opaque_objects_.push_back(obj);
@@ -484,11 +446,9 @@ void DemoScene::placeTrees(Renderer* r) {
         SceneObject obj;
         obj.mesh = res_.core.tree_meshes[mesh_idx[i]];
         obj.transform = Mat4::translate(x, y, z) * Mat4::rotateY(rotations[i]) * Mat4::scale(s, s, s);
-        obj.material = MaterialType::Model;
-        obj.color = colors[i];
-        obj.specular = 0.03f;
-        obj.roughness = 0.85f;
-        obj.vertex_wind = false;
+        obj.shader_type = MaterialType::Model;
+        obj.mat = Materials::foliage(colors[i]);
+        obj.mat.noise_scale = 0.8f + 0.4f * (static_cast<float>(i) / 4.0f);  // vary per tree
         setBounds(obj, 3.5f * s);
         opaque_objects_.push_back(obj);
     }

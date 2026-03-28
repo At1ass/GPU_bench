@@ -57,10 +57,24 @@ float computeShadow() {
 }
 #endif
 
+// Simple hash for grass color variation (no noise_lib include in uber grass)
+float grassHash(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 void main() {
     // Color gradient: dark green at base, lighter yellow-green at tip
-    vec3 base_color = vec3(0.15, 0.35, 0.08);
-    vec3 tip_color = vec3(0.40, 0.60, 0.20);
+    // World-space variation: each blade cluster gets a unique tint
+    vec2 cell = floor(v_world_pos.xz * 2.0);
+    float var = grassHash(cell);
+    float var2 = grassHash(cell + vec2(17.0, 31.0));
+
+    // Vary base between dark forest green and warm olive
+    vec3 base_color = mix(vec3(0.12, 0.30, 0.06), vec3(0.20, 0.32, 0.10), var);
+    // Vary tip between yellow-green and bright green
+    vec3 tip_color = mix(vec3(0.35, 0.55, 0.15), vec3(0.45, 0.62, 0.22), var2);
     vec3 grass_color = mix(base_color, tip_color, v_color_t);
 
     // Simple lighting

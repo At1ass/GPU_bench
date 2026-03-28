@@ -104,9 +104,9 @@ inline void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd, in
     static const float heights[] = { 0.6f, 1.2f, 0.4f };
     static const float speeds[] = { 0.8f, 1.1f, 1.4f };
     static const float colors[][3] = {
-        { 4.0f, 2.8f, 1.2f },   // warm orange (strong)
-        { 1.2f, 2.8f, 4.0f },   // cold blue (strong)
-        { 2.8f, 4.0f, 1.2f }    // green (strong)
+        { 1.5f, 1.0f, 0.4f },   // warm orange (T4 PBR multiplies by 3x internally)
+        { 0.4f, 1.0f, 1.5f },   // cold blue
+        { 1.0f, 1.5f, 0.4f }    // green
     };
     for (int i = 0; i < point_light_count && i < 3; i++) {
         float angle = fd.time * speeds[i] + static_cast<float>(i) * 2.094f;

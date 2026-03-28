@@ -43,9 +43,10 @@ private:
     ScopedTexture fur_tex_;
     ScopedTexture fur_mask_tex_;
 
-    // Sky shader (GL2.1, shared across all tiers)
+    // Sky shader — per-tier variants for progressive atmosphere quality
     ShaderProgram sky_shader_;           // legacy ownership (fallback)
-    ShaderProgram* sky_shader_from_cache_;  // non-owning, from ShaderCache
+    ShaderProgram* sky_shader_from_cache_;  // non-owning, T1 fallback
+    ShaderProgram* sky_cache_[4];        // per-tier (domain warp T2+, physical sky T3+)
 
     // Per-tier shaders (index 0..3 = tier 1..4)
     // Owned ShaderPrograms are legacy fallback; cache pointers are preferred.
