@@ -111,13 +111,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(imgui_lib PRIVATE -w)
 endif()
 
-# --- Main executable ---
-set(SOURCES
-    # App
-    src/main.cpp
-    src/app.cpp
-
-    # Renderer
+# --- Core library (renderer, platform, geometry) ---
+set(CORE_LIB_SOURCES
     src/renderer/gl_funcs.cpp
     src/renderer/gl2_renderer.cpp
     src/renderer/gl3_renderer.cpp
@@ -128,10 +123,41 @@ set(SOURCES
     src/renderer/gl_loader.cpp
     src/renderer/renderer_factory.cpp
     src/renderer/gpu_timer.cpp
-
-    # Geometry
     src/geometry/mesh_gen.cpp
     src/geometry/obj_loader.cpp
+    src/platform/hwinfo.cpp
+    src/platform/gpu_select.cpp
+    src/platform/logger.cpp
+    src/platform/data_path.cpp
+    src/platform/stb_image_impl.cpp
+)
+
+# Suppress warnings for third-party source files
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set_source_files_properties(
+        src/platform/stb_image_impl.cpp
+        PROPERTIES COMPILE_FLAGS "-w"
+    )
+endif()
+
+add_library(gpubench_core STATIC ${CORE_LIB_SOURCES})
+target_include_directories(gpubench_core PUBLIC src extern)
+target_link_libraries(gpubench_core PUBLIC imgui_lib)
+if(TARGET OpenGL::GL)
+    target_link_libraries(gpubench_core PUBLIC OpenGL::GL)
+else()
+    target_link_libraries(gpubench_core PUBLIC ${OPENGL_LIBRARIES})
+endif()
+
+if(PORTABLE_BUILD AND NOT WIN32)
+    target_compile_definitions(gpubench_core PUBLIC CB_STATIC_GL)
+endif()
+
+# --- Main executable (links core library) ---
+set(SOURCES
+    # App
+    src/main.cpp
+    src/app.cpp
 
     # Bench engine
     src/bench/bench.cpp
@@ -184,6 +210,7 @@ set(SOURCES
     src/demo/demo_runner.cpp
     src/demo/demo_ui.cpp
     src/demo/demo_export.cpp
+    src/demo/demo_resources.cpp
     src/demo/pass_factory.cpp
     src/demo/pipeline_builder.cpp
     src/demo/shader_cache.cpp
@@ -213,53 +240,18 @@ set(SOURCES
 
     # UI
     src/ui/bench_ui.cpp
-
-    # Platform
-    src/platform/hwinfo.cpp
-    src/platform/gpu_select.cpp
-    src/platform/logger.cpp
-    src/platform/data_path.cpp
-    src/platform/stb_image_impl.cpp
-    src/demo/demo_resources.cpp
-
 )
 
-# Suppress warnings for third-party source files compiled in our target
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set_source_files_properties(
-        src/platform/stb_image_impl.cpp
-        PROPERTIES COMPILE_FLAGS "-w"
-    )
-endif()
-
 add_executable(gpu_benchmark ${SOURCES})
-target_include_directories(gpu_benchmark PRIVATE src extern)
+# SDL2, OpenGL, ImGui come transitively from gpubench_core (PUBLIC)
+target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
-if(PORTABLE_BUILD AND NOT WIN32)
-    target_compile_definitions(gpu_benchmark PRIVATE CB_STATIC_GL)
+# SDL2main needed on some platforms for WinMain entry point
+if(TARGET SDL2::SDL2main)
+    target_link_libraries(gpu_benchmark PRIVATE SDL2::SDL2main)
 endif()
 
-# --- SDL2 linking ---
-if(PORTABLE_BUILD AND TARGET SDL2-static)
-    target_link_libraries(gpu_benchmark PRIVATE SDL2-static imgui_lib)
-elseif(TARGET SDL2::SDL2)
-    if(TARGET SDL2::SDL2main)
-        target_link_libraries(gpu_benchmark PRIVATE SDL2::SDL2 SDL2::SDL2main imgui_lib)
-    else()
-        target_link_libraries(gpu_benchmark PRIVATE SDL2::SDL2 imgui_lib)
-    endif()
-else()
-    target_include_directories(gpu_benchmark PRIVATE ${SDL2_INCLUDE_DIRS})
-    target_link_libraries(gpu_benchmark PRIVATE ${SDL2_LIBRARIES} imgui_lib)
-endif()
-
-# --- OpenGL linking ---
-if(TARGET OpenGL::GL)
-    target_link_libraries(gpu_benchmark PRIVATE OpenGL::GL)
-else()
-    target_link_libraries(gpu_benchmark PRIVATE ${OPENGL_LIBRARIES})
-endif()
-
+# --- Platform link flags ---
 if(APPLE)
     target_link_libraries(gpu_benchmark PRIVATE pthread)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
@@ -273,9 +265,6 @@ endif()
 
 if(WIN32)
     target_link_libraries(gpu_benchmark PRIVATE advapi32)
-    # Force console subsystem so stderr/stdout work in terminal.
-    # SDL2's .dll.a pulls -mwindows (GUI subsystem) which suppresses console I/O.
-    # We need console for --headless mode and log output.
     if(MINGW)
         target_link_libraries(gpu_benchmark PRIVATE -mconsole -static-libgcc -static-libstdc++)
     elseif(MSVC)
