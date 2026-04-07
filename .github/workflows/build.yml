@@ -8,7 +8,7 @@ on:
 
 jobs:
   linux:
-    name: Linux (GCC)
+    name: Linux + MinGW cross
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -16,15 +16,28 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential mingw-w64
+          curl -L -o sdl2-mingw.tar.gz \
+            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
+          tar xzf sdl2-mingw.tar.gz
+          sudo cp -r SDL2-2.30.12/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
+          sudo cp -r SDL2-2.30.12/i686-w64-mingw32/* /usr/i686-w64-mingw32/
 
-      - name: Build
+      - name: Build native
         run: ./scripts/build.sh native
 
       - name: Unit tests
         run: ./build_native/gpubench_tests --no-color
 
-      - name: Upload artifacts
+      - name: Build MinGW64
+        run: ./scripts/build.sh mingw64
+
+      - name: Build MinGW32
+        run: ./scripts/build.sh mingw32
+
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
@@ -32,28 +45,7 @@ jobs:
             build_native/gpu_benchmark
             build_native/gpu_demo
 
-  mingw64:
-    name: Windows x64 (MinGW cross)
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake mingw-w64 build-essential
-
-      - name: Download MinGW SDL2 (x86_64)
-        run: |
-          curl -L -o sdl2-mingw.tar.gz \
-            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
-          tar xzf sdl2-mingw.tar.gz
-          sudo cp -r SDL2-2.30.12/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
-
-      - name: Build
-        run: ./scripts/build.sh mingw64
-
-      - name: Upload artifacts
+      - name: Upload Windows x64 artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64
@@ -62,28 +54,7 @@ jobs:
             build_mingw64/gpu_demo.exe
             build_mingw64/*.dll
 
-  mingw32:
-    name: Windows x86 / XP (MinGW cross)
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake mingw-w64 build-essential
-
-      - name: Download MinGW SDL2 (i686)
-        run: |
-          curl -L -o sdl2-mingw.tar.gz \
-            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
-          tar xzf sdl2-mingw.tar.gz
-          sudo cp -r SDL2-2.30.12/i686-w64-mingw32/* /usr/i686-w64-mingw32/
-
-      - name: Build
-        run: ./scripts/build.sh mingw32
-
-      - name: Upload artifacts
+      - name: Upload Windows x86 artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-x86
