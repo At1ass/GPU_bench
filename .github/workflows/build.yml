@@ -1,0 +1,129 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main]
+
+jobs:
+  linux:
+    name: Linux (GCC)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential
+
+      - name: Build
+        run: ./scripts/build.sh native
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: |
+            build_native/gpu_benchmark
+            build_native/gpu_demo
+
+  mingw64:
+    name: Windows x64 (MinGW cross)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake mingw-w64 build-essential
+
+      - name: Download MinGW SDL2 (x86_64)
+        run: |
+          curl -L -o sdl2-mingw.tar.gz \
+            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
+          tar xzf sdl2-mingw.tar.gz
+          sudo cp -r SDL2-2.30.12/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
+
+      - name: Build
+        run: ./scripts/build.sh mingw64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            build_mingw64/gpu_benchmark.exe
+            build_mingw64/gpu_demo.exe
+            build_mingw64/*.dll
+
+  mingw32:
+    name: Windows x86 / XP (MinGW cross)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake mingw-w64 build-essential
+
+      - name: Download MinGW SDL2 (i686)
+        run: |
+          curl -L -o sdl2-mingw.tar.gz \
+            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
+          tar xzf sdl2-mingw.tar.gz
+          sudo cp -r SDL2-2.30.12/i686-w64-mingw32/* /usr/i686-w64-mingw32/
+
+      - name: Build
+        run: ./scripts/build.sh mingw32
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86
+          path: |
+            build_mingw32/gpu_benchmark.exe
+            build_mingw32/gpu_demo.exe
+            build_mingw32/*.dll
+
+  macos:
+    name: macOS (Clang)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install sdl2 cmake
+
+      - name: Build
+        run: ./scripts/build.sh native
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            build_native/gpu_benchmark
+            build_native/gpu_demo
+
+  freebsd:
+    name: FreeBSD
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y cmake sdl2 mesa-libs gmake
+          run: |
+            ./scripts/build.sh native
