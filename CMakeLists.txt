@@ -25,6 +25,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 elseif(MSVC)
     add_compile_options(/W4 /wd4100 /wd4244 /wd4267)
+    add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # --- Release optimizations ---
