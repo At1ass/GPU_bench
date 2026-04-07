@@ -42,6 +42,7 @@ public:
     }
     int executionOrder() const override { return 70; }
     QueueType queueType() const override { return QueueType::Graphics; }
+    PassRole passRole() const override { return PassRole::SceneContainer; }
 
 private:
     DemoRenderPass* sky_pass_;

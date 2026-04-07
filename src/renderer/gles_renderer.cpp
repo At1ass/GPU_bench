@@ -1,4 +1,5 @@
 #include "renderer/gles_renderer.h"
+#include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
@@ -117,8 +118,7 @@ bool GLESRenderer::init(int w, int h) {
     // GLES 2.0 may not support 32-bit indices without extension
     if (!gles3_) {
         caps_.supports_32bit_indices = false;
-        const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-        if (exts && strstr(exts, "GL_OES_element_index_uint"))
+        if (GLExtensions::has("GL_OES_element_index_uint"))
             caps_.supports_32bit_indices = true;
     }
 

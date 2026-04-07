@@ -1,6 +1,7 @@
 #include "renderer/gl_render_context.h"
 #include "core/app_config.h"
 #include "renderer/gl_loader.h"
+#include "renderer/gl_debug.h"
 #include "platform/logger.h"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
@@ -116,6 +117,11 @@ bool GLRenderContext::init(const AppConfig& cfg) {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
+    // Request debug context when --debug flag is set (Khronos KHR_debug)
+    if (cfg.debug) {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+    }
+
     bool ctx_ok = (cfg.backend == RendererBackend::GLES)
         ? createGLESContext()
         : createDesktopGLContext(cfg.backend);
@@ -131,6 +137,9 @@ bool GLRenderContext::init(const AppConfig& cfg) {
         LOG_ERR("Failed to load GL functions");
         return false;
     }
+
+    // Initialize GL debug output (noop if KHR_debug not available)
+    if (cfg.debug) GLDebug::init();
 
     if (!headless_) {
         if (!initImGui()) {

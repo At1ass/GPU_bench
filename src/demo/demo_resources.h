@@ -171,6 +171,7 @@ private:
     bool loadSharedTextures(Renderer* r);
     bool compileSkyShader(Renderer* r);
     bool compileTierShaders(Renderer* r, int tier);
+    int validateShaders(int max_tier);
     bool createShadowResources(Renderer* r, int shadow_size = 1024);
     bool createBloomResources(Renderer* r, int render_w, int render_h);
     bool createSSAOResources(Renderer* r, int render_w, int render_h);

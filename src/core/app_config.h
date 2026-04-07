@@ -25,7 +25,8 @@ struct AppConfig {
     TimingMode timing_mode = TimingMode::Sync;
     std::string output_file;
     int gpu_index = -1;         // -1 = default, >=0 = select GPU
-    bool debug = false;
+    bool debug = false;         // --debug: enable debug logging (Debug level)
+    bool verbose = false;       // --debug=verbose: enable trace logging (Trace level, GL debug groups)
 
     // Bench-specific (kept here for backward compat during transition)
     int preset_index = 1;       // PresetIndex::Medium

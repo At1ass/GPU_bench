@@ -74,6 +74,7 @@ static void printHelp() {
         "  --render-res <WxH>                  Render resolution (default: native)\n"
         "  --gpu <index>                       Select GPU by index\n"
         "  --debug                             Enable debug logging\n"
+        "  --debug=verbose                     Verbose trace logging (GL debug groups, per-pass)\n"
         "  --list-gpus                         List available GPUs and exit\n"
         "  --help, -h                          Show this help\n"
     );
@@ -121,8 +122,16 @@ static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
         } else if (strcmp(a, "--gpu") == 0) {
             if (++i >= argc) { LOG_ERR("--gpu requires argument"); return 1; }
             cfg.gpu_index = parseIntArg(argv[i], -1);
+        } else if (strcmp(a, "--debug=verbose") == 0) {
+            cfg.debug = true;
+            cfg.verbose = true;
         } else if (strcmp(a, "--debug") == 0) {
             cfg.debug = true;
+            // --debug verbose (two tokens)
+            if (i + 1 < argc && strcmp(argv[i + 1], "verbose") == 0) {
+                cfg.verbose = true;
+                i++;
+            }
         } else if (strcmp(a, "--list-gpus") == 0) {
             auto gpus = enumerateGPUs();
             printGPUList(gpus);
@@ -158,7 +167,10 @@ struct DemoApp {
 
     bool init(const AppConfig& cfg) {
         config = cfg;
-        Log::setLevel(cfg.debug ? Log::Level::Debug : Log::Level::Info);
+        Log::setLevel(cfg.verbose ? Log::Level::Trace
+                      : cfg.debug ? Log::Level::Debug
+                      : Log::Level::Info);
+        if (cfg.verbose) LOG_INF("Verbose trace logging enabled");
 
         window_w = cfg.width;
         window_h = cfg.height;

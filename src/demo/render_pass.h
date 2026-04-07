@@ -8,6 +8,13 @@ struct TierResourceView;
 struct DemoTierConfig;
 struct DemoDebugOverrides;
 
+// Typed role for pipeline builder routing (replaces strcmp on pass name).
+enum class PassRole {
+    Default,        // ordinary pass, no special pipeline handling
+    SceneContainer, // manages own FBO (scene_to_fbo)
+    FinalComposite, // renders to dest framebuffer (composite, hdr_composite)
+};
+
 // Abstract base for composable demo render passes.
 //
 // Each pass declares:
@@ -53,6 +60,9 @@ public:
 
     // Queue type hint (OpenGL: always Graphics; Vulkan: async compute possible)
     virtual QueueType queueType() const { return QueueType::Graphics; }
+
+    // Pipeline role: determines special RT handling in PipelineBuilder.
+    virtual PassRole passRole() const { return PassRole::Default; }
 
 protected:
     DemoRenderPass() = default;

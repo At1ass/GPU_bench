@@ -1,5 +1,6 @@
 #include "renderer/gl3_renderer.h"
 #include "renderer/gl_profile.h"
+#include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <cassert>
 #include <cstdio>
@@ -74,10 +75,9 @@ bool GL3Renderer::init(int w, int h) {
 #else
     // Linux: GL spec guarantees are reliable, but check GL2 extensions too
     if (!has_vao_ && caps_.gl_major == 2) {
-        const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-        if (exts && strstr(exts, "GL_ARB_vertex_array_object"))
+        if (GLExtensions::has("GL_ARB_vertex_array_object"))
             has_vao_ = true;
-        if (exts && strstr(exts, "GL_ARB_draw_instanced"))
+        if (GLExtensions::has("GL_ARB_draw_instanced"))
             has_instancing_ = true;
     }
 #endif

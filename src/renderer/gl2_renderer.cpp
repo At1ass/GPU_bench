@@ -1,4 +1,5 @@
 #include "renderer/gl2_renderer.h"
+#include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
@@ -293,17 +294,14 @@ void GL2Renderer::detectCaps() {
         if (caps_.gl_major > 3 || (caps_.gl_major == 3 && caps_.gl_minor >= 3))
             caps_.has_timer_queries = true;
     }
-    const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-    if (exts) {
-        if (!caps_.has_generate_mipmap_func && strstr(exts, "GL_ARB_framebuffer_object"))
-            caps_.has_generate_mipmap_func = true;
-        if (!caps_.has_fbo && strstr(exts, "GL_ARB_framebuffer_object"))
-            caps_.has_fbo = true;
-        if (!caps_.has_fbo && strstr(exts, "GL_EXT_framebuffer_object"))
-            caps_.has_fbo = true;
-        if (!caps_.has_timer_queries && strstr(exts, "GL_ARB_timer_query"))
-            caps_.has_timer_queries = true;
-    }
+    if (!caps_.has_generate_mipmap_func && GLExtensions::has("GL_ARB_framebuffer_object"))
+        caps_.has_generate_mipmap_func = true;
+    if (!caps_.has_fbo && GLExtensions::has("GL_ARB_framebuffer_object"))
+        caps_.has_fbo = true;
+    if (!caps_.has_fbo && GLExtensions::has("GL_EXT_framebuffer_object"))
+        caps_.has_fbo = true;
+    if (!caps_.has_timer_queries && GLExtensions::has("GL_ARB_timer_query"))
+        caps_.has_timer_queries = true;
 #endif
 
     // Try to detect VRAM. Multiple fallback methods for different drivers.
@@ -316,22 +314,19 @@ void GL2Renderer::detectCaps() {
     #define GL_TEXTURE_FREE_MEMORY_ATI 0x87FCu
     #endif
 
-    const char* exts_vram = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-    if (exts_vram) {
-        // Method 1: NVIDIA proprietary driver
-        if (strstr(exts_vram, "GL_NVX_gpu_memory_info")) {
-            GLint kb = 0;
-            glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &kb);
-            if (kb > 0) caps_.estimated_vram_mb = kb / 1024;
-            LOG_DBG("VRAM method 1 (GL_NVX_gpu_memory_info): %d MB", caps_.estimated_vram_mb);
-        }
-        // Method 2: AMD proprietary / Mesa RadeonSI (sometimes)
-        if (caps_.estimated_vram_mb == 0 && strstr(exts_vram, "GL_ATI_meminfo")) {
-            GLint info[4] = {0};
-            glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, info);
-            if (info[0] > 0) caps_.estimated_vram_mb = info[0] / 1024;
-            LOG_DBG("VRAM method 2 (GL_ATI_meminfo): %d MB", caps_.estimated_vram_mb);
-        }
+    // Method 1: NVIDIA proprietary driver
+    if (GLExtensions::has("GL_NVX_gpu_memory_info")) {
+        GLint kb = 0;
+        glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &kb);
+        if (kb > 0) caps_.estimated_vram_mb = kb / 1024;
+        LOG_DBG("VRAM method 1 (GL_NVX_gpu_memory_info): %d MB", caps_.estimated_vram_mb);
+    }
+    // Method 2: AMD proprietary / Mesa RadeonSI (sometimes)
+    if (caps_.estimated_vram_mb == 0 && GLExtensions::has("GL_ATI_meminfo")) {
+        GLint info[4] = {0};
+        glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, info);
+        if (info[0] > 0) caps_.estimated_vram_mb = info[0] / 1024;
+        LOG_DBG("VRAM method 2 (GL_ATI_meminfo): %d MB", caps_.estimated_vram_mb);
     }
 
 #if !defined(_WIN32)
@@ -385,7 +380,7 @@ void GL2Renderer::detectCaps() {
 #endif // __linux__
 #endif // !__APPLE__
 
-    LOG_WRN("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
+    LOG_INF("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
             "fbo=%s, timer_q=%s",
             caps_.gl_major, caps_.gl_minor,
             caps_.max_texture_size, caps_.max_vertex_attribs,

@@ -302,6 +302,89 @@
   #define GL_NONE                         0
   #endif
 
+  // Modern extension enumeration (GL 3.0+)
+  #ifndef GL_NUM_EXTENSIONS
+  #define GL_NUM_EXTENSIONS               0x821D
+  #endif
+
+  // Buffer usage hints (for SSBO read-back)
+  #ifndef GL_DYNAMIC_READ
+  #define GL_DYNAMIC_READ                 0x88E9
+  #endif
+
+  // GL 4.3 debug output (KHR_debug / ARB_debug_output)
+  #ifndef GL_DEBUG_OUTPUT
+  #define GL_DEBUG_OUTPUT                     0x92E0
+  #endif
+  #ifndef GL_DEBUG_OUTPUT_SYNCHRONOUS
+  #define GL_DEBUG_OUTPUT_SYNCHRONOUS         0x8242
+  #endif
+  #ifndef GL_DEBUG_SOURCE_API
+  #define GL_DEBUG_SOURCE_API                 0x8246
+  #endif
+  #ifndef GL_DEBUG_SOURCE_WINDOW_SYSTEM
+  #define GL_DEBUG_SOURCE_WINDOW_SYSTEM       0x8247
+  #endif
+  #ifndef GL_DEBUG_SOURCE_SHADER_COMPILER
+  #define GL_DEBUG_SOURCE_SHADER_COMPILER     0x8248
+  #endif
+  #ifndef GL_DEBUG_SOURCE_THIRD_PARTY
+  #define GL_DEBUG_SOURCE_THIRD_PARTY         0x8249
+  #endif
+  #ifndef GL_DEBUG_SOURCE_APPLICATION
+  #define GL_DEBUG_SOURCE_APPLICATION         0x824A
+  #endif
+  #ifndef GL_DEBUG_SOURCE_OTHER
+  #define GL_DEBUG_SOURCE_OTHER               0x824B
+  #endif
+  #ifndef GL_DEBUG_TYPE_ERROR
+  #define GL_DEBUG_TYPE_ERROR                 0x824C
+  #endif
+  #ifndef GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR
+  #define GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR   0x824D
+  #endif
+  #ifndef GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR
+  #define GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR    0x824E
+  #endif
+  #ifndef GL_DEBUG_TYPE_PORTABILITY
+  #define GL_DEBUG_TYPE_PORTABILITY           0x824F
+  #endif
+  #ifndef GL_DEBUG_TYPE_PERFORMANCE
+  #define GL_DEBUG_TYPE_PERFORMANCE           0x8250
+  #endif
+  #ifndef GL_DEBUG_TYPE_OTHER
+  #define GL_DEBUG_TYPE_OTHER                 0x8251
+  #endif
+  #ifndef GL_DEBUG_TYPE_MARKER
+  #define GL_DEBUG_TYPE_MARKER                0x8268
+  #endif
+  #ifndef GL_DEBUG_TYPE_PUSH_GROUP
+  #define GL_DEBUG_TYPE_PUSH_GROUP            0x8269
+  #endif
+  #ifndef GL_DEBUG_TYPE_POP_GROUP
+  #define GL_DEBUG_TYPE_POP_GROUP             0x826A
+  #endif
+  #ifndef GL_DEBUG_SEVERITY_HIGH
+  #define GL_DEBUG_SEVERITY_HIGH              0x9146
+  #endif
+  #ifndef GL_DEBUG_SEVERITY_MEDIUM
+  #define GL_DEBUG_SEVERITY_MEDIUM            0x9147
+  #endif
+  #ifndef GL_DEBUG_SEVERITY_LOW
+  #define GL_DEBUG_SEVERITY_LOW               0x9148
+  #endif
+  #ifndef GL_DEBUG_SEVERITY_NOTIFICATION
+  #define GL_DEBUG_SEVERITY_NOTIFICATION      0x826B
+  #endif
+  #ifndef GL_BUFFER
+  #define GL_BUFFER                           0x82E0
+  #endif
+  #ifndef GL_SHADER
+  #define GL_SHADER                           0x82E1
+  #endif
+  #ifndef GL_PROGRAM
+  #define GL_PROGRAM                          0x82E2
+  #endif
   // GL constant validation
   static_assert(GL_COLOR_ATTACHMENT1 == GL_COLOR_ATTACHMENT0 + 1, "Sequential");
   static_assert(GL_COLOR_ATTACHMENT2 == GL_COLOR_ATTACHMENT0 + 2, "Sequential");
@@ -414,6 +497,20 @@
   using PFNCB_glClientWaitSync  = GLenum (APIENTRY *)(GLsync, GLbitfield, GLuint64);
   using PFNCB_glDeleteSync      = void   (APIENTRY *)(GLsync);
 
+  // GL 3.0+ modern extension enumeration
+  using PFNCB_glGetStringi      = const GLubyte* (APIENTRY *)(GLenum, GLuint);
+
+  // GL 4.3 debug output (KHR_debug)
+  typedef void (APIENTRY *GLDEBUGPROC_CB)(GLenum source, GLenum type, GLuint id,
+                                          GLenum severity, GLsizei length,
+                                          const GLchar* message, const void* userParam);
+  using PFNCB_glDebugMessageCallback = void (APIENTRY *)(GLDEBUGPROC_CB callback, const void* userParam);
+  using PFNCB_glDebugMessageControl  = void (APIENTRY *)(GLenum source, GLenum type, GLenum severity,
+                                                          GLsizei count, const GLuint* ids, GLboolean enabled);
+  using PFNCB_glPushDebugGroup       = void (APIENTRY *)(GLenum source, GLuint id, GLsizei length, const GLchar* message);
+  using PFNCB_glPopDebugGroup        = void (APIENTRY *)(void);
+  using PFNCB_glObjectLabel          = void (APIENTRY *)(GLenum identifier, GLuint name, GLsizei length, const GLchar* label);
+
 
 
   // =========================================================================
@@ -469,7 +566,8 @@
       X(glBindBufferRange) \
       X(glBeginTransformFeedback) \
       X(glEndTransformFeedback) \
-      X(glTransformFeedbackVaryings)
+      X(glTransformFeedbackVaryings) \
+      X(glGetStringi)
 
   // GL 4.3+ optional functions (loaded in loadGL4Functions)
   #define CB_GL4_OPTIONAL_FUNCS(X) \
@@ -484,7 +582,12 @@
       X(glFenceSync) \
       X(glClientWaitSync) \
       X(glDeleteSync) \
-      X(glCopyImageSubData)
+      X(glCopyImageSubData) \
+      X(glDebugMessageCallback) \
+      X(glDebugMessageControl) \
+      X(glPushDebugGroup) \
+      X(glPopDebugGroup) \
+      X(glObjectLabel)
 
   // =========================================================================
   // Extern declarations — generated from X-macro lists
@@ -575,6 +678,16 @@
   #define glFenceSync                     cb_glFenceSync
   #define glClientWaitSync                cb_glClientWaitSync
   #define glDeleteSync                    cb_glDeleteSync
+
+  // GL 3.0+ extension enumeration
+  #define glGetStringi                    cb_glGetStringi
+
+  // GL 4.3 debug output (KHR_debug)
+  #define glDebugMessageCallback          cb_glDebugMessageCallback
+  #define glDebugMessageControl           cb_glDebugMessageControl
+  #define glPushDebugGroup                cb_glPushDebugGroup
+  #define glPopDebugGroup                 cb_glPopDebugGroup
+  #define glObjectLabel                   cb_glObjectLabel
 
 
 #else

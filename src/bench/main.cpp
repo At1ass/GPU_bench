@@ -152,8 +152,15 @@ static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
         } else if (strcmp(a, "--gpu") == 0) {
             if (++i >= argc) { LOG_ERR("--gpu requires argument"); return 1; }
             cfg.gpu_index = parseIntArg(argv[i], -1);
+        } else if (strcmp(a, "--debug=verbose") == 0) {
+            cfg.debug = true;
+            cfg.verbose = true;
         } else if (strcmp(a, "--debug") == 0) {
             cfg.debug = true;
+            if (i + 1 < argc && strcmp(argv[i + 1], "verbose") == 0) {
+                cfg.verbose = true;
+                i++;
+            }
         } else if (strcmp(a, "--list-gpus") == 0) {
             auto gpus = enumerateGPUs();
             printGPUList(gpus);
@@ -257,7 +264,9 @@ struct BenchApp {
     bool init(const AppConfig& cfg) {
         config = cfg;
         // Log::init() already called in main() before CLI parsing
-        Log::setLevel(cfg.debug ? Log::Level::Debug : Log::Level::Info);
+        Log::setLevel(cfg.verbose ? Log::Level::Trace
+                      : cfg.debug ? Log::Level::Debug
+                      : Log::Level::Info);
         window_w = cfg.width;
         window_h = cfg.height;
 

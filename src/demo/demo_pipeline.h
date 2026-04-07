@@ -1,6 +1,7 @@
 #pragma once
 #include "demo/render_pass.h"
 #include "renderer/features.h"
+#include "renderer/gl_debug.h"
 #include "platform/logger.h"
 #include <vector>
 #include <cstring>
@@ -176,11 +177,21 @@ public:
                 break;
             }
 
-            // Execute pass or command
-            if (n.pass)
+            // Execute pass or command (with GL debug groups for RenderDoc/Nsight)
+            if (n.pass) {
+                LOG_TRC("Pipeline: execute pass '%s' (node %d/%d, rt_action=%d)",
+                        n.pass->name(), static_cast<int>(i + 1),
+                        static_cast<int>(nodes_.size()), static_cast<int>(n.rt_action));
+                GLDebug::pushGroup(n.pass->name());
                 n.pass->execute(r, fd, res, cfg, scene);
-            else if (n.command)
+                GLDebug::popGroup();
+            } else if (n.command) {
+                LOG_TRC("Pipeline: execute command (node %d/%d)",
+                        static_cast<int>(i + 1), static_cast<int>(nodes_.size()));
+                GLDebug::pushGroup("pipeline_command");
                 n.command(r, fd, res, cfg, scene);
+                GLDebug::popGroup();
+            }
 
             // Post-execute: compute sync
             if (n.unbind_image_count > 0) {

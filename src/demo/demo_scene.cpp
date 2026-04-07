@@ -540,6 +540,7 @@ FrameData DemoScene::buildFrameData(float t, float time, int w, int h,
     fd.view = Mat4::lookAt(fd.cam_pos, cam_target, Vec3(0.0f, 1.0f, 0.0f));
     fd.sun_dir = SUN_DIR_RAW.normalized();
     fd.frustum = extractFrustum(fd.proj * fd.view);
+    computeLightMatrix(fd);
     fd.time = time;
     fd.tier_int = static_cast<int>(tier_);
     fd.viewport_w = w;

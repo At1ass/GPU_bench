@@ -3,7 +3,6 @@
 #include "demo/demo_utils.h"
 #include "demo/resource_id.h"
 #include "platform/logger.h"
-#include <cstring>
 #include <vector>
 
 // ============================================================
@@ -179,7 +178,7 @@ void buildPipeline(DemoPipeline& pipeline,
 
         for (size_t i = 0; i < sorted.size(); i++) {
             DemoRenderPass* pass = sorted[i];
-            const char* pname = pass->name();
+
 
             bool writes_shadow = false;
             bool writes_hdr = false;
@@ -241,13 +240,13 @@ void buildPipeline(DemoPipeline& pipeline,
             }
 
             // SceneToFBO manages its own FBO, just add it
-            if (strcmp(pname, "scene_to_fbo") == 0) {
+            if (pass->passRole() == PassRole::SceneContainer) {
                 pipeline.addPass(pass);
                 continue;
             }
 
             // HDR composite: barrier + render to dest
-            if (strcmp(pname, "hdr_composite") == 0) {
+            if (pass->passRole() == PassRole::FinalComposite) {
                 pipeline.addBarrier(4);
                 pipeline.addPassToDest(pass, false, 0.0f, 0.0f, 0.0f, 0.0f,
                                        viewport_w, viewport_h);
@@ -271,7 +270,7 @@ void buildPipeline(DemoPipeline& pipeline,
         // ============================================================
         for (size_t i = 0; i < sorted.size(); i++) {
             DemoRenderPass* pass = sorted[i];
-            const char* pname = pass->name();
+
 
             bool writes_shadow = false;
             const ResourceDecl* decls = pass->resourceDecls();
@@ -289,7 +288,7 @@ void buildPipeline(DemoPipeline& pipeline,
             }
 
             // Composite: render to dest
-            if (strcmp(pname, "composite") == 0) {
+            if (pass->passRole() == PassRole::FinalComposite) {
                 pipeline.addPassToDest(pass, false, 0.0f, 0.0f, 0.0f, 0.0f,
                                        viewport_w, viewport_h);
                 continue;

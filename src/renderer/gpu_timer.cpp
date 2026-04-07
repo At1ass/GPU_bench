@@ -1,4 +1,5 @@
 #include "renderer/gpu_timer.h"
+#include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <SDL.h>
 #include <cstdio>
@@ -46,8 +47,7 @@ void GPUTimer::init() {
     }
 
     if (!has_timer) {
-        const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-        if (exts && strstr(exts, "GL_ARB_timer_query"))
+        if (GLExtensions::has("GL_ARB_timer_query"))
             has_timer = true;
     }
 

@@ -88,7 +88,7 @@ U(BloomTex,          "u_bloom_tex",          I)
 U(BloomStrength,     "u_bloom_strength",     F)
 U(BloomThreshold,    "u_bloom_threshold",    F)
 U(BloomRadius,       "u_bloom_radius",       F)
-U(Horizontal,        "u_horizontal",         I)
+U(Horizontal,        "u_horizontal",         F)
 U(Threshold,         "u_threshold",          F)
 
 // Tone map / HDR

@@ -1,5 +1,4 @@
 #include "demo/demo_export.h"
-#include "bench/results.h"
 #include "platform/compat.h"
 #include <string>
 

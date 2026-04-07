@@ -33,6 +33,7 @@ public:
     }
     int executionOrder() const override { return 200; }
     QueueType queueType() const override { return QueueType::Graphics; }
+    PassRole passRole() const override { return PassRole::FinalComposite; }
 
 private:
     UniformBlock ub_tone_map_;

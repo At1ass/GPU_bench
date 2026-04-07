@@ -927,7 +927,8 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 histogram_ssbo_.assign(renderer_, hist);
             }
             // Single float for exposure
-            BufferHandle exp_buf = cf->createSSBO(static_cast<int>(sizeof(float)));
+            BufferHandle exp_buf = cf->createSSBO(static_cast<int>(sizeof(float)),
+                                                   ComputeFeatures::SSBOUsage::CpuReadBack);
             if (exp_buf != INVALID_BUFFER) {
                 float init_exp = 1.0f;
                 cf->updateSSBO(exp_buf, &init_exp, static_cast<int>(sizeof(float)));
@@ -1050,6 +1051,13 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
         compileTierShaders(r, t);
     }
 
+    // Validate shader availability per tier — fall back if critical shaders missing
+    int valid_tier = validateShaders(max_tier);
+    if (valid_tier < max_tier) {
+        LOG_WRN("Shader validation: falling back from tier %d to %d", max_tier, valid_tier);
+        max_tier = valid_tier;
+    }
+
     // Create shadow resources for T2+ (non-critical: T2 falls back to unshadowed)
     if (max_tier >= 2) {
         int shadow_size = (max_tier >= 4) ? 4096 : ((max_tier >= 3) ? 2048 : 1024);
@@ -1074,6 +1082,47 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     prepared_ = true;
     LOG_INF("Resources: all resources prepared (max_tier=%d)", max_tier);
     return true;
+}
+
+int DemoResources::validateShaders(int max_tier) {
+    // Check critical shaders for each tier, top-down.
+    // Returns the highest tier where all required shaders are available.
+    for (int t = max_tier; t >= 1; t--) {
+        int idx = t - 1;
+        bool valid = true;
+
+        // Island shader: T1-T3 use cache, T4 uses legacy owned ShaderProgram
+        bool has_island = (t <= 3) ? (island_cache_[idx] != nullptr)
+                                   : static_cast<bool>(island_shaders_[idx]);
+        if (!has_island) {
+            LOG_WRN("Shader validation: tier %d missing island shader", t);
+            valid = false;
+        }
+
+        // Sky shader: per-tier cache, with fallback to sky_shader_from_cache_
+        bool has_sky = (sky_cache_[idx] != nullptr);
+        if (!has_sky && t == 1 && sky_shader_from_cache_)
+            has_sky = true;
+        if (!has_sky) {
+            LOG_WRN("Shader validation: tier %d missing sky shader", t);
+            valid = false;
+        }
+
+        // Fur shader: same pattern as island
+        bool has_fur = (t <= 3) ? (fur_cache_[idx] != nullptr)
+                                : static_cast<bool>(fur_shaders_[idx]);
+        if (!has_fur) {
+            LOG_WRN("Shader validation: tier %d missing fur shader", t);
+            valid = false;
+        }
+
+        if (valid) {
+            LOG_DBG("Shader validation: tier %d OK", t);
+            return t;
+        }
+    }
+    LOG_WRN("Shader validation: no tier fully valid, defaulting to tier 1");
+    return 1;
 }
 
 TierResourceView DemoResources::viewForTier(DemoTier tier) {

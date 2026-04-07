@@ -14,7 +14,7 @@ public:
     void         dispatchCompute(int groups_x, int groups_y, int groups_z) override;
     void         computeMemoryBarrier() override;
 
-    BufferHandle createSSBO(int size_bytes) override;
+    BufferHandle createSSBO(int size_bytes, SSBOUsage usage = SSBOUsage::GpuReadWrite) override;
     void         destroySSBO(BufferHandle h) override;
     void         bindSSBO(BufferHandle h, int binding) override;
     void         updateSSBO(BufferHandle h, const void* data, int size_bytes) override;

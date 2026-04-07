@@ -17,8 +17,6 @@ void ShadowPass::execute(Renderer* r, FrameData& fd,
 
     if (!res.shadow.shader || res.shadow.rt == INVALID_RENDER_TARGET) return;
 
-    computeLightMatrix(fd);
-
     r->bindRenderTarget(res.shadow.rt);
     r->setViewport(0, 0, res.shadow.map_size, res.shadow.map_size);
     r->clear(1.0f, 1.0f, 1.0f, 1.0f);

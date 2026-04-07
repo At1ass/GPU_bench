@@ -28,7 +28,7 @@ class Log {
 public:
     Log() = delete;
 
-    enum class Level { Debug, Info, Warn, Error };
+    enum class Level { Trace, Debug, Info, Warn, Error };
 
     static void init(const char* log_file = nullptr) {
         if (log_file) {
@@ -42,12 +42,12 @@ public:
     }
 
     static void shutdown() {
-        if (s_counts[0] || s_counts[1] || s_counts[2] || s_counts[3]) {
-            fprintf(stderr, "[LOG] Messages: %u dbg, %u info, %u warn, %u err\n",
-                    s_counts[0], s_counts[1], s_counts[2], s_counts[3]);
+        if (s_counts[0] || s_counts[1] || s_counts[2] || s_counts[3] || s_counts[4]) {
+            fprintf(stderr, "[LOG] Messages: %u trc, %u dbg, %u info, %u warn, %u err\n",
+                    s_counts[0], s_counts[1], s_counts[2], s_counts[3], s_counts[4]);
             if (s_file) {
-                fprintf(s_file.get(), "[LOG] Messages: %u dbg, %u info, %u warn, %u err\n",
-                        s_counts[0], s_counts[1], s_counts[2], s_counts[3]);
+                fprintf(s_file.get(), "[LOG] Messages: %u trc, %u dbg, %u info, %u warn, %u err\n",
+                        s_counts[0], s_counts[1], s_counts[2], s_counts[3], s_counts[4]);
             }
         }
         s_file.reset();
@@ -114,7 +114,7 @@ private:
     static Level s_level;
     static std::chrono::steady_clock::time_point s_start;
     static bool s_use_color;
-    static unsigned int s_counts[4];
+    static unsigned int s_counts[5];
 
     struct LevelInfo {
         const char* tag;
@@ -123,6 +123,7 @@ private:
 
     static LevelInfo levelInfo(Level lvl) {
         static const LevelInfo table[] = {
+            { "TRC", "\033[90m"   },  // Trace: verbose diagnostics (GL debug groups, per-pass timing)
             { "DBG", "\033[90m"   },
             { "INF", "\033[32m"   },
             { "WRN", "\033[33m"   },
@@ -164,6 +165,15 @@ private:
 //
 // snprintf at call site → compiler sees literal format string →
 // full -Wformat=2 checking, automatic __FILE__:__LINE__ + subsystem.
+
+// Trace: verbose diagnostics (GL debug groups, per-pass timing, uniform details).
+// Enabled via --debug=verbose. Produces significant log volume.
+#define LOG_TRC(fmt, ...) \
+    do { if (Log::levelEnabled(Log::Level::Trace)) { \
+        char _log_buf_[2048]; \
+        snprintf(_log_buf_, sizeof(_log_buf_), fmt, ##__VA_ARGS__); \
+        Log::emitMsg(Log::Level::Trace, __FILE__, __LINE__, _log_buf_); \
+    }} while(0)
 
 #define LOG_DBG(fmt, ...) \
     do { if (Log::levelEnabled(Log::Level::Debug)) { \

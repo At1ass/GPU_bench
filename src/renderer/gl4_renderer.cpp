@@ -1,5 +1,6 @@
 #include "renderer/gl4_renderer.h"
 #include "renderer/gl_profile.h"
+#include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
@@ -58,24 +59,21 @@ bool GL4Renderer::init(int w, int h) {
                          && (cb_glMakeTextureHandleResidentARB != 0);
 #else
     // Extension fallback
-    const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-    if (exts) {
-        if (!has_compute_ && strstr(exts, "GL_ARB_compute_shader"))
-            has_compute_ = true;
-        if (!has_indirect_draw_ && strstr(exts, "GL_ARB_multi_draw_indirect"))
-            has_indirect_draw_ = true;
-        if (!has_tessellation_ && strstr(exts, "GL_ARB_tessellation_shader"))
-            has_tessellation_ = true;
-        if (!has_texture_gather_ && strstr(exts, "GL_ARB_texture_gather"))
-            has_texture_gather_ = true;
-        if (!has_image_load_store_ && strstr(exts, "GL_ARB_shader_image_load_store"))
-            has_image_load_store_ = true;
-        if (!has_buffer_storage_ && strstr(exts, "GL_ARB_buffer_storage"))
-            has_buffer_storage_ = true;
-        if (strstr(exts, "GL_ARB_bindless_texture"))
-            has_bindless_texture_ = (cb_glGetTextureHandleARB != nullptr)
-                                 && (cb_glMakeTextureHandleResidentARB != nullptr);
-    }
+    if (!has_compute_ && GLExtensions::has("GL_ARB_compute_shader"))
+        has_compute_ = true;
+    if (!has_indirect_draw_ && GLExtensions::has("GL_ARB_multi_draw_indirect"))
+        has_indirect_draw_ = true;
+    if (!has_tessellation_ && GLExtensions::has("GL_ARB_tessellation_shader"))
+        has_tessellation_ = true;
+    if (!has_texture_gather_ && GLExtensions::has("GL_ARB_texture_gather"))
+        has_texture_gather_ = true;
+    if (!has_image_load_store_ && GLExtensions::has("GL_ARB_shader_image_load_store"))
+        has_image_load_store_ = true;
+    if (!has_buffer_storage_ && GLExtensions::has("GL_ARB_buffer_storage"))
+        has_buffer_storage_ = true;
+    if (GLExtensions::has("GL_ARB_bindless_texture"))
+        has_bindless_texture_ = (cb_glGetTextureHandleARB != nullptr)
+                             && (cb_glMakeTextureHandleResidentARB != nullptr);
 #endif
 
     // Load GL4 function pointers
@@ -209,11 +207,12 @@ void GL4Renderer::computeMemoryBarrier() {
 
 // --- SSBO ---
 
-BufferHandle GL4Renderer::createSSBO(int size_bytes) {
+BufferHandle GL4Renderer::createSSBO(int size_bytes, SSBOUsage usage) {
     GLBuffer buf;
     glGenBuffers(1, &buf.id);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buf.id);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, size_bytes, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, size_bytes, nullptr,
+                 static_cast<GLenum>(usage));
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     buf.valid = true;
 

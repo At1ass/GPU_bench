@@ -76,10 +76,16 @@ protected:
 public:
     bool hasCompute() const { return has_compute_; }
 
+    // SSBO usage hints (maps to GL_DYNAMIC_DRAW / GL_DYNAMIC_READ)
+    enum class SSBOUsage : unsigned int {
+        GpuReadWrite = 0x88E8,  // GL_DYNAMIC_DRAW: GPU writes, GPU reads (default)
+        CpuReadBack  = 0x88E9,  // GL_DYNAMIC_READ: GPU writes, CPU reads back
+    };
+
     virtual ShaderHandle createComputeShader(const char* source) = 0;
     virtual void dispatchCompute(int groups_x, int groups_y, int groups_z) = 0;
     virtual void computeMemoryBarrier() = 0;
-    virtual BufferHandle createSSBO(int size_bytes) = 0;
+    virtual BufferHandle createSSBO(int size_bytes, SSBOUsage usage = SSBOUsage::GpuReadWrite) = 0;
     virtual void destroySSBO(BufferHandle h) = 0;
     virtual void bindSSBO(BufferHandle h, int binding) = 0;
     virtual void updateSSBO(BufferHandle h, const void* data, int size_bytes) = 0;

@@ -124,6 +124,8 @@ set(CORE_LIB_SOURCES
     src/renderer/gl_loader.cpp
     src/renderer/renderer_factory.cpp
     src/renderer/gpu_timer.cpp
+    src/renderer/gl_extensions.cpp
+    src/renderer/gl_debug.cpp
     src/geometry/mesh_gen.cpp
     src/geometry/obj_loader.cpp
     src/platform/hwinfo.cpp
@@ -153,6 +155,14 @@ endif()
 if(PORTABLE_BUILD AND NOT WIN32)
     target_compile_definitions(gpubench_core PUBLIC CB_STATIC_GL)
 endif()
+
+# --- Engine convenience layer (between core and demo) ---
+set(ENGINE_SOURCES
+    src/engine/engine.cpp
+)
+add_library(gpubench_engine STATIC ${ENGINE_SOURCES})
+target_include_directories(gpubench_engine PUBLIC src extern)
+target_link_libraries(gpubench_engine PUBLIC gpubench_core)
 
 # --- Benchmark executable ---
 # Bench library sources (shared between gpu_benchmark and unit tests)
@@ -247,7 +257,7 @@ set(DEMO_SOURCES
 )
 
 add_executable(gpu_demo ${DEMO_SOURCES})
-target_link_libraries(gpu_demo PRIVATE gpubench_core)
+target_link_libraries(gpu_demo PRIVATE gpubench_engine)
 
 # --- Platform link flags (both executables) ---
 foreach(target gpu_benchmark gpu_demo)

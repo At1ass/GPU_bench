@@ -1,5 +1,6 @@
 #include "renderer/gl_loader.h"
 #include "renderer/gl_funcs.h"
+#include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
@@ -55,6 +56,9 @@ bool GLLoader::init() {
     // Extension-only functions (ARB_bindless_texture etc)
     loadGLExtFunctions();
     LOG_DBG("GLLoader: extension function pointers loaded");
+
+    // Modern extension enumeration (Khronos best practice)
+    GLExtensions::init();
 
     // Cache availability
 #ifdef CB_NEED_GL_LOAD
