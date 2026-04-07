@@ -1,15 +1,19 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/fullscreen_pass.h"
 #include "demo/demo_scene.h"
 #include "demo/demo_debug.h"
 
-class VolumetricFogPass : public DemoRenderPass {
+class VolumetricFogPass : public FullscreenPass {
 public:
     const char* name() const override { return "volumetric_fog"; }
     void init(const TierResourceView& res);
-    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                 const DemoTierConfig& cfg, const SceneData& scene) override;
+
+    // FullscreenPass interface
+    void setup(const TierResourceView& res) override;
+    void inputs(PassContext& ctx, const TierResourceView& res,
+                const FrameData& fd) override;
+    void uniforms(UniformBlock& ub, const FrameData& fd,
+                  const DemoTierConfig& cfg) override;
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -24,8 +28,7 @@ public:
         return cfg.enable_volumetric_fog && !dbg.skip_vol_fog;
     }
     int executionOrder() const override { return 100; }
-    QueueType queueType() const override { return QueueType::Graphics; }
 
 private:
-    UniformBlock ub_;
+    const TierResourceView* res_ = nullptr;
 };

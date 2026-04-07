@@ -134,6 +134,7 @@ private:
     TextureHandle hdr_depth_tex_;
     TextureHandle hdr_color_tex_;  // non-owning view of HDR RT color (for copyImageSubData)
     ScopedRenderTarget fog_rt_;
+    int fog_w_, fog_h_;
 
     // T4 Ultra: Compute GTAO
     ShaderProgram gtao_shader_;

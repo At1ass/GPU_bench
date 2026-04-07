@@ -70,6 +70,9 @@ protected:
         has_clear_ = true;
         clear_[0] = r; clear_[1] = g; clear_[2] = b; clear_[3] = a;
     }
+    // Skip RT binding in execute() — for passes where pipeline manages RT
+    // (e.g., OpaquePass/WaterPass where SceneToFBO already binds the target)
+    void setPipelineManagedRT() { pipeline_managed_rt_ = true; }
     UniformBlock& ub() { return ub_; }
 
 private:
@@ -80,4 +83,5 @@ private:
     RenderState state_ = RenderState::opaque();
     bool has_clear_ = false;
     float clear_[4] = {};
+    bool pipeline_managed_rt_ = false;
 };

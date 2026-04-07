@@ -1,15 +1,22 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/compute_pass.h"
 #include "demo/demo_scene.h"
 #include "demo/demo_debug.h"
 
-class DoFPass : public DemoRenderPass {
+class DoFPass : public ComputePassBase {
 public:
     const char* name() const override { return "dof"; }
     void init(const TierResourceView& res);
-    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                 const DemoTierConfig& cfg, const SceneData& scene) override;
+
+    // ComputePassBase interface
+    void setup(const TierResourceView& res) override;
+    void bind(PassContext& ctx, UniformBlock& ub,
+              const TierResourceView& res,
+              const FrameData& fd,
+              const DemoTierConfig& cfg) override;
+    void workgroups(const FrameData& fd, const DemoTierConfig& cfg,
+                    int& gx, int& gy, int& gz) override;
+    unsigned int barrierFlags() const override { return Barrier_Image; }
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -25,8 +32,4 @@ public:
         return cfg.enable_dof && !dbg.skip_dof;
     }
     int executionOrder() const override { return 100; }
-    QueueType queueType() const override { return QueueType::Compute; }
-
-private:
-    UniformBlock ub_;
 };

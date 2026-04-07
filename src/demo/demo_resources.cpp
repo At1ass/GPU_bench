@@ -810,6 +810,8 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         RenderTargetHandle frt = r->createFloatRenderTarget(fw, fh);
         if (frt != INVALID_RENDER_TARGET) {
             fog_rt_.assign(r, frt);
+            fog_w_ = fw;
+            fog_h_ = fh;
             LOG_INF("Resources: HDR fog FBO created %dx%d", fw, fh);
         }
     }
@@ -1268,7 +1270,11 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
             view.ssao.scene_depth_tex = hdr_depth_tex_;
         }
         if (hdr_bright_rt_) view.t4.hdr_bright_rt = hdr_bright_rt_.get();
-        if (fog_rt_) view.t4.fog_rt = fog_rt_.get();
+        if (fog_rt_) {
+            view.t4.fog_rt = fog_rt_.get();
+            view.t4.fog_w = fog_w_;
+            view.t4.fog_h = fog_h_;
+        }
 
         // T4 Ultra: GTAO
         if (gtao_shader_) view.t4.gtao_shader = &gtao_shader_;
@@ -1378,6 +1384,8 @@ void DemoResources::destroy() {
     hdr_bright_rt_.reset();
     hdr_depth_tex_ = TextureHandle();
     fog_rt_.reset();
+    fog_w_ = 0;
+    fog_h_ = 0;
 
     // T4 Ultra resources
     gtao_shader_.reset();

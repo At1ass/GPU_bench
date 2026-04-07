@@ -1,13 +1,21 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/geometry_pass.h"
 
-class WaterPass : public DemoRenderPass {
+class WaterPass : public GeometryPass {
 public:
     const char* name() const override { return "water"; }
     void init(const TierResourceView& res);
-    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                 const DemoTierConfig& cfg, const SceneData& scene) override;
+
+    // GeometryPass interface
+    void setup(const TierResourceView& res) override;
+    void sceneSetup(UniformBlock& ub, PassContext& ctx,
+                    const FrameData& fd,
+                    const TierResourceView& res,
+                    const DemoTierConfig& cfg) override;
+    bool objectFilter(const SceneObject& obj,
+                      const FrameData& fd) override;
+    void perObject(UniformBlock& ub, PassContext& ctx,
+                   const SceneObject& obj) override;
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -24,8 +32,7 @@ public:
         return true;
     }
     int executionOrder() const override { return 60; }
-    QueueType queueType() const override { return QueueType::Graphics; }
 
 private:
-    UniformBlock ub_;
+    ShaderProgram* island_shader_ = nullptr;
 };

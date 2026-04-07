@@ -4,14 +4,18 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
                            const TierResourceView& res,
                            const DemoTierConfig& cfg,
                            const SceneData& scene) {
-    ctx.beginRT(output_rt_, out_w_, out_h_, has_clear_ ? clear_ : nullptr);
+    if (!pipeline_managed_rt_)
+        ctx.beginRT(output_rt_, out_w_, out_h_, has_clear_ ? clear_ : nullptr);
     ctx.applyState(state_);
 
     ub_.use();
     sceneSetup(ub_, ctx, fd, res, cfg);
 
     const std::vector<SceneObject>* objects = objectList(scene);
-    if (!objects) { ctx.endRT(); return; }
+    if (!objects) {
+        if (!pipeline_managed_rt_) ctx.endRT();
+        return;
+    }
 
     for (size_t i = 0; i < objects->size(); i++) {
         const SceneObject& obj = (*objects)[i];
@@ -24,5 +28,6 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
         if (obj.mat.two_sided) ctx.setCullFace(state_.cull_face);
     }
 
-    ctx.endRT();
+    if (!pipeline_managed_rt_)
+        ctx.endRT();
 }

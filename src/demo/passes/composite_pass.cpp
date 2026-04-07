@@ -1,47 +1,40 @@
 #include "demo/passes/composite_pass.h"
-#include "engine/pass_context.h"
-#include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
-#include "demo/demo_scene.h"
 
 void CompositePass::init(const TierResourceView& res) {
-    if (res.bloom.composite_shader)
-        ub_bloom_composite_.init(res.bloom.composite_shader);
+    res_ = &res;
+    if (res.bloom.composite_shader) {
+        ub().init(res.bloom.composite_shader);
+        setShader(res.bloom.composite_shader);
+    }
+    setQuad(res.bloom.fullscreen_quad);
+    setPipelineManagedRT();
 }
 
-void CompositePass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                            const DemoTierConfig& cfg, const SceneData& scene) {
-    Renderer* r = ctx.renderer();
-    (void)cfg;
-    (void)scene;
+void CompositePass::setup(const TierResourceView& res) {
+    (void)res;
+    // Output is dest_rt — handled by pipeline (passRole = FinalComposite)
+}
 
-    // Restore destination render target for composite output
-    r->bindRenderTarget(fd.dest_rt);
-    r->setViewport(0, 0, fd.viewport_w, fd.viewport_h);
-    r->setDepthTest(false);
-    r->setCullFace(false);
+void CompositePass::inputs(PassContext& ctx, const TierResourceView& res,
+                           const FrameData& fd) {
+    ctx.bindRTTexture(0, res.bloom.scene_rt);
+    ctx.bindRTTexture(1, res.bloom.bright_rt);
 
-    ub_bloom_composite_.use();
-    r->bindRenderTargetTexture(res.bloom.scene_rt, 0);
-    ub_bloom_composite_.set(U::SceneTex, 0);
-    r->bindRenderTargetTexture(res.bloom.bright_rt, 1);
-    ub_bloom_composite_.set(U::BloomTex, 1);
-    ub_bloom_composite_.set(U::BloomStrength, res.bloom.strength);
-    ub_bloom_composite_.set(U::ViewportSize,
-        static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
-
-    // SSAO: bind blurred AO texture
     if (fd.has_ssao) {
-        r->bindRenderTargetTexture(res.ssao.blur_rt, 2);
-        ub_bloom_composite_.set(U::SsaoTex, 2);
-        ub_bloom_composite_.set(U::HasSsao, 1.0f);
-    } else {
-        ub_bloom_composite_.set(U::HasSsao, 0.0f);
+        ctx.bindRTTexture(2, res.ssao.blur_rt);
     }
+}
 
-    r->drawMesh(res.bloom.fullscreen_quad);
-
-    r->setDepthTest(true);
-    r->setCullFace(true);
+void CompositePass::uniforms(UniformBlock& ub, const FrameData& fd,
+                             const DemoTierConfig& cfg) {
+    (void)cfg;
+    ub.set(U::SceneTex, 0);
+    ub.set(U::BloomTex, 1);
+    ub.set(U::BloomStrength, res_->bloom.strength);
+    ub.set(U::ViewportSize,
+        static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
+    ub.set(U::HasSsao, fd.has_ssao ? 1.0f : 0.0f);
+    if (fd.has_ssao) ub.set(U::SsaoTex, 2);
 }

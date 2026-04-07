@@ -53,6 +53,9 @@ protected:
     void setOutputScreen(int w, int h) {
         out_w_ = w; out_h_ = h; to_screen_ = true;
     }
+    // Skip RT binding in execute() — for passes where pipeline manages RT
+    // (e.g., FinalComposite passes where pipeline does addPassToDest)
+    void setPipelineManagedRT() { pipeline_managed_rt_ = true; }
     void setClearColor(float r, float g, float b, float a) {
         has_clear_ = true;
         clear_[0] = r; clear_[1] = g; clear_[2] = b; clear_[3] = a;
@@ -68,4 +71,5 @@ private:
     bool has_clear_ = false;
     float clear_[4] = {};
     bool to_screen_ = false;
+    bool pipeline_managed_rt_ = false;
 };

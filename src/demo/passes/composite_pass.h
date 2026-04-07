@@ -1,15 +1,19 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/fullscreen_pass.h"
 #include "demo/demo_scene.h"
 
 // T2/T3 final composite: scene + bloom + SSAO + vignette + color grading.
-class CompositePass : public DemoRenderPass {
+class CompositePass : public FullscreenPass {
 public:
     const char* name() const override { return "composite"; }
     void init(const TierResourceView& res);
-    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                 const DemoTierConfig& cfg, const SceneData& scene) override;
+
+    // FullscreenPass interface
+    void setup(const TierResourceView& res) override;
+    void inputs(PassContext& ctx, const TierResourceView& res,
+                const FrameData& fd) override;
+    void uniforms(UniformBlock& ub, const FrameData& fd,
+                  const DemoTierConfig& cfg) override;
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -25,9 +29,8 @@ public:
         return cfg.enable_bloom && !cfg.enable_hdr;
     }
     int executionOrder() const override { return 200; }
-    QueueType queueType() const override { return QueueType::Graphics; }
     PassRole passRole() const override { return PassRole::FinalComposite; }
 
 private:
-    UniformBlock ub_bloom_composite_;
+    const TierResourceView* res_ = nullptr;
 };

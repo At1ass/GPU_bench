@@ -1,120 +1,118 @@
 #include "demo/passes/opaque_pass.h"
-#include "engine/pass_context.h"
-#include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
 #include "demo/demo_scene.h"
-#include "platform/logger.h"
+#include "demo/demo_utils.h"
 #include <cmath>
 
 void OpaquePass::init(const TierResourceView& res) {
-    ub_.init(res.core.island_shader);
+    island_shader_ = res.core.island_shader;
+    ub().init(res.core.island_shader);
+    setShader(res.core.island_shader);
+    setState(RenderState::opaque());
+    setPipelineManagedRT();
 }
 
-void OpaquePass::execute(PassContext& ctx, FrameData& fd,
-                         const TierResourceView& res,
-                         const DemoTierConfig& cfg,
-                         const SceneData& scene) {
-    Renderer* r = ctx.renderer();
-    if (!res.core.island_shader) return;
+void OpaquePass::setup(const TierResourceView& res) {
+    (void)res;
+}
 
-    r->setBlending(false);
-    ub_.use();
+void OpaquePass::sceneSetup(UniformBlock& ub, PassContext& ctx,
+                            const FrameData& fd,
+                            const TierResourceView& res,
+                            const DemoTierConfig& cfg) {
+    ctx.renderer()->setBlending(false);
 
-    ub_.set(U::Proj, fd.proj);
-    ub_.set(U::View, fd.view);
-    ub_.set(U::LightDir, fd.sun_dir);
-    ub_.set(U::CamPos, fd.cam_pos);
-    ub_.set(U::FogColor, FOG_COLOR);
+    ub.set(U::Proj, fd.proj);
+    ub.set(U::View, fd.view);
+    ub.set(U::LightDir, fd.sun_dir);
+    ub.set(U::CamPos, fd.cam_pos);
+    ub.set(U::FogColor, FOG_COLOR);
     // Reduce per-object fog when volumetric fog handles atmospheric scattering;
     // keep minimal density for terrain edge fade (smoothstep in shader)
-    ub_.set(U::FogDensity, cfg.enable_volumetric_fog ? cfg.fog_density * 0.3f : cfg.fog_density);
-    ub_.set(U::Time, fd.time);
-    ub_.set(U::NormalStrength, cfg.enable_normal_maps ? cfg.normal_map_strength : 0.0f);
+    ub.set(U::FogDensity, cfg.enable_volumetric_fog ? cfg.fog_density * 0.3f : cfg.fog_density);
+    ub.set(U::Time, fd.time);
+    ub.set(U::NormalStrength, cfg.enable_normal_maps ? cfg.normal_map_strength : 0.0f);
 
     // Wind direction (same as fur pass for consistency)
     if (cfg.enable_wind) {
         float wind_x = sinf(fd.time * 0.7f) * 1.8f;
         float wind_z = cosf(fd.time * 0.5f) * 1.2f;
-        ub_.set(U::WindDir, wind_x, 0.0f, wind_z);
+        ub.set(U::WindDir, wind_x, 0.0f, wind_z);
     } else {
-        ub_.set(U::WindDir, 0.0f, 0.0f, 0.0f);
+        ub.set(U::WindDir, 0.0f, 0.0f, 0.0f);
     }
 
     // Viewport size for vignette + color grading
-    ub_.set(U::ViewportSize,
+    ub.set(U::ViewportSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
 
     // PBR default uniforms (T4) -- overridden per-object if set
-    float default_metallic = 0.0f;
-    float default_roughness = 0.6f;
     if (cfg.enable_pbr) {
-        ub_.set(U::Metallic, default_metallic);
-        ub_.set(U::Roughness, default_roughness);
+        ub.set(U::Metallic, 0.0f);
+        ub.set(U::Roughness, 0.6f);
     }
 
     // SSS uniforms (T4 Ultra)
     if (cfg.enable_sss) {
-        ub_.set(U::SssStrength, cfg.sss_strength);
+        ub.set(U::SssStrength, cfg.sss_strength);
     } else {
-        ub_.set(U::SssStrength, 0.0f);
+        ub.set(U::SssStrength, 0.0f);
     }
 
     // Shadow uniforms (T2+)
     if (fd.has_shadows) {
-        ub_.set(U::LightVP, fd.light_vp);
-        r->bindTextureUnit(3, res.shadow.depth_tex);
-        ub_.set(U::ShadowMap, 3);
-        ub_.set(U::HasShadow, 1.0f);
+        ub.set(U::LightVP, fd.light_vp);
+        ctx.bindTexture(3, res.shadow.depth_tex);
+        ub.set(U::ShadowMap, 3);
+        ub.set(U::HasShadow, 1.0f);
         // Texel size for PCF kernel spacing (needed by ALL shadow tiers, not just PCSS)
         float texel = 1.0f / static_cast<float>(cfg.shadow_map_size);
-        ub_.set(U::ShadowTexelSize, texel, texel);
+        ub.set(U::ShadowTexelSize, texel, texel);
         // PCSS-specific uniforms (T4 Ultra)
         if (cfg.enable_pcss) {
-            ub_.set(U::LightSize, cfg.light_size);
+            ub.set(U::LightSize, cfg.light_size);
         }
     } else {
-        ub_.set(U::HasShadow, 0.0f);
+        ub.set(U::HasShadow, 0.0f);
     }
 
     // Normal map texture (T3+)
     if (res.normal_map_tex != INVALID_TEXTURE) {
-        r->bindTextureUnit(4, res.normal_map_tex);
-        ub_.set(U::NormalMap, 4);
-        ub_.set(U::HasNormalMap, 1.0f);
+        ctx.bindTexture(4, res.normal_map_tex);
+        ub.set(U::NormalMap, 4);
+        ub.set(U::HasNormalMap, 1.0f);
     } else {
-        ub_.set(U::HasNormalMap, 0.0f);
+        ub.set(U::HasNormalMap, 0.0f);
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(res.core.island_shader, fd, cfg.point_light_count);
+    setPointLightUniforms(island_shader_, fd, cfg.point_light_count);
+}
 
-    const std::vector<SceneObject>& objects = *scene.opaque_objects;
-    for (size_t i = 0; i < objects.size(); i++) {
-        const SceneObject& obj = objects[i];
-        if (obj.is_water) continue;
-        if (obj.tessellated) continue;
-        if (!sphereInFrustum(fd.frustum, obj.bounds_center, obj.bounds_radius))
-            continue;
+bool OpaquePass::objectFilter(const SceneObject& obj,
+                              const FrameData& fd) {
+    if (obj.is_water) return false;
+    if (obj.tessellated) return false;
+    return sphereInFrustum(fd.frustum, obj.bounds_center, obj.bounds_radius);
+}
 
-        const MaterialDef& m = obj.mat;
-        ub_.set(U::Model, obj.transform);
-        ub_.set(U::MatColor, m.color_a);
-        ub_.set(U::MatColorB, m.color_b);
-        ub_.set(U::MatSpec, m.specular);
-        ub_.set(U::Alpha, 1.0f);
-        ub_.set(U::MaterialId, static_cast<int>(m.proc_type));
-        ub_.set(U::NoiseScale, m.noise_scale);
-        ub_.set(U::NoiseIntensity, m.noise_intensity);
-        ub_.set(U::WarpStrength, m.warp_strength);
-        ub_.set(U::DetailScale, m.detail_scale);
-        ub_.set(U::VertexWind, obj.vertex_wind ? 1.0f : 0.0f);
-        ub_.set(U::Metallic, m.metallic);
-        ub_.set(U::Roughness, m.roughness);
-        ub_.set(U::IsWater, 0.0f);
-
-        if (m.two_sided) r->setCullFace(false);
-        r->drawMesh(obj.mesh);
-        if (m.two_sided) r->setCullFace(true);
-    }
+void OpaquePass::perObject(UniformBlock& ub, PassContext& ctx,
+                           const SceneObject& obj) {
+    (void)ctx;
+    const MaterialDef& m = obj.mat;
+    ub.set(U::Model, obj.transform);
+    ub.set(U::MatColor, m.color_a);
+    ub.set(U::MatColorB, m.color_b);
+    ub.set(U::MatSpec, m.specular);
+    ub.set(U::Alpha, 1.0f);
+    ub.set(U::MaterialId, static_cast<int>(m.proc_type));
+    ub.set(U::NoiseScale, m.noise_scale);
+    ub.set(U::NoiseIntensity, m.noise_intensity);
+    ub.set(U::WarpStrength, m.warp_strength);
+    ub.set(U::DetailScale, m.detail_scale);
+    ub.set(U::VertexWind, obj.vertex_wind ? 1.0f : 0.0f);
+    ub.set(U::Metallic, m.metallic);
+    ub.set(U::Roughness, m.roughness);
+    ub.set(U::IsWater, 0.0f);
 }

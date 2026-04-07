@@ -80,6 +80,7 @@ struct TierResourceView {
         TextureHandle hdr_depth_tex;
         TextureHandle hdr_color_tex;  // non-owning view of HDR RT color
         RenderTargetHandle fog_rt;
+        int fog_w, fog_h;
 
         // GTAO
         ShaderProgram* gtao_shader;
@@ -114,7 +115,7 @@ struct TierResourceView {
         T4() : tess_shader(nullptr), compute_particle_shader(nullptr),
                particle_render_shader(nullptr), volumetric_fog_shader(nullptr),
                tone_map_shader(nullptr), particle_ssbo(), compute_particle_count(0),
-               hdr_scene_rt(), hdr_bright_rt(), hdr_depth_tex(), hdr_color_tex(), fog_rt(),
+               hdr_scene_rt(), hdr_bright_rt(), hdr_depth_tex(), hdr_color_tex(), fog_rt(), fog_w(0), fog_h(0),
                gtao_shader(nullptr), gtao_blur_shader(nullptr), gtao_tex(), gtao_blur_tex(),
                bloom_down_compute(nullptr), bloom_up_compute(nullptr),
                histogram_shader(nullptr), exposure_shader(nullptr),

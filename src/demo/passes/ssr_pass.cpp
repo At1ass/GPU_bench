@@ -1,41 +1,34 @@
 #include "demo/passes/ssr_pass.h"
-#include "engine/pass_context.h"
-#include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
-#include "demo/demo_scene.h"
-#include "renderer/features.h"
-#include "platform/logger.h"
+#include "demo/demo_utils.h"
 #include <cmath>
 
 void SSRPass::init(const TierResourceView& res) {
-    ub_.init(res.t4.ssr_shader);
+    ssr_shader_ = res.t4.ssr_shader;
+    ub().init(res.t4.ssr_shader);
+    setShader(res.t4.ssr_shader);
 }
 
-void SSRPass::execute(PassContext& ctx, FrameData& fd,
-                      const TierResourceView& res,
-                      const DemoTierConfig& cfg,
-                      const SceneData& scene) {
-    Renderer* r = ctx.renderer();
-    (void)scene;
+void SSRPass::setup(const TierResourceView& res) {
+    (void)res;
+}
 
-    if (!res.t4.ssr_shader || res.t4.ssr_tex == INVALID_TEXTURE) return;
+void SSRPass::bind(PassContext& ctx, UniformBlock& ub,
+                   const TierResourceView& res,
+                   const FrameData& fd,
+                   const DemoTierConfig& cfg) {
+    (void)cfg;
 
-    GL4Features* g4 = r->features<GL4Features>();
-    ComputeFeatures* cf = r->features<ComputeFeatures>();
-    if (!g4 || !cf) return;
+    ctx.bindRTTexture(0, res.t4.hdr_scene_rt);
+    ub.set(U::SceneTex, 0);
+    ctx.bindTexture(1, res.t4.hdr_depth_tex);
+    ub.set(U::DepthTex, 1);
 
-    ub_.use();
+    ctx.bindImage(0, res.t4.ssr_tex, false, true); // write-only
 
-    r->bindRenderTargetTexture(res.t4.hdr_scene_rt, 0);
-    ub_.set(U::SceneTex, 0);
-    r->bindTextureUnit(1, res.t4.hdr_depth_tex);
-    ub_.set(U::DepthTex, 1);
-
-    g4->bindImageTexture(res.t4.ssr_tex, 0, false, true); // write-only
-
-    ub_.set(U::Proj, fd.proj);
-    res.t4.ssr_shader->setMat4("u_view", fd.view);
+    ub.set(U::Proj, fd.proj);
+    ssr_shader_->setMat4("u_view", fd.view);
 
     // Inverse view matrix (column-major: rotation = transpose, translation = -R^T * t)
     Mat4 vi;
@@ -48,22 +41,25 @@ void SSRPass::execute(PassContext& ctx, FrameData& fd,
     vi.m[13] = -(vi.m[1]*fd.view.m[12] + vi.m[5]*fd.view.m[13] + vi.m[9]*fd.view.m[14]);
     vi.m[14] = -(vi.m[2]*fd.view.m[12] + vi.m[6]*fd.view.m[13] + vi.m[10]*fd.view.m[14]);
     vi.m[15] = 1;
-    ub_.set(U::ViewInv, vi);
+    ub.set(U::ViewInv, vi);
 
     float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(fd.viewport_w) / static_cast<float>(fd.viewport_h > 0 ? fd.viewport_h : 1);
-    ub_.set(U::ScreenSize,
+    ub.set(U::ScreenSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
-    ub_.set(U::Near, kDemoNear);
-    ub_.set(U::Far, kDemoFar);
-    ub_.set(U::Aspect, aspect);
-    ub_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
+    ub.set(U::Near, kDemoNear);
+    ub.set(U::Far, kDemoFar);
+    ub.set(U::Aspect, aspect);
+    ub.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
 
-    ub_.set(U::PuddleCount, 0);
-    res.t4.ssr_shader->set1i("u_has_mirror", 0);
+    ub.set(U::PuddleCount, 0);
+    ssr_shader_->set1i("u_has_mirror", 0);
+}
 
-    int gx = (fd.viewport_w + 15) / 16;
-    int gy = (fd.viewport_h + 15) / 16;
-    cf->dispatchCompute(gx, gy, 1);
-    g4->imageMemoryBarrier();
+void SSRPass::workgroups(const FrameData& fd, const DemoTierConfig& cfg,
+                         int& gx, int& gy, int& gz) {
+    (void)cfg;
+    gx = (fd.viewport_w + 15) / 16;
+    gy = (fd.viewport_h + 15) / 16;
+    gz = 1;
 }
