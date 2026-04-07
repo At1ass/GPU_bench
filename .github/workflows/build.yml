@@ -19,17 +19,7 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential
-          if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            sudo apt-get install -y mingw-w64
-            curl -L -o sdl2-mingw.tar.gz \
-              https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
-            tar xzf sdl2-mingw.tar.gz
-            sudo cp -r SDL2-2.30.12/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
-            sudo cp -r SDL2-2.30.12/i686-w64-mingw32/* /usr/i686-w64-mingw32/
-          fi
+        run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential
 
       - name: Set compiler
         run: |
@@ -38,21 +28,13 @@ jobs:
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
 
-      - name: Build native
+      - name: Build
         run: ./scripts/build.sh native
 
       - name: Unit tests
         run: ./build_native/gpubench_tests --no-color
 
-      - name: Build MinGW64
-        if: matrix.compiler == 'gcc'
-        run: ./scripts/build.sh mingw64
-
-      - name: Build MinGW32
-        if: matrix.compiler == 'gcc'
-        run: ./scripts/build.sh mingw32
-
-      - name: Upload Linux artifacts
+      - name: Upload artifacts
         if: matrix.compiler == 'gcc'
         uses: actions/upload-artifact@v4
         with:
@@ -61,25 +43,43 @@ jobs:
             build_native/gpu_benchmark
             build_native/gpu_demo
 
-      - name: Upload Windows x64 artifacts
-        if: matrix.compiler == 'gcc'
-        uses: actions/upload-artifact@v4
+  mingw-cross:
+    name: MinGW cross (${{ matrix.arch }})
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        arch: [mingw64, mingw32]
+        include:
+          - arch: mingw64
+            sysroot: x86_64-w64-mingw32
+            artifact: windows-x64
+          - arch: mingw32
+            sysroot: i686-w64-mingw32
+            artifact: windows-x86
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: windows-x64
-          path: |
-            build_mingw64/gpu_benchmark.exe
-            build_mingw64/gpu_demo.exe
-            build_mingw64/*.dll
+          submodules: recursive
 
-      - name: Upload Windows x86 artifacts
-        if: matrix.compiler == 'gcc'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake mingw-w64 build-essential
+          curl -L -o sdl2-mingw.tar.gz \
+            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
+          tar xzf sdl2-mingw.tar.gz
+          sudo cp -r SDL2-2.30.12/${{ matrix.sysroot }}/* /usr/${{ matrix.sysroot }}/
+
+      - name: Build
+        run: ./scripts/build.sh ${{ matrix.arch }}
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-x86
+          name: ${{ matrix.artifact }}
           path: |
-            build_mingw32/gpu_benchmark.exe
-            build_mingw32/gpu_demo.exe
-            build_mingw32/*.dll
+            build_${{ matrix.arch }}/gpu_benchmark.exe
+            build_${{ matrix.arch }}/gpu_demo.exe
+            build_${{ matrix.arch }}/*.dll
 
   macos:
     name: macOS (Clang)
@@ -121,8 +121,7 @@ jobs:
           echo "SDL2DIR=${{ github.workspace }}\sdl2\SDL2-2.30.12" >> $env:GITHUB_ENV
 
       - name: Configure
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DSDL2_DIR="$env:SDL2DIR/cmake" -DCMAKE_PREFIX_PATH="$env:SDL2DIR"
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DSDL2_DIR="$env:SDL2DIR/cmake" -DCMAKE_PREFIX_PATH="$env:SDL2DIR"
 
       - name: Build
         run: cmake --build build --config Release
