@@ -21,6 +21,9 @@ jobs:
       - name: Build
         run: ./scripts/build.sh native
 
+      - name: Unit tests
+        run: ./build_native/gpubench_tests --no-color
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -154,9 +154,8 @@ if(PORTABLE_BUILD AND NOT WIN32)
 endif()
 
 # --- Benchmark executable ---
-set(BENCH_SOURCES
-    src/bench/main.cpp
-
+# Bench library sources (shared between gpu_benchmark and unit tests)
+set(BENCH_LIB_SOURCES
     # Bench engine
     src/bench/bench.cpp
     src/bench/bench_runner.cpp
@@ -202,7 +201,7 @@ set(BENCH_SOURCES
     src/bench/bench_ui.cpp
 )
 
-add_executable(gpu_benchmark ${BENCH_SOURCES})
+add_executable(gpu_benchmark src/bench/main.cpp ${BENCH_LIB_SOURCES})
 target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
 # --- Demo executable ---
@@ -273,6 +272,21 @@ foreach(target gpu_benchmark gpu_demo)
         endif()
     endif()
 endforeach()
+
+# --- Unit tests (no GPU required) ---
+if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h")
+    add_executable(gpubench_tests
+        tests/test_main.cpp
+        tests/test_bench_stats.cpp
+        tests/test_bench_scoring.cpp
+        ${BENCH_LIB_SOURCES}
+    )
+    target_include_directories(gpubench_tests PRIVATE src extern/doctest)
+    target_link_libraries(gpubench_tests PRIVATE gpubench_core)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(gpubench_tests PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+endif()
 
 # --- Install ---
 install(TARGETS gpu_benchmark gpu_demo RUNTIME DESTINATION bin)
