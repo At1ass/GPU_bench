@@ -149,8 +149,17 @@ jobs:
         uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
+          sync: rsync
           prepare: |
-            pkg install -y cmake sdl2 mesa-libs gmake bash
+            pkg install -y cmake sdl2 mesa-libs gmake bash rsync
           run: |
             bash ./scripts/build.sh native
             ./build_native/gpubench_tests --no-color
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd
+          path: |
+            build_native/gpu_benchmark
+            build_native/gpu_demo
