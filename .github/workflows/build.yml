@@ -8,8 +8,11 @@ on:
 
 jobs:
   linux:
-    name: Linux + MinGW cross
+    name: Linux (${{ matrix.compiler }})
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,12 +21,22 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential mingw-w64
-          curl -L -o sdl2-mingw.tar.gz \
-            https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
-          tar xzf sdl2-mingw.tar.gz
-          sudo cp -r SDL2-2.30.12/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
-          sudo cp -r SDL2-2.30.12/i686-w64-mingw32/* /usr/i686-w64-mingw32/
+          sudo apt-get install -y cmake libsdl2-dev libgl-dev build-essential
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            sudo apt-get install -y mingw-w64
+            curl -L -o sdl2-mingw.tar.gz \
+              https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-mingw.tar.gz
+            tar xzf sdl2-mingw.tar.gz
+            sudo cp -r SDL2-2.30.12/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
+            sudo cp -r SDL2-2.30.12/i686-w64-mingw32/* /usr/i686-w64-mingw32/
+          fi
+
+      - name: Set compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
 
       - name: Build native
         run: ./scripts/build.sh native
@@ -32,12 +45,15 @@ jobs:
         run: ./build_native/gpubench_tests --no-color
 
       - name: Build MinGW64
+        if: matrix.compiler == 'gcc'
         run: ./scripts/build.sh mingw64
 
       - name: Build MinGW32
+        if: matrix.compiler == 'gcc'
         run: ./scripts/build.sh mingw32
 
       - name: Upload Linux artifacts
+        if: matrix.compiler == 'gcc'
         uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
@@ -46,6 +62,7 @@ jobs:
             build_native/gpu_demo
 
       - name: Upload Windows x64 artifacts
+        if: matrix.compiler == 'gcc'
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64
@@ -55,6 +72,7 @@ jobs:
             build_mingw64/*.dll
 
       - name: Upload Windows x86 artifacts
+        if: matrix.compiler == 'gcc'
         uses: actions/upload-artifact@v4
         with:
           name: windows-x86
