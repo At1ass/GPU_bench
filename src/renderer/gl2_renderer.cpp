@@ -903,6 +903,15 @@ void GL2Renderer::setDepthMask(bool write) {
     glDepthMask(write ? GL_TRUE : GL_FALSE);
 }
 
+void GL2Renderer::setPolygonOffset(bool enable, float factor, float units) {
+    if (enable) {
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(factor, units);
+    } else {
+        glDisable(GL_POLYGON_OFFSET_FILL);
+    }
+}
+
 void GL2Renderer::resetState() {
     state_cache_.reset();
     glDisable(GL_BLEND);

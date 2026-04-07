@@ -53,6 +53,11 @@ void PassContext::applyState(const RenderState& state) {
         r_->setBlending(state.blending);
     r_->setColorMask(state.color_mask_r, state.color_mask_g,
                      state.color_mask_b, state.color_mask_a);
+    if (state.polygon_offset) {
+        r_->setPolygonOffset(true, state.offset_factor, state.offset_units);
+    } else {
+        r_->setPolygonOffset(false, 0.0f, 0.0f);
+    }
 }
 
 void PassContext::setCullFace(bool enable) {

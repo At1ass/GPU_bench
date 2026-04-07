@@ -105,6 +105,7 @@ public:
     virtual void setDepthTest(bool enable) = 0;
     virtual void setCullFace(bool enable) = 0;
     virtual void setDepthMask(bool write) = 0;
+    virtual void setPolygonOffset(bool enable, float factor, float units) = 0;
 
     // GL state reset (call between tests for deterministic state)
     virtual void resetState() = 0;

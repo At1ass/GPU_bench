@@ -56,6 +56,7 @@ public:
     void setDepthTest(bool enable) override;
     void setCullFace(bool enable) override;
     void setDepthMask(bool write) override;
+    void setPolygonOffset(bool enable, float factor, float units) override;
 
     void resetState() override;
     void unbindState() override;
