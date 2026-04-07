@@ -106,6 +106,9 @@ jobs:
       - name: Build
         run: ./scripts/build.sh native
 
+      - name: Unit tests
+        run: ./build_native/gpubench_tests --no-color
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -113,6 +116,38 @@ jobs:
           path: |
             build_native/gpu_benchmark
             build_native/gpu_demo
+
+  windows-msvc:
+    name: Windows (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install SDL2
+        run: |
+          curl -L -o sdl2-devel.zip https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-devel-2.30.12-VC.zip
+          7z x sdl2-devel.zip -osdl2
+          echo "SDL2DIR=${{ github.workspace }}\sdl2\SDL2-2.30.12" >> $env:GITHUB_ENV
+
+      - name: Configure
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DSDL2_DIR="$env:SDL2DIR/cmake" -DCMAKE_PREFIX_PATH="$env:SDL2DIR"
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Unit tests
+        run: build\Release\gpubench_tests.exe --no-color
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msvc
+          path: |
+            build/Release/gpu_benchmark.exe
+            build/Release/gpu_demo.exe
 
   freebsd:
     name: FreeBSD
@@ -130,3 +165,4 @@ jobs:
             pkg install -y cmake sdl2 mesa-libs gmake bash
           run: |
             bash ./scripts/build.sh native
+            ./build_native/gpubench_tests --no-color
