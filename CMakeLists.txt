@@ -163,6 +163,7 @@ set(ENGINE_SOURCES
     src/engine/fullscreen_pass.cpp
     src/engine/geometry_pass.cpp
     src/engine/compute_pass.cpp
+    src/engine/draw_list.cpp
 )
 add_library(gpubench_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(gpubench_engine PUBLIC src extern)

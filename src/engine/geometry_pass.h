@@ -2,6 +2,7 @@
 #include "demo/render_pass.h"
 #include "engine/pass_context.h"
 #include "engine/render_state.h"
+#include "engine/draw_list.h"
 #include "demo/uniform_block.h"
 #include "demo/scene_data.h"
 #include "demo/demo_utils.h"
@@ -54,6 +55,14 @@ public:
             const SceneData& scene) {
         return scene.opaque_objects;
     }
+
+    // Opt-in DrawList sorting (default: false = iterate in construction order).
+    // When enabled, objects are sorted by sort key before drawing to minimize
+    // shader/material/depth state changes. Override shaderIdFor/materialIdFor
+    // to provide sort key components.
+    virtual bool useSortedDraw() const { return false; }
+    virtual uint8_t shaderIdFor(const SceneObject& obj) const { (void)obj; return 0; }
+    virtual uint8_t materialIdFor(const SceneObject& obj) const { (void)obj; return 0; }
 
     void execute(PassContext& ctx, FrameData& fd,
                  const TierResourceView& res,
