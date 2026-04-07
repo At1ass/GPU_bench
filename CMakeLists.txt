@@ -273,8 +273,8 @@ foreach(target gpu_benchmark gpu_demo)
     endif()
 endforeach()
 
-# --- Unit tests (no GPU required) ---
-if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h")
+# --- Unit tests (no GPU required, native builds only) ---
+if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h" AND NOT CMAKE_CROSSCOMPILING)
     add_executable(gpubench_tests
         tests/test_main.cpp
         tests/test_bench_stats.cpp
