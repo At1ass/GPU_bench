@@ -254,7 +254,7 @@ bool selectGPU(int index) {
     }
 
     if (!target) {
-        fprintf(stderr, "GPU index %d not found.\n", index);
+        LOG_ERR("GPU index %d not found", index);
         return false;
     }
 
@@ -290,11 +290,10 @@ bool selectGPU(int index) {
             unsetenv("__EGL_VENDOR_LIBRARY_FILENAMES");
         } else {
             // User wants non-NVIDIA GPU (e.g. AMD iGPU) — force Mesa
-            fprintf(stderr,
-                "WARNING: Selecting a non-NVIDIA GPU while NVIDIA proprietary driver\n"
-                "controls the display. Rendering will work but the window may be black\n"
-                "because DRI_PRIME buffer sharing doesn't work across NVIDIA/Mesa.\n"
-                "Use --headless for benchmark results without display.\n");
+            LOG_WRN("Selecting a non-NVIDIA GPU while NVIDIA proprietary driver "
+                "controls the display. Rendering will work but the window may be black "
+                "because DRI_PRIME buffer sharing doesn't work across NVIDIA/Mesa. "
+                "Use --headless for benchmark results without display.");
             // GLX path (X11):
             setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 1);
             // EGL path (Wayland): force Mesa EGL vendor
@@ -513,7 +512,7 @@ bool selectGPU(int index) {
     }
 
     if (!target) {
-        fprintf(stderr, "GPU index %d not found.\n", index);
+        LOG_ERR("GPU index %d not found", index);
         return false;
     }
 
@@ -524,16 +523,16 @@ bool selectGPU(int index) {
     // These are read by the driver at process start and cannot be changed at runtime.
     // We can only warn the user if their selection doesn't match the default.
     if (target->is_integrated) {
-        fprintf(stderr, "Note: Requesting integrated GPU.\n"
-                        "This requires setting the GPU preference in NVIDIA Control Panel\n"
-                        "or Windows Settings > Display > Graphics for this application.\n"
-                        "The exported symbols request the discrete GPU by default.\n");
+        LOG_WRN("Requesting integrated GPU. "
+                "This requires setting the GPU preference in NVIDIA Control Panel "
+                "or Windows Settings > Display > Graphics for this application. "
+                "The exported symbols request the discrete GPU by default.");
         // Try to influence by zeroing the export (won't work after process start,
         // but documents the intent)
         NvOptimusEnablement = 0;
         AmdPowerXpressRequestHighPerformance = 0;
     } else {
-        fprintf(stderr, "Discrete GPU requested (default behavior).\n");
+        LOG_INF("Discrete GPU requested (default behavior)");
     }
 
     return true;
@@ -546,7 +545,7 @@ void selectGPUAndReexec(int index, int argc, char* argv[]) {
     // macOS: GPU selection not supported, no re-exec needed
     (void)argc; (void)argv;
     (void)index;
-    fprintf(stderr, "GPU selection is not supported on macOS.\n");
+    LOG_WRN("GPU selection is not supported on macOS");
 #elif !defined(_WIN32)
     (void)argc;
     // Check if we've already re-exec'd (avoid infinite loop)
@@ -555,10 +554,8 @@ void selectGPUAndReexec(int index, int argc, char* argv[]) {
         // Already re-exec'd for this GPU — log active env vars and proceed
         const char* dri = getenv("DRI_PRIME");
         const char* glx = getenv("__GLX_VENDOR_LIBRARY_NAME");
-        fprintf(stderr, "GPU %d selected", index);
-        if (dri) fprintf(stderr, " (DRI_PRIME=%s)", dri);
-        if (glx) fprintf(stderr, " (GLX=%s)", glx);
-        fprintf(stderr, "\n");
+        LOG_INF("GPU %d selected (DRI_PRIME=%s, GLX=%s)",
+                index, dri ? dri : "unset", glx ? glx : "unset");
         return;
     }
 
@@ -571,7 +568,7 @@ void selectGPUAndReexec(int index, int argc, char* argv[]) {
     setenv("_GPU_BENCH_REEXEC", mark, 1);
 
     // Re-exec to ensure GLVND picks up env vars before library loading
-    fprintf(stderr, "Re-launching for GPU %d...\n", index);
+    LOG_INF("Re-launching for GPU %d...", index);
 
     // Get the actual executable path
     char exe_path[4096];
@@ -610,14 +607,14 @@ void selectGPUAndReexec(int index, int argc, char* argv[]) {
 
 void printGPUList(const std::vector<GPUDevice>& gpus) {
     if (gpus.empty()) {
-        fprintf(stderr, "No GPUs detected (or enumeration not supported on this platform).\n");
+        printf("No GPUs detected (or enumeration not supported on this platform).\n");
         return;
     }
-    fprintf(stderr, "Available GPUs:\n");
+    printf("Available GPUs:\n");
     for (const auto& g : gpus) {
-        fprintf(stderr, "  %d: %s [%s @ %s]%s\n",
-                g.index, g.name.c_str(), g.pci_id.c_str(),
-                g.pci_slot.empty() ? "?" : g.pci_slot.c_str(),
-                g.is_integrated ? " (integrated)" : "");
+        printf("  %d: %s [%s @ %s]%s\n",
+               g.index, g.name.c_str(), g.pci_id.c_str(),
+               g.pci_slot.empty() ? "?" : g.pci_slot.c_str(),
+               g.is_integrated ? " (integrated)" : "");
     }
 }

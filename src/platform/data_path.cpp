@@ -15,7 +15,7 @@
 
 // Try to get the executable directory from /proc/self/exe (Linux),
 // or fall back to empty string.
-static std::string getExeDir() {
+std::string getExeDir() {
 #if defined(__linux__) || defined(__FreeBSD__)
     char buf[1024];
 #if defined(__linux__)

@@ -30,7 +30,7 @@ void VertexTest::setup(Renderer* r, int vw, int vh) {
     actual_vertex_count_ = static_cast<int>(data.vertices.size());
     mesh_ = r->createMesh(data);
     if (mesh_ == INVALID_MESH) {
-        fprintf(stderr, "VertexTest: failed to create mesh (%d verts)\n", actual_vertex_count_);
+        LOG_ERR("VertexTest: failed to create mesh (%d verts)", actual_vertex_count_);
         actual_vertex_count_ = 0;
     }
     LOG_DBG("Test '%s': setup complete (%d verts, target %d)", name(), actual_vertex_count_, params_.vertex_count);

@@ -15,6 +15,7 @@
 #include "platform/logger.h"
 #include "platform/timer.h"
 #include "platform/compat.h"
+#include "platform/data_path.h"
 #include "geometry/mesh_gen.h"
 #include <SDL.h>
 #include <cstdio>
@@ -30,7 +31,7 @@ static int parseIntArg(const char* s, int fallback = 0) {
     char* end = nullptr;
     long v = strtol(s, &end, 10);
     if (end == s || *end != '\0') {
-        fprintf(stderr, "Warning: invalid integer '%s', using %d\n", s, fallback);
+        LOG_WRN("invalid integer '%s', using %d", s, fallback);
         return fallback;
     }
     return static_cast<int>(v);
@@ -47,7 +48,7 @@ static int matchEnumArg(const char* arg, const NameVal* vals, int count,
             return 0;
         }
     }
-    fprintf(stderr, "Unknown %s: %s\n", label, arg);
+    LOG_ERR("Unknown %s: %s", label, arg);
     return 1;
 }
 
@@ -83,7 +84,7 @@ static const NameVal kTimingVals[] = {
 // --- CLI parsing ---
 
 static void printHelp() {
-    fprintf(stderr,
+    printf(
         "gpu_benchmark [options]\n"
         "  --preset <light|medium|heavy|ultra|extreme>  Preset (default: medium)\n"
         "  --renderer <gl2|gl3|gl4|gles|auto>           Renderer (default: auto)\n"
@@ -108,48 +109,48 @@ static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
     for (int i = 1; i < argc; i++) {
         const char* a = argv[i];
         if (strcmp(a, "--preset") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--preset requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--preset requires argument"); return 1; }
             if (matchEnumArg(argv[i], kPresetVals, NVALS(kPresetVals), &cfg.preset_index, "preset")) return 1;
         } else if (strcmp(a, "--renderer") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--renderer requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--renderer requires argument"); return 1; }
             if (matchEnumArg(argv[i], kRendererVals, NVALS(kRendererVals), &cfg.backend, "renderer")) return 1;
         } else if (strcmp(a, "--config") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--config requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--config requires argument"); return 1; }
             cfg.config_path = argv[i];
         } else if (strcmp(a, "--headless") == 0) {
             cfg.headless = true;
         } else if (strcmp(a, "--test") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--test requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--test requires argument"); return 1; }
             cfg.test_filter = argv[i];
         } else if (strcmp(a, "--output") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--output requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--output requires argument"); return 1; }
             if (matchEnumArg(argv[i], kOutputVals, NVALS(kOutputVals), &cfg.output_format, "output")) return 1;
         } else if (strcmp(a, "--output-file") == 0 || strcmp(a, "-o") == 0) {
-            if (++i >= argc) { fprintf(stderr, "%s requires argument\n", a); return 1; }
+            if (++i >= argc) { LOG_ERR("%s requires argument", a); return 1; }
             cfg.output_file = argv[i];
         } else if (strcmp(a, "--width") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--width requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--width requires argument"); return 1; }
             cfg.width = parseIntArg(argv[i], 800);
         } else if (strcmp(a, "--height") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--height requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--height requires argument"); return 1; }
             cfg.height = parseIntArg(argv[i], 600);
         } else if (strcmp(a, "--timing") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--timing requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--timing requires argument"); return 1; }
             if (matchEnumArg(argv[i], kTimingVals, NVALS(kTimingVals), &cfg.timing_mode, "timing")) return 1;
         } else if (strcmp(a, "--render-res") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--render-res requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--render-res requires argument"); return 1; }
             int rw = 0, rh = 0;
             if (sscanf(argv[i], "%dx%d", &rw, &rh) == 2 && rw >= 64 && rh >= 64) {
                 cfg.render_width = rw; cfg.render_height = rh;
             } else {
-                fprintf(stderr, "Invalid resolution: %s\n", argv[i]); return 1;
+                LOG_ERR("Invalid resolution: %s", argv[i]); return 1;
             }
         } else if (strcmp(a, "--stress") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--stress requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--stress requires argument"); return 1; }
             cfg.stress_duration_sec = parseIntArg(argv[i], 60);
             cfg.headless = true;
         } else if (strcmp(a, "--gpu") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--gpu requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--gpu requires argument"); return 1; }
             cfg.gpu_index = parseIntArg(argv[i], -1);
         } else if (strcmp(a, "--debug") == 0) {
             cfg.debug = true;
@@ -161,7 +162,7 @@ static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
             printHelp();
             return -1;
         } else {
-            fprintf(stderr, "Unknown argument: %s\n", a);
+            LOG_ERR("Unknown argument: %s", a);
             printHelp();
             return 1;
         }
@@ -255,7 +256,7 @@ struct BenchApp {
 
     bool init(const AppConfig& cfg) {
         config = cfg;
-        Log::init("gpu_benchmark.log");
+        // Log::init() already called in main() before CLI parsing
         Log::setLevel(cfg.debug ? Log::Level::Debug : Log::Level::Info);
         window_w = cfg.width;
         window_h = cfg.height;
@@ -590,16 +591,21 @@ bool BenchCB::onPoll() {
 // --- Entry point ---
 
 int main(int argc, char* argv[]) {
+    // Init logger early — all output goes to both stderr and log file
+    std::string log_path = getExeDir() + "gpu_benchmark.log";
+    Log::init(log_path.c_str());
+
     AppConfig cfg;
     int rc = parseArgs(argc, argv, cfg);
-    if (rc != 0) return (rc < 0) ? 0 : rc;
+    if (rc != 0) { Log::shutdown(); return (rc < 0) ? 0 : rc; }
 
     if (cfg.gpu_index >= 0)
         selectGPUAndReexec(cfg.gpu_index, argc, argv);
 
     BenchApp app;
     if (!app.init(cfg)) {
-        fprintf(stderr, "Failed to initialize gpu_benchmark\n");
+        LOG_ERR("Failed to initialize gpu_benchmark");
+        Log::shutdown();
         return 1;
     }
 

@@ -19,7 +19,7 @@ void GeometryTest::setup(Renderer* r, int vw, int vh) {
     tri_count_ = static_cast<int>(data.indices.size()) / 3;
     mesh_ = r->createMesh(data);
     if (mesh_ == INVALID_MESH) {
-        fprintf(stderr, "GeometryTest: failed to create mesh (grid=%d)\n", grid_size_);
+        LOG_ERR("GeometryTest: failed to create mesh (grid=%d)", grid_size_);
         tri_count_ = 0;
     }
     LOG_DBG("Test '%s': setup complete (grid %d, %d tris)", name(), grid_size_, tri_count_);

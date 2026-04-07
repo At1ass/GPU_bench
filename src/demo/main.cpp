@@ -10,6 +10,7 @@
 #include "platform/gpu_select.h"
 #include "platform/logger.h"
 #include "platform/timer.h"
+#include "platform/data_path.h"
 #include <SDL.h>
 #include <cstdio>
 #include <cstring>
@@ -22,7 +23,7 @@ static int parseIntArg(const char* s, int fallback = 0) {
     char* end = nullptr;
     long v = strtol(s, &end, 10);
     if (end == s || *end != '\0') {
-        fprintf(stderr, "Warning: invalid integer '%s', using %d\n", s, fallback);
+        LOG_WRN("invalid integer '%s', using %d", s, fallback);
         return fallback;
     }
     return static_cast<int>(v);
@@ -39,7 +40,7 @@ static int matchEnumArg(const char* arg, const NameVal* vals, int count,
             return 0;
         }
     }
-    fprintf(stderr, "Unknown %s: %s\n", label, arg);
+    LOG_ERR("Unknown %s: %s", label, arg);
     return 1;
 }
 
@@ -60,7 +61,7 @@ static const NameVal kOutputVals[] = {
 // --- CLI parsing ---
 
 static void printHelp() {
-    fprintf(stderr,
+    printf(
         "gpu_demo [options]\n"
         "  --tier <1-4>                        Run specific tier only\n"
         "  --duration <seconds>                Duration per tier (default: 15)\n"
@@ -83,42 +84,42 @@ static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
     for (int i = 1; i < argc; i++) {
         const char* a = argv[i];
         if (strcmp(a, "--tier") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--tier requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--tier requires argument"); return 1; }
             cfg.demo_tier = parseIntArg(argv[i], 0);
             if (cfg.demo_tier < 1 || cfg.demo_tier > 4) {
-                fprintf(stderr, "Invalid tier: %d (must be 1-4)\n", cfg.demo_tier); return 1;
+                LOG_ERR("Invalid tier: %d (must be 1-4)", cfg.demo_tier); return 1;
             }
         } else if (strcmp(a, "--duration") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--duration requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--duration requires argument"); return 1; }
             cfg.demo_duration = parseIntArg(argv[i], 15);
             if (cfg.demo_duration < 1) cfg.demo_duration = 1;
         } else if (strcmp(a, "--headless") == 0) {
             cfg.headless = true;
         } else if (strcmp(a, "--renderer") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--renderer requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--renderer requires argument"); return 1; }
             if (matchEnumArg(argv[i], kRendererVals, 5, &cfg.backend, "renderer")) return 1;
         } else if (strcmp(a, "--output") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--output requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--output requires argument"); return 1; }
             if (matchEnumArg(argv[i], kOutputVals, 3, &cfg.output_format, "output")) return 1;
         } else if (strcmp(a, "--output-file") == 0 || strcmp(a, "-o") == 0) {
-            if (++i >= argc) { fprintf(stderr, "%s requires argument\n", a); return 1; }
+            if (++i >= argc) { LOG_ERR("%s requires argument", a); return 1; }
             cfg.output_file = argv[i];
         } else if (strcmp(a, "--width") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--width requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--width requires argument"); return 1; }
             cfg.width = parseIntArg(argv[i], 800);
         } else if (strcmp(a, "--height") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--height requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--height requires argument"); return 1; }
             cfg.height = parseIntArg(argv[i], 600);
         } else if (strcmp(a, "--render-res") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--render-res requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--render-res requires argument"); return 1; }
             int rw = 0, rh = 0;
             if (sscanf(argv[i], "%dx%d", &rw, &rh) == 2 && rw >= 64 && rh >= 64) {
                 cfg.render_width = rw; cfg.render_height = rh;
             } else {
-                fprintf(stderr, "Invalid resolution: %s\n", argv[i]); return 1;
+                LOG_ERR("Invalid resolution: %s", argv[i]); return 1;
             }
         } else if (strcmp(a, "--gpu") == 0) {
-            if (++i >= argc) { fprintf(stderr, "--gpu requires argument\n"); return 1; }
+            if (++i >= argc) { LOG_ERR("--gpu requires argument"); return 1; }
             cfg.gpu_index = parseIntArg(argv[i], -1);
         } else if (strcmp(a, "--debug") == 0) {
             cfg.debug = true;
@@ -130,7 +131,7 @@ static int parseArgs(int argc, char* argv[], AppConfig& cfg) {
             printHelp();
             return -1;
         } else {
-            fprintf(stderr, "Unknown argument: %s\n", a);
+            LOG_ERR("Unknown argument: %s", a);
             printHelp();
             return 1;
         }
@@ -157,7 +158,6 @@ struct DemoApp {
 
     bool init(const AppConfig& cfg) {
         config = cfg;
-        Log::init("gpu_demo.log");
         Log::setLevel(cfg.debug ? Log::Level::Debug : Log::Level::Info);
 
         window_w = cfg.width;
@@ -278,16 +278,20 @@ struct DemoApp {
 // --- Entry point ---
 
 int main(int argc, char* argv[]) {
+    std::string log_path = getExeDir() + "gpu_demo.log";
+    Log::init(log_path.c_str());
+
     AppConfig cfg;
     int rc = parseArgs(argc, argv, cfg);
-    if (rc != 0) return (rc < 0) ? 0 : rc;
+    if (rc != 0) { Log::shutdown(); return (rc < 0) ? 0 : rc; }
 
     if (cfg.gpu_index >= 0)
         selectGPUAndReexec(cfg.gpu_index, argc, argv);
 
     DemoApp app;
     if (!app.init(cfg)) {
-        fprintf(stderr, "Failed to initialize gpu_demo\n");
+        LOG_ERR("Failed to initialize gpu_demo");
+        Log::shutdown();
         return 1;
     }
 

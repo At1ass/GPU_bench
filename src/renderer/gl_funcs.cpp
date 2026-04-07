@@ -23,13 +23,13 @@ static GL3WglProc sdl_get_gl_proc(const char* name) {
 
 bool loadGL2Functions() {
     if (imgl3wInit2(sdl_get_gl_proc) != 0) {
-        fprintf(stderr, "FATAL: imgl3wInit2 failed\n");
+        LOG_ERR("FATAL: imgl3wInit2 failed");
         return false;
     }
 
     #define CB_LOAD_REQ(name) \
         cb_##name = (PFNCB_##name)SDL_GL_GetProcAddress(#name); \
-        if (!cb_##name) { fprintf(stderr, "FATAL: GL func '%s' not found\n", #name); return false; }
+        if (!cb_##name) { LOG_ERR("FATAL: GL func '%s' not found", #name); return false; }
     CB_GL_REQUIRED_FUNCS(CB_LOAD_REQ)
     #undef CB_LOAD_REQ
 
