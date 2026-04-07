@@ -1,4 +1,5 @@
 #include "demo/passes/bloom_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -11,8 +12,9 @@ void BloomPass::init(const TierResourceView& res) {
         ub_bloom_blur_.init(res.bloom.blur_shader);
 }
 
-void BloomPass::execute(Renderer* r, FrameData& fd, const TierResourceView& res,
+void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
                         const DemoTierConfig& cfg, const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)cfg;
     (void)scene;
 

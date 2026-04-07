@@ -4,6 +4,7 @@
 #include "demo/scene_data.h"
 
 class Renderer;
+class PassContext;
 struct TierResourceView;
 struct DemoTierConfig;
 struct DemoDebugOverrides;
@@ -39,7 +40,7 @@ public:
     virtual const char* name() const = 0;
 
     // Rendering
-    virtual void execute(Renderer* r, FrameData& fd,
+    virtual void execute(PassContext& ctx, FrameData& fd,
                          const TierResourceView& res,
                          const DemoTierConfig& cfg,
                          const SceneData& scene) = 0;

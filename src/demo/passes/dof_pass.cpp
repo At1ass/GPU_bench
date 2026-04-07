@@ -1,4 +1,5 @@
 #include "demo/passes/dof_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -10,10 +11,11 @@ void DoFPass::init(const TierResourceView& res) {
     ub_.init(res.t4.dof_shader);
 }
 
-void DoFPass::execute(Renderer* r, FrameData& fd,
+void DoFPass::execute(PassContext& ctx, FrameData& fd,
                       const TierResourceView& res,
                       const DemoTierConfig& cfg,
                       const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
 
     if (!res.t4.dof_shader || res.t4.dof_tex == INVALID_TEXTURE) return;

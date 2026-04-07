@@ -8,7 +8,7 @@ class SSRCopyPass : public DemoRenderPass {
 public:
     const char* name() const override { return "ssr_copy"; }
     void init(const TierResourceView&) {}
-    void execute(Renderer* r, FrameData& fd,
+    void execute(PassContext& ctx, FrameData& fd,
                  const TierResourceView& res,
                  const DemoTierConfig& cfg,
                  const SceneData& scene) override;

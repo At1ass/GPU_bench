@@ -1,4 +1,5 @@
 #include "demo/passes/tessellated_model_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -10,10 +11,11 @@ void TessellatedModelPass::init(const TierResourceView& res) {
     ub_.init(res.t4.tess_shader);
 }
 
-void TessellatedModelPass::execute(Renderer* r, FrameData& fd,
+void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd,
                                    const TierResourceView& res,
                                    const DemoTierConfig& cfg,
                                    const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     GL4Features* g4 = r->features<GL4Features>();
     if (!g4 || scene.model_mesh == MeshHandle()) return;
 
@@ -65,7 +67,7 @@ void TessellatedModelPass::execute(Renderer* r, FrameData& fd,
 
     // Still draw fur on top of tessellated model
     if (fur_pass_)
-        fur_pass_->execute(r, fd, res, cfg, scene);
+        fur_pass_->execute(ctx, fd, res, cfg, scene);
 
     // Render all tessellated scene objects (stones, terrain, etc.)
     // Re-activate tess shader after fur pass changed it

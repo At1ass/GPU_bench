@@ -1,4 +1,5 @@
 #include "demo/passes/ssr_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -11,10 +12,11 @@ void SSRPass::init(const TierResourceView& res) {
     ub_.init(res.t4.ssr_shader);
 }
 
-void SSRPass::execute(Renderer* r, FrameData& fd,
+void SSRPass::execute(PassContext& ctx, FrameData& fd,
                       const TierResourceView& res,
                       const DemoTierConfig& cfg,
                       const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
 
     if (!res.t4.ssr_shader || res.t4.ssr_tex == INVALID_TEXTURE) return;

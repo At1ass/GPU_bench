@@ -1,4 +1,5 @@
 #include "demo/passes/bloom_compute_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -11,10 +12,11 @@ void BloomComputePass::init(const TierResourceView& res) {
     ub_up_.init(res.t4.bloom_up_compute);
 }
 
-void BloomComputePass::execute(Renderer* r, FrameData& fd,
+void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
                                const TierResourceView& res,
                                const DemoTierConfig& cfg,
                                const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)cfg;
     (void)scene;
 

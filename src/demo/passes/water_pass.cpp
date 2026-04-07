@@ -1,4 +1,5 @@
 #include "demo/passes/water_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -10,10 +11,11 @@ void WaterPass::init(const TierResourceView& res) {
     ub_.init(res.core.island_shader);
 }
 
-void WaterPass::execute(Renderer* r, FrameData& fd,
+void WaterPass::execute(PassContext& ctx, FrameData& fd,
                         const TierResourceView& res,
                         const DemoTierConfig& cfg,
                         const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     if (!res.core.island_shader) return;
 
     // Count water objects

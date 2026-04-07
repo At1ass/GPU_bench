@@ -7,7 +7,7 @@ class TessellatedModelPass : public DemoRenderPass {
 public:
     const char* name() const override { return "tessellated_model"; }
     void init(const TierResourceView& res);
-    void execute(Renderer* r, FrameData& fd, const TierResourceView& res,
+    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
                  const DemoTierConfig& cfg, const SceneData& scene) override;
 
     // TessellatedModelPass calls FurPass at the end.

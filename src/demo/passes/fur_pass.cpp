@@ -1,4 +1,5 @@
 #include "demo/passes/fur_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -11,10 +12,11 @@ void FurPass::init(const TierResourceView& res) {
     ub_.init(res.core.fur_shader);
 }
 
-void FurPass::execute(Renderer* r, FrameData& fd,
+void FurPass::execute(PassContext& ctx, FrameData& fd,
                       const TierResourceView& res,
                       const DemoTierConfig& cfg,
                       const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     if (!res.core.fur_shader || scene.model_mesh == MeshHandle() || res.core.fur_tex == INVALID_TEXTURE) return;
 
     ub_.use();

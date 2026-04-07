@@ -1,4 +1,5 @@
 #include "demo/passes/volumetric_fog_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -11,10 +12,11 @@ void VolumetricFogPass::init(const TierResourceView& res) {
     ub_.init(res.t4.volumetric_fog_shader);
 }
 
-void VolumetricFogPass::execute(Renderer* r, FrameData& fd,
+void VolumetricFogPass::execute(PassContext& ctx, FrameData& fd,
                                 const TierResourceView& res,
                                 const DemoTierConfig& cfg,
                                 const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
 
     r->bindRenderTarget(res.t4.fog_rt);

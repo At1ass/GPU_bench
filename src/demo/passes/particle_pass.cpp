@@ -1,4 +1,5 @@
 #include "demo/passes/particle_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -9,10 +10,11 @@ void ParticlePass::init(const TierResourceView& res) {
     ub_.init(res.core.particle_shader);
 }
 
-void ParticlePass::execute(Renderer* r, FrameData& fd,
+void ParticlePass::execute(PassContext& ctx, FrameData& fd,
                            const TierResourceView& res,
                            const DemoTierConfig& cfg,
                            const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)cfg;
     (void)scene;
 

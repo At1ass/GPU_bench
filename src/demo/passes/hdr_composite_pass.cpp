@@ -1,4 +1,5 @@
 #include "demo/passes/hdr_composite_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -10,8 +11,9 @@ void HDRCompositePass::init(const TierResourceView& res) {
         ub_tone_map_.init(res.t4.tone_map_shader);
 }
 
-void HDRCompositePass::execute(Renderer* r, FrameData& fd, const TierResourceView& res,
+void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
                                const DemoTierConfig& cfg, const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
 
     r->setViewport(0, 0, fd.viewport_w, fd.viewport_h);

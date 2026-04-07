@@ -1,4 +1,5 @@
 #include "demo/passes/shadow_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -9,10 +10,11 @@ void ShadowPass::init(const TierResourceView& res) {
     ub_.init(res.shadow.shader);
 }
 
-void ShadowPass::execute(Renderer* r, FrameData& fd,
+void ShadowPass::execute(PassContext& ctx, FrameData& fd,
                          const TierResourceView& res,
                          const DemoTierConfig& cfg,
                          const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)cfg;
 
     if (!res.shadow.shader || res.shadow.rt == INVALID_RENDER_TARGET) return;

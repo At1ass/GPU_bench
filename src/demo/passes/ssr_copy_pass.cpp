@@ -1,4 +1,5 @@
 #include "demo/passes/ssr_copy_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_scene.h"
 #include "demo/tier_resource_view.h"
 #include "renderer/features.h"
@@ -9,10 +10,11 @@ bool SSRCopyPass::isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides&
     return cfg.enable_ssr;
 }
 
-void SSRCopyPass::execute(Renderer* r, FrameData& fd,
+void SSRCopyPass::execute(PassContext& ctx, FrameData& fd,
                           const TierResourceView& res,
                           const DemoTierConfig& cfg,
                           const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)cfg; (void)scene;
 
     GL4Features* g4 = r->features<GL4Features>();

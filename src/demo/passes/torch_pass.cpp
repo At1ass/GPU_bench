@@ -1,4 +1,5 @@
 #include "demo/passes/torch_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -27,10 +28,11 @@ static void getTorchPositions(float out[2][3]) {
     }
 }
 
-void TorchPass::execute(Renderer* r, FrameData& fd,
+void TorchPass::execute(PassContext& ctx, FrameData& fd,
                         const TierResourceView& res,
                         const DemoTierConfig& cfg,
                         const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
     if (!res.core.torch_shader || res.core.torch_mesh == MeshHandle()) return;
 

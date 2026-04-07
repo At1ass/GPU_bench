@@ -1,4 +1,5 @@
 #include "demo/passes/gtao_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -12,10 +13,11 @@ void GTAOPass::init(const TierResourceView& res) {
     ub_blur_.init(res.t4.gtao_blur_shader);
 }
 
-void GTAOPass::execute(Renderer* r, FrameData& fd,
+void GTAOPass::execute(PassContext& ctx, FrameData& fd,
                        const TierResourceView& res,
                        const DemoTierConfig& cfg,
                        const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
 
     // --- GTAO compute pass ---

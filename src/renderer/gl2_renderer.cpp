@@ -392,6 +392,8 @@ void GL2Renderer::detectCaps() {
 bool GL2Renderer::init(int w, int h) {
     if (initialized_) return true;
 
+    state_cache_.reset();
+
     const char* vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
     const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
     const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
@@ -855,11 +857,13 @@ void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels
 }
 
 void GL2Renderer::setColorMask(bool r, bool g, bool b, bool a) {
+    if (!state_cache_.setColorMask(r, g, b, a)) return;
     glColorMask(r ? GL_TRUE : GL_FALSE, g ? GL_TRUE : GL_FALSE,
                 b ? GL_TRUE : GL_FALSE, a ? GL_TRUE : GL_FALSE);
 }
 
 void GL2Renderer::setBlending(bool enable) {
+    if (!state_cache_.setBlending(enable)) return;
     if (enable) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -869,6 +873,7 @@ void GL2Renderer::setBlending(bool enable) {
 }
 
 void GL2Renderer::setBlendingAdditive(bool enable) {
+    if (!state_cache_.setBlendingAdditive(enable)) return;
     if (enable) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE);
@@ -878,6 +883,7 @@ void GL2Renderer::setBlendingAdditive(bool enable) {
 }
 
 void GL2Renderer::setDepthTest(bool enable) {
+    if (!state_cache_.setDepthTest(enable)) return;
     if (enable)
         glEnable(GL_DEPTH_TEST);
     else
@@ -885,6 +891,7 @@ void GL2Renderer::setDepthTest(bool enable) {
 }
 
 void GL2Renderer::setCullFace(bool enable) {
+    if (!state_cache_.setCullFace(enable)) return;
     if (enable)
         glEnable(GL_CULL_FACE);
     else
@@ -892,10 +899,12 @@ void GL2Renderer::setCullFace(bool enable) {
 }
 
 void GL2Renderer::setDepthMask(bool write) {
+    if (!state_cache_.setDepthMask(write)) return;
     glDepthMask(write ? GL_TRUE : GL_FALSE);
 }
 
 void GL2Renderer::resetState() {
+    state_cache_.reset();
     glDisable(GL_BLEND);
     glDisable(GL_SCISSOR_TEST);
     glEnable(GL_DEPTH_TEST);

@@ -126,6 +126,7 @@ set(CORE_LIB_SOURCES
     src/renderer/gpu_timer.cpp
     src/renderer/gl_extensions.cpp
     src/renderer/gl_debug.cpp
+    src/engine/state_cache.cpp
     src/geometry/mesh_gen.cpp
     src/geometry/obj_loader.cpp
     src/platform/hwinfo.cpp
@@ -158,7 +159,7 @@ endif()
 
 # --- Engine convenience layer (between core and demo) ---
 set(ENGINE_SOURCES
-    src/engine/engine.cpp
+    src/engine/pass_context.cpp
 )
 add_library(gpubench_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(gpubench_engine PUBLIC src extern)

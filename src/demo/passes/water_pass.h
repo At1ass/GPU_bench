@@ -6,7 +6,7 @@ class WaterPass : public DemoRenderPass {
 public:
     const char* name() const override { return "water"; }
     void init(const TierResourceView& res);
-    void execute(Renderer* r, FrameData& fd, const TierResourceView& res,
+    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
                  const DemoTierConfig& cfg, const SceneData& scene) override;
 
     const ResourceDecl* resourceDecls() const override {

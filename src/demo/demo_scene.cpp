@@ -1,6 +1,7 @@
 #include "demo/demo_scene.h"
 #include "demo/demo_utils.h"
 #include "demo/tier_config_validate.h"
+#include "engine/pass_context.h"
 #include "geometry/mesh_gen.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
@@ -594,7 +595,9 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     dest_rt_ = dest_rt;
 
     FrameData fd = buildFrameData(t, time, viewport_w, viewport_h, dest_rt);
-    pipeline_.execute(r, fd, res_, config_, scene_data_);
+    PassContext ctx(r);
+    ctx.beginFrame();
+    pipeline_.execute(ctx, fd, res_, config_, scene_data_);
 
     // Restore GL state
     r->setDepthTest(true);

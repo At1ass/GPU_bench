@@ -1,4 +1,5 @@
 #include "demo/passes/ssao_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -13,8 +14,9 @@ void SSAOPass::init(const TierResourceView& res) {
         ub_ssao_blur_.init(res.ssao.blur_shader);
 }
 
-void SSAOPass::execute(Renderer* r, FrameData& fd, const TierResourceView& res,
+void SSAOPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
                        const DemoTierConfig& cfg, const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)scene;
     renderSSAO(r, fd, res, cfg);
     renderSSAOBlur(r, fd, res);

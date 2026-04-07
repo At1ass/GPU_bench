@@ -1,4 +1,5 @@
 #include "demo/passes/composite_pass.h"
+#include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "demo/uniform_id.h"
 #include "demo/tier_resource_view.h"
@@ -9,8 +10,9 @@ void CompositePass::init(const TierResourceView& res) {
         ub_bloom_composite_.init(res.bloom.composite_shader);
 }
 
-void CompositePass::execute(Renderer* r, FrameData& fd, const TierResourceView& res,
+void CompositePass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
                             const DemoTierConfig& cfg, const SceneData& scene) {
+    Renderer* r = ctx.renderer();
     (void)cfg;
     (void)scene;
 

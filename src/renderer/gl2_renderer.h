@@ -2,6 +2,7 @@
 #include "renderer/renderer.h"
 #include "renderer/gl_funcs.h"
 #include "renderer/gpu_timer.h"
+#include "engine/state_cache.h"
 #include <vector>
 #include <string>
 #include "platform/logger.h"
@@ -152,6 +153,9 @@ protected:
 
     // GPU timer
     GPUTimer gpu_timer_;
+
+    // GL state shadow cache (eliminates redundant glEnable/glDisable calls)
+    StateCache state_cache_;
 
     GLuint compileShader(GLenum type, const char* src);
     GLuint linkProgram(GLuint vs, GLuint fs);
