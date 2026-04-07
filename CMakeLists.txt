@@ -160,6 +160,9 @@ endif()
 # --- Engine convenience layer (between core and demo) ---
 set(ENGINE_SOURCES
     src/engine/pass_context.cpp
+    src/engine/fullscreen_pass.cpp
+    src/engine/geometry_pass.cpp
+    src/engine/compute_pass.cpp
 )
 add_library(gpubench_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(gpubench_engine PUBLIC src extern)
