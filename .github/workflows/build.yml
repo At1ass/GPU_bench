@@ -124,6 +124,6 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y cmake sdl2 mesa-libs gmake
+            pkg install -y cmake sdl2 mesa-libs gmake bash
           run: |
-            ./scripts/build.sh native
+            bash ./scripts/build.sh native

@@ -31,7 +31,7 @@ endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # -O3 + LTO for release builds; x86-64-v2 covers SSE4.2+ (~2010 CPUs)
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-    if(NOT CMAKE_CROSSCOMPILING)
+    if(NOT CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v2")
     endif()
     # Link-Time Optimization
