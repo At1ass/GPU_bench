@@ -53,7 +53,7 @@ struct Mat4 {
     static Mat4 perspective(float fov_deg, float aspect, float znear, float zfar) {
         Mat4 r;
         memset(r.m, 0, sizeof(r.m));
-        float f = 1.0f / tanf(fov_deg * 3.14159265f / 360.0f);
+        float f = 1.0f / tanf(fov_deg * CB_PI / 360.0f);
         r.m[0] = f / aspect;
         r.m[5] = f;
         r.m[10] = (zfar + znear) / (znear - zfar);
@@ -90,7 +90,7 @@ struct Mat4 {
 
     static Mat4 rotateY(float angle_deg) {
         Mat4 r;
-        float rad = angle_deg * 3.14159265f / 180.0f;
+        float rad = angle_deg * CB_PI / 180.0f;
         float c = cosf(rad), s = sinf(rad);
         r.m[0] = c;  r.m[8] = s;
         r.m[2] = -s; r.m[10] = c;
@@ -99,7 +99,7 @@ struct Mat4 {
 
     static Mat4 rotateX(float angle_deg) {
         Mat4 r;
-        float rad = angle_deg * 3.14159265f / 180.0f;
+        float rad = angle_deg * CB_PI / 180.0f;
         float c = cosf(rad), s = sinf(rad);
         r.m[5] = c;  r.m[9] = -s;
         r.m[6] = s;  r.m[10] = c;
@@ -121,7 +121,7 @@ struct Mat4 {
 
     static Mat4 rotateZ(float angle_deg) {
         Mat4 r;
-        float rad = angle_deg * 3.14159265f / 180.0f;
+        float rad = angle_deg * CB_PI / 180.0f;
         float c = cosf(rad), s = sinf(rad);
         r.m[0] = c;  r.m[4] = -s;
         r.m[1] = s;  r.m[5] = c;

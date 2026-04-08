@@ -1,5 +1,6 @@
 #include "geometry/obj_loader.h"
 #include "geometry/mesh_gen.h"
+#include "platform/compat.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstdlib>
@@ -11,7 +12,7 @@
 MeshData ObjLoader::load(const char* filepath) {
     MeshData result;
 
-    FILE* f = fopen(filepath, "r");
+    FileGuard f(fopen(filepath, "r"));
     if (!f) {
         LOG_DBG("OBJ: cannot open '%s'", filepath);
         return result;
@@ -28,7 +29,7 @@ MeshData ObjLoader::load(const char* filepath) {
     std::unordered_map<uint64_t, unsigned int> vert_map;
 
     char line[4096];
-    while (fgets(line, sizeof(line), f)) {
+    while (fgets(line, sizeof(line), f.get())) {
         // Skip comments and empty lines
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
 
@@ -122,7 +123,7 @@ MeshData ObjLoader::load(const char* filepath) {
         // Skip: mtllib, usemtl, o, g, s, etc.
     }
 
-    fclose(f);
+    // f closed automatically by FileGuard RAII
 
     LOG_DBG("OBJ: loaded %d verts, %d tris from '%s'",
              static_cast<int>(result.vertices.size()),

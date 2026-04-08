@@ -1,4 +1,5 @@
 #include "platform/data_path.h"
+#include "platform/compat.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
@@ -98,19 +99,18 @@ std::string getDataPath(const char* relative_path) {
 }
 
 std::string readTextFile(const char* path) {
-    FILE* f = fopen(path, "rb");
+    FileGuard f(fopen(path, "rb"));
     if (!f) return std::string();
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    fseek(f.get(), 0, SEEK_END);
+    long size = ftell(f.get());
+    fseek(f.get(), 0, SEEK_SET);
 
-    if (size <= 0) { fclose(f); return std::string(); }
+    if (size <= 0) return std::string();
 
     std::string content;
     content.resize(static_cast<size_t>(size));
-    size_t read = fread(&content[0], 1, static_cast<size_t>(size), f);
+    size_t read = fread(&content[0], 1, static_cast<size_t>(size), f.get());
     content.resize(read);
-    fclose(f);
     return content;
 }
