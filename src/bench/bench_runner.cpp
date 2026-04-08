@@ -23,7 +23,8 @@ static const double PROBE_WARMUP_BUDGET = 0.5; // seconds for warmup
 static const double PROBE_TRIM_FRAC = 0.15;
 
 // Trim outliers from sorted times: drop PROBE_TRIM_FRAC from each end
-static std::vector<double> trimmedTimes(std::vector<double> times) {
+static std::vector<double> trimmedTimes(const std::vector<double>& raw) {
+    std::vector<double> times(raw);
     std::sort(times.begin(), times.end());
     int n = static_cast<int>(times.size());
     int trim = static_cast<int>(n * PROBE_TRIM_FRAC);

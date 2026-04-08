@@ -105,7 +105,7 @@ static constexpr double BOTTLENECK_WEAKNESS_RATIO    = 0.8;
 static constexpr double DRAWCALL_OVERHEAD_RATIO      = 1.5;
 static constexpr double ALU_FMA_DIVERGENCE_RATIO     = 3.0;
 
-static double percentile(std::vector<double>& sorted, double p) {
+static double percentile(const std::vector<double>& sorted, double p) {
     if (sorted.empty()) return 0;
     double idx = p * static_cast<double>(sorted.size() - 1);
     size_t lo = static_cast<size_t>(floor(idx));
@@ -312,11 +312,9 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
     // Need all 4 categories for meaningful cross-category comparison
     // (scores use different units: Mpix/s, Ktris/s, Gops, etc.)
     if (count < 4) {
-        char buf[256];
         if (count == 0) {
             info.detail = "No test data for bottleneck analysis";
         } else {
-            // List missing categories
             std::string missing;
             for (int i = 0; i < 4; i++) {
                 if (cats[i].score <= 0) {
@@ -324,9 +322,7 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
                     missing += cats[i].name;
                 }
             }
-            snprintf(buf, sizeof(buf), "Incomplete data — run all tests for bottleneck analysis (missing: %s)",
-                     missing.c_str());
-            info.detail = buf;
+            info.detail = "Incomplete data -- run all tests for bottleneck analysis (missing: " + missing + ")";
         }
         return info;
     }
@@ -352,18 +348,18 @@ BottleneckInfo detectBottleneck(const std::vector<BenchResult>& results,
         info.weakest_category = cats[weakest].name;
         info.weakness_ratio = min_ratio;
 
-        char buf[256];
+        char detail[128];
         if (min_ratio < BOTTLENECK_SIGNIFICANT_RATIO) {
-            snprintf(buf, sizeof(buf), "%s is significantly weaker (%.0f%% of average)",
+            snprintf(detail, sizeof(detail), "%s is significantly weaker (%.0f%% of average)",
                      cats[weakest].name, min_ratio * 100.0);
         } else if (min_ratio < BOTTLENECK_WEAKNESS_RATIO) {
-            snprintf(buf, sizeof(buf), "%s is the weakest category (%.0f%% of average)",
+            snprintf(detail, sizeof(detail), "%s is the weakest category (%.0f%% of average)",
                      cats[weakest].name, min_ratio * 100.0);
         } else {
-            snprintf(buf, sizeof(buf), "Balanced performance (weakest: %s at %.0f%%)",
+            snprintf(detail, sizeof(detail), "Balanced performance (weakest: %s at %.0f%%)",
                      cats[weakest].name, min_ratio * 100.0);
         }
-        info.detail = buf;
+        info.detail = detail;
     }
 
     // Compare DrawCall vs DrawCallRaw if both present
