@@ -7,7 +7,11 @@ Cross-platform OpenGL benchmark for comparing GPU performance across different h
 - **30 GPU tests** covering fill rate, geometry, texturing, compute, draw call overhead, and more
 - **5 preset levels** (Light / Medium / Heavy / Ultra / Extreme) for reproducible results
 - **Four renderers**: GL2 (OpenGL 2.0), GL3 (3.0+), GL4 (4.3+), GLES (2.0/3.0) with capability-based test filtering
-- **Demo mode** — 3DMark-style visual benchmark with procedural city scene, 4 quality tiers, and composite scoring
+- **Demo mode** — 3DMark-style visual benchmark with "Sanctuary" scene (Stanford Bunny), 4 quality tiers, and composite scoring
+- **Engine layer** with PassContext, RenderState, StateCache for reduced GL overhead and redundant call elimination
+- **GL debug output** (KHR_debug) with severity-based logging and RenderDoc debug groups
+- **Data-driven scenes** loaded from `.scene` files (no recompilation needed)
+- **Multi-level logging**: `--debug` for diagnostics, `--debug=verbose` for per-pass trace
 - **GPU timer queries** (GL_TIME_ELAPSED) for precise GPU-side timing on GL 3.3+
 - **Composite scoring** with geometric mean by category and bottleneck detection
 - **Auto GPU tier classification** via quick probe at startup
@@ -72,22 +76,22 @@ Tests requiring unsupported features are automatically disabled. For detailed te
 
 ## Demo Mode
 
-3DMark-style visual benchmark with a procedural "abandoned outpost" scene and Catmull-Rom camera flythrough.
+3DMark-style visual benchmark with the "Sanctuary" scene and Catmull-Rom camera orbit. The demo is a separate binary (`gpu_demo`).
 
 | Tier | GL Required | Shading | Post-FX |
 |------|-------------|---------|---------|
-| Basic | GL 2.1 | Blinn-Phong + fog | None |
-| Enhanced | GL 3.0+ | + shadow maps | Bloom, Reinhard tonemap, vignette |
-| Quality | GL 3.3+ | + PCF shadows, rim light | + chromatic aberration |
-| Ultra | GL 4.3+ | Cook-Torrance PBR | + god rays, ACES tonemap, film grain |
+| Basic | GL 2.1 | Blinn-Phong, no shadows, shell fur | None |
+| Enhanced | GL 3.0+ | + shadow map (1024), SSAO, instanced grass | Bloom, Reinhard tonemap |
+| Quality | GL 3.3+ | + PCF shadows (2048), 3 point lights, normal maps, 48 fur shells | + DoF |
+| Ultra | GL 4.3+ | Cook-Torrance PBR, PCSS (4096), compute particles, GTAO, tessellation | Volumetric fog, HDR + ACES tonemap, SSR, DoF |
 
-Scene: 53 procedural objects (12 buildings, 15 trees, 12 rocks, 6 lamps, 4 fences, 2 arches, terrain, water). Scoring: geometric mean of normalized FPS across tiers x 10000.
+Scene: ~25 objects (Stanford Bunny on pedestal, columns, arch, rocks, grass, trees, puddles) loaded from `data/scenes/sanctuary.scene`. Scoring: geometric mean of normalized FPS across tiers x 10000.
 
 ```bash
-./gpu_benchmark --demo                          # Auto-detect tiers
-./gpu_benchmark --demo --demo-tier 3            # Specific tier
-./gpu_benchmark --demo --demo-duration 20       # 20 sec per tier
-./gpu_benchmark --headless --demo --output json  # Headless demo with JSON export
+./gpu_demo                                       # Auto-detect tiers
+./gpu_demo --demo-tier 3                         # Specific tier
+./gpu_demo --demo-duration 20                    # 20 sec per tier
+./gpu_demo --headless --output json              # Headless demo with JSON export
 ```
 
 ## Presets
@@ -119,8 +123,8 @@ The benchmark auto-classifies your GPU into a tier (legacy/low/mid/high/ultra) u
 # Stress test for 5 minutes
 ./gpu_benchmark --stress 300 --preset ultra
 
-# Demo mode
-./gpu_benchmark --demo
+# Demo mode (separate binary)
+./gpu_demo
 
 # List available GPUs
 ./gpu_benchmark --list-gpus
@@ -144,11 +148,27 @@ Options:
   --render-res <WxH>                           Render resolution (e.g. 1920x1080, default: native)
   --timing <sync|gpu>                          Timing mode: sync (CPU+glFinish) or gpu (GL_TIME_ELAPSED)
   --stress <seconds>                           Stress test mode (headless only)
-  --demo                                       Visual demo benchmark (3DMark-style)
-  --demo-tier <1-4>                            Run specific demo tier only
-  --demo-duration <seconds>                    Duration per tier (default: 15)
+  --debug                                      Enable debug logging
   --gpu <index>                                Select GPU by index
   --list-gpus                                  List available GPUs and exit
+  --help, -h                                   Show help
+```
+
+The demo mode is a separate binary with its own options:
+
+```
+gpu_demo [options]
+
+Options:
+  --demo-tier <1-4>                            Run specific demo tier only
+  --demo-duration <seconds>                    Duration per tier (default: 15)
+  --renderer <gl2|gl3|gl4|gles|auto>           Renderer (default: auto)
+  --headless                                   No GUI, run demo, print results
+  --output <text|csv|json>                     Output format (default: text)
+  --output-file <path>                         Write results to file
+  --debug                                      Enable debug logging
+  --debug=verbose                              Verbose trace logging (GL debug groups, per-pass)
+  --gpu <index>                                Select GPU by index
   --help, -h                                   Show help
 ```
 
@@ -177,6 +197,19 @@ The `--stress` flag runs a continuous GPU load test with thermal throttling dete
 Uses a self-calibrating combined shader that stresses all GPU units simultaneously (FMA cores, SFU, texture units, ROPs, memory bandwidth). Automatically adjusts pass count per frame to saturate any GPU — from legacy integrated to modern discrete.
 
 Reports every 10 seconds with degradation tracking relative to baseline.
+
+## Debug Mode
+
+`--debug` enables GL debug output (KHR_debug), shader validation warnings, and frame statistics overlay.
+`--debug=verbose` (or `--debug verbose`) adds per-pass pipeline trace logging and GL notification messages.
+
+The frame statistics panel shows real-time:
+- Draw calls, state changes (applied/skipped by StateCache)
+- Texture binds, RT switches, shader switches
+- Compute dispatches, memory barriers
+- Objects drawn/culled (frustum culling)
+
+Both `gpu_benchmark` and `gpu_demo` accept the `--debug` flag.
 
 ## Building
 
@@ -254,16 +287,31 @@ GPU_bechmark/
     mingw-w64-i686.cmake             # MinGW 32-bit toolchain (Win XP)
   extern/
     imgui/                            # ImGui v1.89.9 (git submodule)
+  data/
+    scenes/
+      sanctuary.scene                 # Data-driven scene description
+    shaders/                          # External GLSL files (with #pragma include)
+    models/bunny.obj                  # Stanford Bunny (scripts/fetch_bunny.sh)
   src/
-    main.cpp                          # CLI parsing, entry point
-    app.h / app.cpp                   # Application coordinator
-    ui/
-      bench_ui.h / .cpp               # UI layer (UIView/UIState/UIAction)
+    core/
+      app_config.h                    # Shared application config (--debug, --verbose, etc.)
+      poll_callback.h                 # Lightweight polling interface
+    engine/
+      pass_context.h / .cpp           # Per-frame renderer wrapper
+      render_state.h                  # Declarative GL state description
+      state_cache.h / .cpp            # Redundant GL call elimination
+      fullscreen_pass.h / .cpp        # Fullscreen quad pass template
+      geometry_pass.h / .cpp          # Object iteration pass template
+      compute_pass.h / .cpp           # Compute dispatch pass template
+      draw_list.h / .cpp              # Sort-based draw ordering
+      texture_slots.h                 # Fixed texture unit assignments
+      frame_stats.h                   # Per-frame counters
     bench/
+      main.cpp                        # Benchmark CLI entry point
       bench.h / .cpp                  # Statistics, composite score, bottleneck, GPU tier
       bench_runner.h / .cpp           # Test execution loop
+      bench_ui.h / .cpp               # UI layer (UIView/UIState/UIAction)
       stress_runner.h / .cpp          # Stress test mode
-      poll_callback.h                 # Lightweight polling interface
       preset.h / .cpp                 # Preset definitions, validation
       preset_io.h / .cpp              # INI config save/load
       results.h / .cpp                # Text/CSV/JSON export, OutputFormat
@@ -282,6 +330,9 @@ GPU_bechmark/
       gles_renderer.h / .cpp          # OpenGL ES 2.0/3.0
       gl_funcs.h / .cpp               # GL function loading (X-macro)
       gl_loader.h / .cpp              # imgl3w loader
+      gl_debug.h / .cpp               # GL_KHR_debug wrapper, debug groups
+      gl_extensions.h / .cpp          # Modern extension checking
+      gl_profile.h                    # GL profile detection
       gpu_timer.h / .cpp              # GPU timer queries
       render_context.h / .cpp         # Window + GL context (abstract)
       gl_render_context.h / .cpp      # SDL2 + GL context (concrete)
@@ -290,17 +341,29 @@ GPU_bechmark/
       math_types.h                    # Vec2, Vec3, Vec4, Mat4
       mesh.h                          # Vertex data types, type-safe handles
       mesh_gen.h / .cpp               # Procedural mesh generation
+      obj_loader.h / .cpp             # Wavefront OBJ parser
     demo/
+      main.cpp                        # Demo CLI entry point (gpu_demo binary)
       demo_runner.h / .cpp            # Tier loop, FPS measurement, scoring
-      demo_scene.h / .cpp             # Procedural city scene, multi-pass rendering
-      demo_camera.h / .cpp            # Catmull-Rom camera path
-      demo_shaders.h / .cpp           # GLSL programs (T1-T4 variants)
+      demo_scene.h / .cpp             # Scene rendering, multi-pass pipeline
+      demo_camera.h / .cpp            # Catmull-Rom camera orbit
+      scene_loader.h / .cpp           # Data-driven scene loading (.scene files)
+      shader_cache.h / .cpp           # Shader permutation cache
+      shader_loader.h / .cpp          # External shader loading + #pragma include
+      shader_program.h                # RAII shader wrapper
       demo_ui.h / .cpp                # ImGui overlay (FPS, progress, results)
       demo_export.h / .cpp            # Demo results export (text/CSV/JSON)
+      demo_resources.h / .cpp         # GPU resource management
+      demo_tier_config.cpp            # Tier progressive configuration
+      material.h / materials.cpp      # Material definitions
+      pipeline_builder.h / .cpp       # Render pipeline construction
+      pass_factory.h / .cpp           # Render pass creation
+      render_pass.h                   # Render pass interface
     platform/
       hwinfo.h / .cpp                 # CPU, OS detection
       gpu_select.h / .cpp             # GPU enumeration and selection
-      logger.h / .cpp                 # Logging
+      data_path.h / .cpp              # Runtime data directory resolution
+      logger.h / .cpp                 # Logging (multi-level: info, debug, trace)
       timer.h                         # High-resolution timer
       compat.h                        # Platform compatibility, RAII wrappers
 ```

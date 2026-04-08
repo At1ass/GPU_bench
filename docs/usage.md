@@ -30,26 +30,33 @@ On Linux, works without a display server (X11/Wayland) if SDL 2.0.22+ is availab
 
 ## Demo Mode
 
-3DMark-style visual benchmark with a procedural city scene and camera flythrough through 4 quality tiers (Basic / Enhanced / Quality / Ultra).
+3DMark-style visual benchmark with the "Sanctuary" scene (Stanford Bunny on pedestal, columns, arch, rocks, grass, trees, puddles) and Catmull-Rom camera orbit through 4 quality tiers (Basic / Enhanced / Quality / Ultra).
+
+The demo is built as a separate binary (`gpu_demo`):
 
 ```bash
 # Auto-detect supported tiers, run all
-./gpu_benchmark --demo
+./gpu_demo
 
 # Specific tier only
-./gpu_benchmark --demo --demo-tier 3
+./gpu_demo --demo-tier 3
 
 # Custom duration (seconds per tier)
-./gpu_benchmark --demo --demo-duration 20
+./gpu_demo --demo-duration 20
 
 # Headless demo with JSON export
-./gpu_benchmark --headless --demo --output json --output-file demo.json
+./gpu_demo --headless --output json --output-file demo.json
 
-# Demo at specific resolution
-./gpu_benchmark --demo --render-res 1920x1080
+# Demo with debug overlay (frame stats, GL debug output)
+./gpu_demo --debug
+
+# Verbose trace logging (per-pass pipeline trace, GL debug groups)
+./gpu_demo --debug=verbose
 ```
 
 The demo runs each tier sequentially, measuring FPS throughout. After all tiers complete, a results screen is shown (interactive mode) or results are exported (headless mode). The demo score is a geometric mean of normalized FPS across tiers, scaled by 10000.
+
+The scene is loaded from `data/scenes/sanctuary.scene` — a data-driven format that allows editing object placement and materials without recompilation.
 
 ## CLI Examples
 

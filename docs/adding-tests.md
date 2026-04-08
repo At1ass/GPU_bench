@@ -296,7 +296,7 @@ X(MyTest, MyTestClass, "MyTest", "mytest", Compute, "Description of what this te
 
 That's it — the `TestId` enum value, `g_tests[]` entry, CLI name, and UI label
 are all generated automatically from this single line. No need to edit
-`app.h` or `app.cpp`.
+`main.cpp` or any coordinator file.
 
 If your test requires specific GL features, set the capability flags
 accordingly. For example, a test that needs instanced rendering:
