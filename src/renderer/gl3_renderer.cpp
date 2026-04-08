@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <utility>
 #include <vector>
 
 GL3Renderer::GL3Renderer() {}
@@ -213,10 +214,10 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     return th;
 }
@@ -324,10 +325,10 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = rt;
+        render_targets_[handle] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
-        render_targets_.push_back(rt);
+        render_targets_.push_back(std::move(rt));
     }
     LOG_DBG("GL3: createMRTRenderTarget %dx%d, %d attachments -> handle %u",
              w, h, num_attachments, (unsigned)handle);
@@ -358,10 +359,10 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     LOG_DBG("GL3: createTextureArray %dx%d, %d layers, ch=%d -> handle %u",
              w, h, layers, channels, (unsigned)th);
@@ -623,10 +624,10 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = rt;
+        render_targets_[handle] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
-        render_targets_.push_back(rt);
+        render_targets_.push_back(std::move(rt));
     }
     LOG_DBG("GL3: createDepthRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
@@ -685,10 +686,10 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = rt;
+        render_targets_[handle] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
-        render_targets_.push_back(rt);
+        render_targets_.push_back(std::move(rt));
     }
     return handle;
 }
@@ -711,10 +712,10 @@ TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     render_targets_[rt].cached_depth_th = th;
     return th;
@@ -738,10 +739,10 @@ TextureHandle GL3Renderer::getRTColorTexture(RenderTargetHandle rt) {
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     render_targets_[rt].cached_color_th = th;
     return th;
@@ -762,10 +763,10 @@ TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     return th;
 }

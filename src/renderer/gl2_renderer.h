@@ -86,6 +86,7 @@ public:
     const char* getRendererName() const override;
 
 protected:
+    // GL resource structs: move-only (GL objects cannot be shallow-copied)
     struct GLMesh {
         GLuint vbo = 0;
         GLuint ibo = 0;
@@ -94,20 +95,42 @@ protected:
         bool valid = false;
         GLuint vao = 0; // 0 if not using VAO (GL2 path)
         GLMesh() = default;
+        GLMesh(const GLMesh&) = delete;
+        GLMesh& operator=(const GLMesh&) = delete;
+        GLMesh(GLMesh&& o) noexcept
+            : vbo(o.vbo), ibo(o.ibo), index_count(o.index_count),
+              index_type(o.index_type), valid(o.valid), vao(o.vao)
+            { o.vbo = 0; o.ibo = 0; o.valid = false; o.vao = 0; }
+        GLMesh& operator=(GLMesh&& o) noexcept {
+            if (this != &o) {
+                vbo = o.vbo; ibo = o.ibo; index_count = o.index_count;
+                index_type = o.index_type; valid = o.valid; vao = o.vao;
+                o.vbo = 0; o.ibo = 0; o.valid = false; o.vao = 0;
+            }
+            return *this;
+        }
     };
     struct GLTex {
         GLuint id = 0;
         bool valid = false;
         bool rt_owned = false; // true = GL object owned by render target, don't glDelete
         GLTex() = default;
+        GLTex(const GLTex&) = delete;
+        GLTex& operator=(const GLTex&) = delete;
+        GLTex(GLTex&& o) noexcept : id(o.id), valid(o.valid), rt_owned(o.rt_owned)
+            { o.id = 0; o.valid = false; }
+        GLTex& operator=(GLTex&& o) noexcept {
+            if (this != &o) { id = o.id; valid = o.valid; rt_owned = o.rt_owned; o.id = 0; o.valid = false; }
+            return *this;
+        }
     };
     struct ShaderProg {
-        GLuint program;
+        GLuint program = 0;
         // Uniform locations
-        GLint u_proj, u_view, u_model;
-        GLint u_color, u_light_dir, u_tex, u_use_tex;
+        GLint u_proj = -1, u_view = -1, u_model = -1;
+        GLint u_color = -1, u_light_dir = -1, u_tex = -1, u_use_tex = -1;
         // Attribute locations (cached)
-        GLint a_pos, a_normal, a_uv;
+        GLint a_pos = -1, a_normal = -1, a_uv = -1;
     };
 
     std::vector<GLMesh> meshes_;
@@ -122,14 +145,14 @@ protected:
     ShaderProg shader_3d_;
     ShaderProg shader_2d_color_;
     ShaderProg shader_2d_tex_;
-    ShaderProg* current_shader_;
+    ShaderProg* current_shader_ = nullptr;  // non-owning: points to shader_3d_/2d_color_/2d_tex_
 
     RenderCaps caps_;
     std::string gpu_vendor_, gpu_renderer_, gl_version_;
-    bool initialized_;
-    bool core_profile_;
+    bool initialized_ = false;
+    bool core_profile_ = false;
     MeshHandle last_drawn_mesh_;  // for skipping redundant vertex attrib setup
-    int viewport_x_, viewport_y_, viewport_w_, viewport_h_;
+    int viewport_x_ = 0, viewport_y_ = 0, viewport_w_ = 0, viewport_h_ = 0;
 
     // Render targets (FBO)
     struct GLFBO {
@@ -145,12 +168,16 @@ protected:
         TextureHandle cached_depth_th;  // cached getRTDepthTexture() result
         TextureHandle cached_color_th;  // cached getRTColorTexture() result
         GLFBO() = default;
+        GLFBO(const GLFBO&) = delete;
+        GLFBO& operator=(const GLFBO&) = delete;
+        GLFBO(GLFBO&&) = default;
+        GLFBO& operator=(GLFBO&&) = default;
     };
     std::vector<GLFBO> render_targets_;
     std::vector<RenderTargetHandle> free_rt_slots_;
     MeshHandle blit_quad_;
-    bool blit_quad_ready_;
-    bool has_blit_framebuffer_;
+    bool blit_quad_ready_ = false;
+    bool has_blit_framebuffer_ = false;
 
     // GPU timer
     GPUTimer gpu_timer_;

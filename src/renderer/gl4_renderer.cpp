@@ -4,6 +4,7 @@
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
+#include <utility>
 #include <vector>
 
 GL4Renderer::GL4Renderer() {}
@@ -309,10 +310,10 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = rt;
+        render_targets_[handle] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
-        render_targets_.push_back(rt);
+        render_targets_.push_back(std::move(rt));
     }
     LOG_DBG("GL4: createFloatRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
@@ -369,10 +370,10 @@ RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = rt;
+        render_targets_[handle] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
-        render_targets_.push_back(rt);
+        render_targets_.push_back(std::move(rt));
     }
     return handle;
 }
@@ -525,10 +526,10 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
     if (!free_tex_slots_.empty()) {
         handle = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[handle] = tex;
+        textures_[handle] = std::move(tex);
     } else {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(tex);
+        textures_.push_back(std::move(tex));
     }
     LOG_DBG("GL4: createFloatTexture %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
@@ -611,10 +612,10 @@ TextureHandle GL4Renderer::createFloat16Texture(int w, int h) {
     if (!free_tex_slots_.empty()) {
         handle = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[handle] = tex;
+        textures_[handle] = std::move(tex);
     } else {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(tex);
+        textures_.push_back(std::move(tex));
     }
     LOG_DBG("GL4: createFloat16Texture %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
@@ -639,10 +640,10 @@ TextureHandle GL4Renderer::createDepthTexture(int w, int h) {
     if (!free_tex_slots_.empty()) {
         handle = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[handle] = tex;
+        textures_[handle] = std::move(tex);
     } else {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(tex);
+        textures_.push_back(std::move(tex));
     }
     LOG_DBG("GL4: createDepthTexture %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;

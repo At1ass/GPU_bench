@@ -3,6 +3,7 @@
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
+#include <utility>
 
 // ---- GLES-compatible shaders ----
 // GLES 2.0: #version 100, precision required in fragment shaders.
@@ -229,10 +230,10 @@ TextureHandle GLESRenderer::createTexture(int w, int h, int channels, const unsi
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     return th;
 }

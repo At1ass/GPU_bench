@@ -3,6 +3,7 @@
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
+#include <utility>
 
 #ifdef __linux__
 #include <SDL_syswm.h>
@@ -167,9 +168,7 @@ GL2Renderer::GL2Renderer() : current_shader_(nullptr), initialized_(false),
     viewport_x_(0), viewport_y_(0), viewport_w_(0), viewport_h_(0),
     blit_quad_(INVALID_MESH), blit_quad_ready_(false),
     has_blit_framebuffer_(false) {
-    memset(&shader_3d_, 0, sizeof(shader_3d_));
-    memset(&shader_2d_color_, 0, sizeof(shader_2d_color_));
-    memset(&shader_2d_tex_, 0, sizeof(shader_2d_tex_));
+    // ShaderProg fields have default member initializers (program=0, uniforms=-1)
 }
 
 // ~GL2Renderer: default. shutdown() must be called explicitly before destruction.
@@ -580,10 +579,10 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
     if (!free_mesh_slots_.empty()) {
         h = free_mesh_slots_.back();
         free_mesh_slots_.pop_back();
-        meshes_[h] = gm;
+        meshes_[h] = std::move(gm);
     } else {
         h = MeshHandle(static_cast<unsigned int>(meshes_.size()));
-        meshes_.push_back(gm);
+        meshes_.push_back(std::move(gm));
     }
     LOG_DBG("GL2: createMesh %u verts, %u indices -> handle %u",
              (unsigned)data.vertices.size(), (unsigned)data.indices.size(), (unsigned)h);
@@ -654,10 +653,10 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = gt;
+        textures_[th] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
-        textures_.push_back(gt);
+        textures_.push_back(std::move(gt));
     }
     LOG_DBG("GL2: createTexture %dx%d ch=%d -> handle %u", w, h, channels, (unsigned)th);
     return th;
@@ -1019,10 +1018,10 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = rt;
+        render_targets_[handle] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
-        render_targets_.push_back(rt);
+        render_targets_.push_back(std::move(rt));
     }
     LOG_DBG("GL2: createRenderTarget %dx%d -> handle %u", w, h, (unsigned)handle);
     return handle;
