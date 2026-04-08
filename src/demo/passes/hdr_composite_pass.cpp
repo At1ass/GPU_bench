@@ -7,8 +7,8 @@
 #include "renderer/features.h"
 
 void HDRCompositePass::init(const TierResourceView& res) {
-    if (res.t4.tone_map_shader)
-        ub_tone_map_.init(res.t4.tone_map_shader);
+    if (res.t4.hdr.tone_map_shader)
+        ub_tone_map_.init(res.t4.hdr.tone_map_shader);
 }
 
 void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
@@ -23,12 +23,12 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
 
     ub_tone_map_.use();
 
-    r->bindRenderTargetTexture(res.t4.hdr_scene_rt, 0);
+    r->bindRenderTargetTexture(res.t4.hdr.scene_rt, 0);
     ub_tone_map_.set(U::SceneTex, 0);
 
     // Bloom: prefer compute bloom mip[0], otherwise fragment bloom
-    if (cfg.enable_compute_bloom && res.t4.bloom_mips[0] != INVALID_TEXTURE) {
-        r->bindTextureUnit(1, res.t4.bloom_mips[0]);
+    if (cfg.enable_compute_bloom && res.t4.bloom.mips[0] != INVALID_TEXTURE) {
+        r->bindTextureUnit(1, res.t4.bloom.mips[0]);
     } else {
         r->bindRenderTargetTexture(res.bloom.bright_rt, 1);
     }
@@ -36,8 +36,8 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     ub_tone_map_.set(U::BloomStrength, res.bloom.strength);
 
     // AO: prefer compute GTAO, otherwise fragment SSAO
-    if (cfg.enable_gtao && res.t4.gtao_blur_tex != INVALID_TEXTURE) {
-        r->bindTextureUnit(2, res.t4.gtao_blur_tex);
+    if (cfg.enable_gtao && res.t4.gtao.blur_tex != INVALID_TEXTURE) {
+        r->bindTextureUnit(2, res.t4.gtao.blur_tex);
         ub_tone_map_.set(U::SsaoTex, 2);
         ub_tone_map_.set(U::HasSsao, 1.0f);
     } else if (fd.has_ssao) {
@@ -49,7 +49,7 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     }
 
     if (fd.has_volumetric_fog) {
-        r->bindRenderTargetTexture(res.t4.fog_rt, 3);
+        r->bindRenderTargetTexture(res.t4.hdr.fog_rt, 3);
         ub_tone_map_.set(U::FogTex, 3);
         ub_tone_map_.set(U::HasFog, 1.0f);
     } else {
@@ -57,8 +57,8 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     }
 
     // SSR texture
-    if (cfg.enable_ssr && res.t4.ssr_tex != INVALID_TEXTURE) {
-        r->bindTextureUnit(4, res.t4.ssr_tex);
+    if (cfg.enable_ssr && res.t4.ssr.tex != INVALID_TEXTURE) {
+        r->bindTextureUnit(4, res.t4.ssr.tex);
         ub_tone_map_.set(U::SsrTex, 4);
         ub_tone_map_.set(U::HasSsr, 1.0f);
     } else {
@@ -66,8 +66,8 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     }
 
     // DoF texture
-    if (cfg.enable_dof && res.t4.dof_tex != INVALID_TEXTURE) {
-        r->bindTextureUnit(5, res.t4.dof_tex);
+    if (cfg.enable_dof && res.t4.dof.tex != INVALID_TEXTURE) {
+        r->bindTextureUnit(5, res.t4.dof.tex);
         ub_tone_map_.set(U::DofTex, 5);
         ub_tone_map_.set(U::HasDof, 1.0f);
     } else {
@@ -80,10 +80,10 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
 
     // Auto-exposure: read exposure from SSBO
     float exposure = 1.0f;
-    if (cfg.enable_auto_exposure && res.t4.exposure_ssbo != INVALID_BUFFER) {
+    if (cfg.enable_auto_exposure && res.t4.exposure.exposure_ssbo != INVALID_BUFFER) {
         ComputeFeatures* cf = r->features<ComputeFeatures>();
         if (cf) {
-            cf->readSSBO(res.t4.exposure_ssbo, &exposure, 0, sizeof(float));
+            cf->readSSBO(res.t4.exposure.exposure_ssbo, &exposure, 0, sizeof(float));
             if (exposure < 0.01f) exposure = 1.0f;
         }
     }

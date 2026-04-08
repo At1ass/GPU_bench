@@ -5,9 +5,9 @@
 #include <cmath>
 
 void SSRPass::init(const TierResourceView& res) {
-    ssr_shader_ = res.t4.ssr_shader;
-    ub().init(res.t4.ssr_shader);
-    setShader(res.t4.ssr_shader);
+    ssr_shader_ = res.t4.ssr.shader;
+    ub().init(res.t4.ssr.shader);
+    setShader(res.t4.ssr.shader);
 }
 
 void SSRPass::setup(const TierResourceView& res) {
@@ -20,12 +20,12 @@ void SSRPass::bind(PassContext& ctx, UniformBlock& ub,
                    const DemoTierConfig& cfg) {
     (void)cfg;
 
-    ctx.bindRTTexture(0, res.t4.hdr_scene_rt);
+    ctx.bindRTTexture(0, res.t4.hdr.scene_rt);
     ub.set(U::SceneTex, 0);
-    ctx.bindTexture(1, res.t4.hdr_depth_tex);
+    ctx.bindTexture(1, res.t4.hdr.depth_tex);
     ub.set(U::DepthTex, 1);
 
-    ctx.bindImage(0, res.t4.ssr_tex, false, true); // write-only
+    ctx.bindImage(0, res.t4.ssr.tex, false, true); // write-only
 
     ub.set(U::Proj, fd.proj);
     ssr_shader_->setMat4("u_view", fd.view);

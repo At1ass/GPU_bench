@@ -6,10 +6,10 @@
 
 void VolumetricFogPass::init(const TierResourceView& res) {
     res_ = &res;
-    ub().init(res.t4.volumetric_fog_shader);
-    setShader(res.t4.volumetric_fog_shader);
+    ub().init(res.t4.hdr.volumetric_fog_shader);
+    setShader(res.t4.hdr.volumetric_fog_shader);
     setQuad(res.bloom.fullscreen_quad);
-    setOutputRT(res.t4.fog_rt, res.t4.fog_w, res.t4.fog_h);
+    setOutputRT(res.t4.hdr.fog_rt, res.t4.hdr.fog_w, res.t4.hdr.fog_h);
     setClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
@@ -20,7 +20,7 @@ void VolumetricFogPass::setup(const TierResourceView& res) {
 void VolumetricFogPass::inputs(PassContext& ctx, const TierResourceView& res,
                                const FrameData& fd) {
     (void)fd;
-    ctx.bindTexture(0, res.t4.hdr_depth_tex);
+    ctx.bindTexture(0, res.t4.hdr.depth_tex);
 }
 
 void VolumetricFogPass::uniforms(UniformBlock& ub, const FrameData& fd,

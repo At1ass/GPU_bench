@@ -8,8 +8,8 @@
 #include "platform/logger.h"
 
 void BloomComputePass::init(const TierResourceView& res) {
-    ub_down_.init(res.t4.bloom_down_compute);
-    ub_up_.init(res.t4.bloom_up_compute);
+    ub_down_.init(res.t4.bloom.down_compute);
+    ub_up_.init(res.t4.bloom.up_compute);
 }
 
 void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
@@ -20,17 +20,17 @@ void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
     (void)cfg;
     (void)scene;
 
-    if (!res.t4.bloom_down_compute || !res.t4.bloom_up_compute) return;
+    if (!res.t4.bloom.down_compute || !res.t4.bloom.up_compute) return;
 
     GL4Features* g4 = r->features<GL4Features>();
     ComputeFeatures* cf = r->features<ComputeFeatures>();
     if (!g4 || !cf) return;
 
-    static const int MIP_COUNT = TierResourceView::T4::BLOOM_MIP_COUNT;
+    static const int MIP_COUNT = TierResourceView::T4::ComputeBloom::MIP_COUNT;
 
     // Verify all mips exist
     for (int i = 0; i < MIP_COUNT; i++) {
-        if (res.t4.bloom_mips[i] == INVALID_TEXTURE) return;
+        if (res.t4.bloom.mips[i] == INVALID_TEXTURE) return;
     }
 
     // --- Downsample chain ---
@@ -39,13 +39,13 @@ void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
     for (int i = 0; i < MIP_COUNT; i++) {
         // Source: either HDR scene texture (level 0) or previous mip
         if (i == 0) {
-            r->bindRenderTargetTexture(res.t4.hdr_scene_rt, 0);
+            r->bindRenderTargetTexture(res.t4.hdr.scene_rt, 0);
             ub_down_.set(U::SrcSize,
                 static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
             ub_down_.set(U::FirstPass, 1); // Karis average
             ub_down_.set(U::BloomThreshold, 1.5f);
         } else {
-            r->bindTextureUnit(0, res.t4.bloom_mips[i - 1]);
+            r->bindTextureUnit(0, res.t4.bloom.mips[i - 1]);
             int prev_w = fd.viewport_w >> i;
             int prev_h = fd.viewport_h >> i;
             if (prev_w < 1) prev_w = 1;
@@ -56,7 +56,7 @@ void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
         }
         ub_down_.set(U::SrcTex, 0);
 
-        g4->bindImageTexture(res.t4.bloom_mips[i], 0, false, true); // write-only
+        g4->bindImageTexture(res.t4.bloom.mips[i], 0, false, true); // write-only
 
         int mw = fd.viewport_w >> (i + 1);
         int mh = fd.viewport_h >> (i + 1);
@@ -75,11 +75,11 @@ void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
 
     for (int i = MIP_COUNT - 2; i >= 0; i--) {
         // Source: lower (smaller) mip
-        r->bindTextureUnit(0, res.t4.bloom_mips[i + 1]);
+        r->bindTextureUnit(0, res.t4.bloom.mips[i + 1]);
         ub_up_.set(U::SrcTex, 0);
 
         // Destination: current mip (read-write for additive blend)
-        g4->bindImageTexture(res.t4.bloom_mips[i], 0, true, true);
+        g4->bindImageTexture(res.t4.bloom.mips[i], 0, true, true);
 
         int mw = fd.viewport_w >> (i + 1);
         int mh = fd.viewport_h >> (i + 1);

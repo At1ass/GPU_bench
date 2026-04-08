@@ -4,8 +4,8 @@
 #include "demo/demo_utils.h"
 
 void DoFPass::init(const TierResourceView& res) {
-    ub().init(res.t4.dof_shader);
-    setShader(res.t4.dof_shader);
+    ub().init(res.t4.dof.shader);
+    setShader(res.t4.dof.shader);
 }
 
 void DoFPass::setup(const TierResourceView& res) {
@@ -16,12 +16,12 @@ void DoFPass::bind(PassContext& ctx, UniformBlock& ub,
                    const TierResourceView& res,
                    const FrameData& fd,
                    const DemoTierConfig& cfg) {
-    ctx.bindRTTexture(0, res.t4.hdr_scene_rt);
+    ctx.bindRTTexture(0, res.t4.hdr.scene_rt);
     ub.set(U::SceneTex, 0);
-    ctx.bindTexture(1, res.t4.hdr_depth_tex);
+    ctx.bindTexture(1, res.t4.hdr.depth_tex);
     ub.set(U::DepthTex, 1);
 
-    ctx.bindImage(0, res.t4.dof_tex, false, true); // write-only
+    ctx.bindImage(0, res.t4.dof.tex, false, true); // write-only
 
     ub.set(U::ScreenSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));

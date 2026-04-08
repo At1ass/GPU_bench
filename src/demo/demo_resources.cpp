@@ -1258,52 +1258,52 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
         if (tess_shader_) view.t4.tess_shader = &tess_shader_;
         if (compute_particle_shader_) view.t4.compute_particle_shader = &compute_particle_shader_;
         if (particle_render_shader_) view.t4.particle_render_shader = &particle_render_shader_;
-        if (volumetric_fog_shader_) view.t4.volumetric_fog_shader = &volumetric_fog_shader_;
-        if (tone_map_shader_) view.t4.tone_map_shader = &tone_map_shader_;
+        if (volumetric_fog_shader_) view.t4.hdr.volumetric_fog_shader = &volumetric_fog_shader_;
+        if (tone_map_shader_) view.t4.hdr.tone_map_shader = &tone_map_shader_;
         view.t4.particle_ssbo = particle_ssbo_.get();
         view.t4.compute_particle_count = compute_particle_count_;
         if (hdr_scene_rt_) {
-            view.t4.hdr_scene_rt = hdr_scene_rt_.get();
-            view.t4.hdr_depth_tex = hdr_depth_tex_;
-            view.t4.hdr_color_tex = hdr_color_tex_;
+            view.t4.hdr.scene_rt = hdr_scene_rt_.get();
+            view.t4.hdr.depth_tex = hdr_depth_tex_;
+            view.t4.hdr.color_tex = hdr_color_tex_;
             // Override scene_depth_tex for SSAO to use HDR depth
             view.ssao.scene_depth_tex = hdr_depth_tex_;
         }
-        if (hdr_bright_rt_) view.t4.hdr_bright_rt = hdr_bright_rt_.get();
+        if (hdr_bright_rt_) view.t4.hdr.bright_rt = hdr_bright_rt_.get();
         if (fog_rt_) {
-            view.t4.fog_rt = fog_rt_.get();
-            view.t4.fog_w = fog_w_;
-            view.t4.fog_h = fog_h_;
+            view.t4.hdr.fog_rt = fog_rt_.get();
+            view.t4.hdr.fog_w = fog_w_;
+            view.t4.hdr.fog_h = fog_h_;
         }
 
         // T4 Ultra: GTAO
-        if (gtao_shader_) view.t4.gtao_shader = &gtao_shader_;
-        if (gtao_blur_shader_) view.t4.gtao_blur_shader = &gtao_blur_shader_;
-        if (gtao_tex_) view.t4.gtao_tex = gtao_tex_.get();
-        if (gtao_blur_tex_) view.t4.gtao_blur_tex = gtao_blur_tex_.get();
+        if (gtao_shader_) view.t4.gtao.shader = &gtao_shader_;
+        if (gtao_blur_shader_) view.t4.gtao.blur_shader = &gtao_blur_shader_;
+        if (gtao_tex_) view.t4.gtao.tex = gtao_tex_.get();
+        if (gtao_blur_tex_) view.t4.gtao.blur_tex = gtao_blur_tex_.get();
 
         // T4 Ultra: Compute Bloom
-        if (bloom_down_compute_) view.t4.bloom_down_compute = &bloom_down_compute_;
-        if (bloom_up_compute_) view.t4.bloom_up_compute = &bloom_up_compute_;
+        if (bloom_down_compute_) view.t4.bloom.down_compute = &bloom_down_compute_;
+        if (bloom_up_compute_) view.t4.bloom.up_compute = &bloom_up_compute_;
         for (int i = 0; i < BLOOM_MIP_COUNT; i++) {
-            if (bloom_mips_[i]) view.t4.bloom_mips[i] = bloom_mips_[i].get();
+            if (bloom_mips_[i]) view.t4.bloom.mips[i] = bloom_mips_[i].get();
         }
 
         // T4 Ultra: Auto-Exposure
-        if (histogram_shader_) view.t4.histogram_shader = &histogram_shader_;
-        if (exposure_shader_) view.t4.exposure_shader = &exposure_shader_;
-        view.t4.histogram_ssbo = histogram_ssbo_.get();
-        view.t4.exposure_ssbo = exposure_ssbo_.get();
+        if (histogram_shader_) view.t4.exposure.histogram_shader = &histogram_shader_;
+        if (exposure_shader_) view.t4.exposure.exposure_shader = &exposure_shader_;
+        view.t4.exposure.histogram_ssbo = histogram_ssbo_.get();
+        view.t4.exposure.exposure_ssbo = exposure_ssbo_.get();
 
         // T4 Ultra: SSR
-        if (ssr_shader_) view.t4.ssr_shader = &ssr_shader_;
-        if (ssr_tex_) view.t4.ssr_tex = ssr_tex_.get();
-        if (ssr_color_snapshot_) view.t4.ssr_color_snapshot = ssr_color_snapshot_.get();
-        if (ssr_depth_snapshot_) view.t4.ssr_depth_snapshot = ssr_depth_snapshot_.get();
+        if (ssr_shader_) view.t4.ssr.shader = &ssr_shader_;
+        if (ssr_tex_) view.t4.ssr.tex = ssr_tex_.get();
+        if (ssr_color_snapshot_) view.t4.ssr.color_snapshot = ssr_color_snapshot_.get();
+        if (ssr_depth_snapshot_) view.t4.ssr.depth_snapshot = ssr_depth_snapshot_.get();
 
         // T4 Ultra: DoF
-        if (dof_shader_) view.t4.dof_shader = &dof_shader_;
-        if (dof_tex_) view.t4.dof_tex = dof_tex_.get();
+        if (dof_shader_) view.t4.dof.shader = &dof_shader_;
+        if (dof_tex_) view.t4.dof.tex = dof_tex_.get();
 
         // T4 Ultra: Puddles
         for (int i = 0; i < PUDDLE_COUNT; i++)

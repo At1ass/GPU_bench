@@ -31,8 +31,8 @@ void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView&
     r->bindRenderTarget(res.bloom.bright_rt);
     r->setViewport(0, 0, bw, bh);
     ub_bloom_extract_.use();
-    RenderTargetHandle bloom_source = (res.t4.hdr_scene_rt != INVALID_RENDER_TARGET)
-                                       ? res.t4.hdr_scene_rt : res.bloom.scene_rt;
+    RenderTargetHandle bloom_source = (res.t4.hdr.scene_rt != INVALID_RENDER_TARGET)
+                                       ? res.t4.hdr.scene_rt : res.bloom.scene_rt;
     r->bindRenderTargetTexture(bloom_source, 0);
     ub_bloom_extract_.set(U::SceneTex, 0);
     ub_bloom_extract_.set(U::Threshold, 0.8f);

@@ -53,12 +53,12 @@ void WaterPass::sceneSetup(UniformBlock& ub, PassContext& ctx,
 
     // Bind SSR snapshot textures (copied before water pass to avoid read-write hazard).
     // These are format-matched copies: RGBA16F for color, DEPTH_COMPONENT24 for depth.
-    bool has_reflection = (res.t4.ssr_color_snapshot != INVALID_TEXTURE &&
-                           res.t4.ssr_depth_snapshot != INVALID_TEXTURE);
+    bool has_reflection = (res.t4.ssr.color_snapshot != INVALID_TEXTURE &&
+                           res.t4.ssr.depth_snapshot != INVALID_TEXTURE);
     if (has_reflection) {
-        ctx.bindTexture(5, res.t4.ssr_color_snapshot);
+        ctx.bindTexture(5, res.t4.ssr.color_snapshot);
         ub.set(U::ReflectionTex, 5);
-        ctx.bindTexture(6, res.t4.ssr_depth_snapshot);
+        ctx.bindTexture(6, res.t4.ssr.depth_snapshot);
         ub.set(U::DepthTex, 6);
         ub.set(U::HasReflection, 1.0f);
         ub.set(U::ScreenSize,

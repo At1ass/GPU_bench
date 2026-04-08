@@ -142,7 +142,7 @@ void buildPipeline(DemoPipeline& pipeline,
     // Detect rendering path: resource writers + actual RT availability
     bool has_hdr_writer = false;
     bool has_scene_writer = false;
-    bool hdr_rt_available = res.t4.hdr_scene_rt != INVALID_RENDER_TARGET;
+    bool hdr_rt_available = res.t4.hdr.scene_rt != INVALID_RENDER_TARGET;
     bool scene_rt_available = res.bloom.scene_rt != INVALID_RENDER_TARGET;
     for (size_t i = 0; i < sorted.size(); i++) {
         const ResourceDecl* decls = sorted[i]->resourceDecls();
@@ -221,7 +221,7 @@ void buildPipeline(DemoPipeline& pipeline,
             // First HDR writer: bind HDR RT with clear
             if (writes_hdr && !hdr_rt_bound) {
                 hdr_rt_bound = true;
-                pipeline.addPassWithRT(pass, res.t4.hdr_scene_rt, true,
+                pipeline.addPassWithRT(pass, res.t4.hdr.scene_rt, true,
                                        fogR, fogG, fogB, 1.0f,
                                        viewport_w, viewport_h);
                 continue;

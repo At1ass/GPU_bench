@@ -66,63 +66,77 @@ struct TierResourceView {
 
     // T4+ features
     struct T4 {
-        // PBR/tessellation
+        // PBR/tessellation (flat)
         ShaderProgram* tess_shader;
         ShaderProgram* compute_particle_shader;
         ShaderProgram* particle_render_shader;
-        ShaderProgram* volumetric_fog_shader;
-        ShaderProgram* tone_map_shader;
         BufferHandle particle_ssbo;
         int compute_particle_count;
 
-        // HDR
-        RenderTargetHandle hdr_scene_rt, hdr_bright_rt;
-        TextureHandle hdr_depth_tex;
-        TextureHandle hdr_color_tex;  // non-owning view of HDR RT color
-        RenderTargetHandle fog_rt;
-        int fog_w, fog_h;
+        // HDR sub-struct
+        struct HDR {
+            RenderTargetHandle scene_rt, bright_rt;
+            TextureHandle depth_tex;
+            TextureHandle color_tex;  // non-owning view of HDR RT color
+            RenderTargetHandle fog_rt;
+            int fog_w, fog_h;
+            ShaderProgram* tone_map_shader;
+            ShaderProgram* volumetric_fog_shader;
+            HDR() : scene_rt(), bright_rt(), depth_tex(), color_tex(),
+                    fog_rt(), fog_w(0), fog_h(0),
+                    tone_map_shader(nullptr), volumetric_fog_shader(nullptr) {}
+        } hdr;
 
-        // GTAO
-        ShaderProgram* gtao_shader;
-        ShaderProgram* gtao_blur_shader;
-        TextureHandle gtao_tex, gtao_blur_tex;
+        // GTAO sub-struct
+        struct GTAO {
+            ShaderProgram* shader;
+            ShaderProgram* blur_shader;
+            TextureHandle tex, blur_tex;
+            GTAO() : shader(nullptr), blur_shader(nullptr), tex(), blur_tex() {}
+        } gtao;
 
-        // Compute Bloom
-        ShaderProgram* bloom_down_compute;
-        ShaderProgram* bloom_up_compute;
-        static const int BLOOM_MIP_COUNT = 6;
-        TextureHandle bloom_mips[BLOOM_MIP_COUNT];
+        // Compute Bloom sub-struct
+        struct ComputeBloom {
+            ShaderProgram* down_compute;
+            ShaderProgram* up_compute;
+            static const int MIP_COUNT = 6;
+            TextureHandle mips[MIP_COUNT];
+            ComputeBloom() : down_compute(nullptr), up_compute(nullptr) {
+                for (int i = 0; i < MIP_COUNT; i++) mips[i] = TextureHandle();
+            }
+        } bloom;
 
-        // Auto-exposure
-        ShaderProgram* histogram_shader;
-        ShaderProgram* exposure_shader;
-        BufferHandle histogram_ssbo, exposure_ssbo;
+        // Auto-exposure sub-struct
+        struct AutoExposure {
+            ShaderProgram* histogram_shader;
+            ShaderProgram* exposure_shader;
+            BufferHandle histogram_ssbo, exposure_ssbo;
+            AutoExposure() : histogram_shader(nullptr), exposure_shader(nullptr),
+                             histogram_ssbo(), exposure_ssbo() {}
+        } exposure;
 
-        // SSR
-        ShaderProgram* ssr_shader;
-        TextureHandle ssr_tex;
-        TextureHandle ssr_color_snapshot;  // RGBA16F copy of HDR color (for water SSR)
-        TextureHandle ssr_depth_snapshot;  // DEPTH_COMPONENT24 copy of HDR depth (for water SSR)
+        // SSR sub-struct
+        struct SSR {
+            ShaderProgram* shader;
+            TextureHandle tex;
+            TextureHandle color_snapshot;  // RGBA16F copy of HDR color (for water SSR)
+            TextureHandle depth_snapshot;  // DEPTH_COMPONENT24 copy of HDR depth (for water SSR)
+            SSR() : shader(nullptr), tex(), color_snapshot(), depth_snapshot() {}
+        } ssr;
 
-        // DoF
-        ShaderProgram* dof_shader;
-        TextureHandle dof_tex;
+        // DoF sub-struct
+        struct DoF {
+            ShaderProgram* shader;
+            TextureHandle tex;
+            DoF() : shader(nullptr), tex() {}
+        } dof;
 
-        // Puddles
+        // Puddles (flat)
         static const int PUDDLE_COUNT = 3;
         MeshHandle puddle_meshes[PUDDLE_COUNT];
 
         T4() : tess_shader(nullptr), compute_particle_shader(nullptr),
-               particle_render_shader(nullptr), volumetric_fog_shader(nullptr),
-               tone_map_shader(nullptr), particle_ssbo(), compute_particle_count(0),
-               hdr_scene_rt(), hdr_bright_rt(), hdr_depth_tex(), hdr_color_tex(), fog_rt(), fog_w(0), fog_h(0),
-               gtao_shader(nullptr), gtao_blur_shader(nullptr), gtao_tex(), gtao_blur_tex(),
-               bloom_down_compute(nullptr), bloom_up_compute(nullptr),
-               histogram_shader(nullptr), exposure_shader(nullptr),
-               histogram_ssbo(), exposure_ssbo(),
-               ssr_shader(nullptr), ssr_tex(), ssr_color_snapshot(), ssr_depth_snapshot(),
-               dof_shader(nullptr), dof_tex() {
-            for (int i = 0; i < BLOOM_MIP_COUNT; i++) bloom_mips[i] = TextureHandle();
+               particle_render_shader(nullptr), particle_ssbo(), compute_particle_count(0) {
             for (int i = 0; i < PUDDLE_COUNT; i++) puddle_meshes[i] = MeshHandle();
         }
     } t4;

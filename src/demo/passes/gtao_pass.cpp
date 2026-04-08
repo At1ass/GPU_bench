@@ -9,8 +9,8 @@
 #include <cmath>
 
 void GTAOPass::init(const TierResourceView& res) {
-    ub_gtao_.init(res.t4.gtao_shader);
-    ub_blur_.init(res.t4.gtao_blur_shader);
+    ub_gtao_.init(res.t4.gtao.shader);
+    ub_blur_.init(res.t4.gtao.blur_shader);
 }
 
 void GTAOPass::execute(PassContext& ctx, FrameData& fd,
@@ -21,7 +21,7 @@ void GTAOPass::execute(PassContext& ctx, FrameData& fd,
     (void)scene;
 
     // --- GTAO compute pass ---
-    if (!res.t4.gtao_shader || res.t4.gtao_tex == INVALID_TEXTURE) return;
+    if (!res.t4.gtao.shader || res.t4.gtao.tex == INVALID_TEXTURE) return;
 
     GL4Features* g4 = r->features<GL4Features>();
     ComputeFeatures* cf = r->features<ComputeFeatures>();
@@ -29,10 +29,10 @@ void GTAOPass::execute(PassContext& ctx, FrameData& fd,
 
     ub_gtao_.use();
 
-    r->bindTextureUnit(0, res.t4.hdr_depth_tex);
+    r->bindTextureUnit(0, res.t4.hdr.depth_tex);
     ub_gtao_.set(U::DepthTex, 0);
 
-    g4->bindImageTexture(res.t4.gtao_tex, 0, false, true); // write-only
+    g4->bindImageTexture(res.t4.gtao.tex, 0, false, true); // write-only
 
     float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(fd.viewport_w) / static_cast<float>(fd.viewport_h > 0 ? fd.viewport_h : 1);
@@ -51,14 +51,14 @@ void GTAOPass::execute(PassContext& ctx, FrameData& fd,
     g4->imageMemoryBarrier();
 
     // --- GTAO bilateral blur pass ---
-    if (!res.t4.gtao_blur_shader || res.t4.gtao_blur_tex == INVALID_TEXTURE) return;
+    if (!res.t4.gtao.blur_shader || res.t4.gtao.blur_tex == INVALID_TEXTURE) return;
 
     ub_blur_.use();
 
-    g4->bindImageTexture(res.t4.gtao_tex, 0, true, false);      // read-only input
-    g4->bindImageTexture(res.t4.gtao_blur_tex, 1, false, true);  // write-only output
+    g4->bindImageTexture(res.t4.gtao.tex, 0, true, false);      // read-only input
+    g4->bindImageTexture(res.t4.gtao.blur_tex, 1, false, true);  // write-only output
 
-    r->bindTextureUnit(0, res.t4.hdr_depth_tex);
+    r->bindTextureUnit(0, res.t4.hdr.depth_tex);
     ub_blur_.set(U::DepthTex, 0);
     ub_blur_.set(U::ScreenSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));

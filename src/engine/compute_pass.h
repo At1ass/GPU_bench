@@ -12,13 +12,13 @@
 // Example:
 //   class GTAOPass : public ComputePassBase {
 //       void setup(const TierResourceView& res) override {
-//           setShader(res.t4.gtao_shader);
+//           setShader(res.t4.gtao.shader);
 //       }
 //       void bind(PassContext& ctx, UniformBlock& ub,
 //                 const TierResourceView& res, const FrameData& fd,
 //                 const DemoTierConfig& cfg) override {
-//           ctx.bindRTTexture(TexSlot::Primary, res.t4.hdr_scene_rt);
-//           ctx.bindImage(0, res.t4.gtao_tex, false, true);
+//           ctx.bindRTTexture(TexSlot::Primary, res.t4.hdr.scene_rt);
+//           ctx.bindImage(0, res.t4.gtao.tex, false, true);
 //           ub.set(U::ScreenSize, (float)fd.viewport_w, (float)fd.viewport_h);
 //       }
 //       void workgroups(const FrameData& fd, const DemoTierConfig& cfg,

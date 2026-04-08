@@ -22,16 +22,16 @@ void SSRCopyPass::execute(PassContext& ctx, FrameData& fd,
 
     // Copy HDR RT color (RGBA16F) -> ssr_color_snapshot (RGBA16F)
     // Use glCopyImageSubData for reliable texture-to-texture copy (format must match).
-    if (res.t4.ssr_color_snapshot != INVALID_TEXTURE &&
-        res.t4.hdr_color_tex != INVALID_TEXTURE) {
-        g4->copyImageSubData(res.t4.hdr_color_tex, res.t4.ssr_color_snapshot,
+    if (res.t4.ssr.color_snapshot != INVALID_TEXTURE &&
+        res.t4.hdr.color_tex != INVALID_TEXTURE) {
+        g4->copyImageSubData(res.t4.hdr.color_tex, res.t4.ssr.color_snapshot,
                              fd.viewport_w, fd.viewport_h);
     }
 
     // Copy HDR RT depth (DEPTH_COMPONENT24) -> ssr_depth_snapshot (DEPTH_COMPONENT24)
-    if (res.t4.ssr_depth_snapshot != INVALID_TEXTURE &&
-        res.t4.hdr_depth_tex != INVALID_TEXTURE) {
-        g4->copyImageSubData(res.t4.hdr_depth_tex, res.t4.ssr_depth_snapshot,
+    if (res.t4.ssr.depth_snapshot != INVALID_TEXTURE &&
+        res.t4.hdr.depth_tex != INVALID_TEXTURE) {
+        g4->copyImageSubData(res.t4.hdr.depth_tex, res.t4.ssr.depth_snapshot,
                              fd.viewport_w, fd.viewport_h);
     }
 

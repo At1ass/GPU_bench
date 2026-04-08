@@ -758,11 +758,11 @@ FrameData DemoScene::buildFrameData(float t, float time, int w, int h,
                                && res_.t4.compute_particle_shader != nullptr
                                && res_.t4.particle_ssbo != INVALID_BUFFER;
     fd.has_volumetric_fog = config_.enable_volumetric_fog
-                            && res_.t4.volumetric_fog_shader != nullptr
-                            && res_.t4.fog_rt != INVALID_RENDER_TARGET;
+                            && res_.t4.hdr.volumetric_fog_shader != nullptr
+                            && res_.t4.hdr.fog_rt != INVALID_RENDER_TARGET;
     fd.has_hdr = config_.enable_hdr
-                 && res_.t4.tone_map_shader != nullptr
-                 && res_.t4.hdr_scene_rt != INVALID_RENDER_TARGET;
+                 && res_.t4.hdr.tone_map_shader != nullptr
+                 && res_.t4.hdr.scene_rt != INVALID_RENDER_TARGET;
 
     // Log active passes once per tier
     if (!passes_logged_) {
