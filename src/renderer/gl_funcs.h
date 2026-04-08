@@ -307,6 +307,17 @@
   #define GL_NUM_EXTENSIONS               0x821D
   #endif
 
+  // GL 1.1 constants (not always in imgl3w minimal loader)
+  #ifndef GL_POLYGON_OFFSET_FILL
+  #define GL_POLYGON_OFFSET_FILL          0x8037
+  #endif
+  #ifndef GL_DONT_CARE
+  #define GL_DONT_CARE                    0x1100
+  #endif
+  #ifndef GL_TEXTURE
+  #define GL_TEXTURE                      0x1702
+  #endif
+
   // Buffer usage hints (for SSBO read-back)
   #ifndef GL_DYNAMIC_READ
   #define GL_DYNAMIC_READ                 0x88E9
@@ -420,6 +431,7 @@
   using PFNCB_glTexSubImage2D  = void   (APIENTRY *)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void*);
   using PFNCB_glCopyTexSubImage2D = void (APIENTRY *)(GLenum, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei);
   using PFNCB_glGetBufferSubData  = void (APIENTRY *)(GLenum, GLintptr, GLsizeiptr, void*);
+  using PFNCB_glPolygonOffset     = void (APIENTRY *)(GLfloat, GLfloat);
 
   // GL 2.0 extras
   using PFNCB_glUniform1f           = void   (APIENTRY *)(GLint, GLfloat);
@@ -539,7 +551,8 @@
   #define CB_GL_SOFTREQ_FUNCS(X) \
       X(glTexSubImage2D) \
       X(glCopyTexSubImage2D) \
-      X(glGetBufferSubData)
+      X(glGetBufferSubData) \
+      X(glPolygonOffset)
 
   // GL 3.0+ optional functions (loaded in loadGL3Functions)
   #define CB_GL3_OPTIONAL_FUNCS(X) \
@@ -616,6 +629,7 @@
   #define glTexSubImage2D                 cb_glTexSubImage2D
   #define glCopyTexSubImage2D             cb_glCopyTexSubImage2D
   #define glGetBufferSubData              cb_glGetBufferSubData
+  #define glPolygonOffset                 cb_glPolygonOffset
 
   // GL 2.0 extras
   #define glUniform1f                     cb_glUniform1f
@@ -679,7 +693,10 @@
   #define glClientWaitSync                cb_glClientWaitSync
   #define glDeleteSync                    cb_glDeleteSync
 
-  // GL 3.0+ extension enumeration
+  // GL 3.0+ extension enumeration (undef imgl3w version first)
+  #ifdef glGetStringi
+  #undef glGetStringi
+  #endif
   #define glGetStringi                    cb_glGetStringi
 
   // GL 4.3 debug output (KHR_debug)
