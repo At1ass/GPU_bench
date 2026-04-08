@@ -18,7 +18,7 @@ void FullscreenPass::execute(PassContext& ctx, FrameData& fd,
     ub_.use();
     inputs(ctx, res, fd);
     uniforms(ub_, fd, cfg);
-    ctx.renderer()->drawMesh(quad_);
+    ctx.drawMesh(quad_);
 
     if (!pipeline_managed_rt_)
         ctx.endRT();

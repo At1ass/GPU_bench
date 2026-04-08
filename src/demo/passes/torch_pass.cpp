@@ -52,7 +52,7 @@ void TorchPass::execute(PassContext& ctx, FrameData& fd,
     r->setBlendingAdditive(true);
     r->setCullFace(false);
 
-    r->drawMesh(res.core.torch_mesh);
+    ctx.drawMesh(res.core.torch_mesh);
 
     r->setDepthMask(true);
     r->setBlendingAdditive(false);

@@ -36,7 +36,7 @@ void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView&
     r->bindRenderTargetTexture(bloom_source, 0);
     ub_bloom_extract_.set(U::SceneTex, 0);
     ub_bloom_extract_.set(U::Threshold, 0.8f);
-    r->drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawMesh(res.bloom.fullscreen_quad);
 
     // Horizontal blur -> blur_rt
     r->bindRenderTarget(res.bloom.blur_rt);
@@ -46,13 +46,13 @@ void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView&
     ub_bloom_blur_.set(U::Horizontal, 1.0f);
     ub_bloom_blur_.set(U::TexelSize, 1.0f / static_cast<float>(bw),
                                       1.0f / static_cast<float>(bh));
-    r->drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawMesh(res.bloom.fullscreen_quad);
 
     // Vertical blur -> bright_rt (ping-pong back)
     r->bindRenderTarget(res.bloom.bright_rt);
     r->bindRenderTargetTexture(res.bloom.blur_rt, 0);
     ub_bloom_blur_.set(U::Horizontal, 0.0f);
-    r->drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawMesh(res.bloom.fullscreen_quad);
 
     r->bindRenderTarget(INVALID_RENDER_TARGET);
     r->setCullFace(true);

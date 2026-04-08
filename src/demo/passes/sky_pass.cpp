@@ -29,7 +29,7 @@ void SkyPass::execute(PassContext& ctx, FrameData& fd,
     ub_.set(U::SunDir, fd.sun_dir);
     ub_.set(U::Time, fd.time);
 
-    r->drawMesh(res.core.sky_mesh);
+    ctx.drawMesh(res.core.sky_mesh);
 
     r->setDepthTest(true);
     r->setCullFace(true);

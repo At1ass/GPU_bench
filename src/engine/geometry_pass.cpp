@@ -24,7 +24,7 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
         DrawList dl;
         for (size_t i = 0; i < objects->size(); i++) {
             const SceneObject& obj = (*objects)[i];
-            if (!objectFilter(obj, fd)) continue;
+            if (!objectFilter(obj, fd)) { ctx.stats().objects_culled++; continue; }
             // Normalized depth: distance from camera / far plane
             float dx = obj.bounds_center.x - fd.cam_pos.x;
             float dy = obj.bounds_center.y - fd.cam_pos.y;
@@ -38,19 +38,21 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
             const SceneObject& obj = *dl[i].obj;
             perObject(ub_, ctx, obj);
             if (obj.mat.two_sided) ctx.setCullFace(false);
-            ctx.renderer()->drawMesh(obj.mesh);
+            ctx.drawMesh(obj.mesh);
+            ctx.stats().objects_drawn++;
             if (obj.mat.two_sided) ctx.setCullFace(state_.cull_face);
         }
     } else {
         // Unsorted path: iterate in construction order (default)
         for (size_t i = 0; i < objects->size(); i++) {
             const SceneObject& obj = (*objects)[i];
-            if (!objectFilter(obj, fd)) continue;
+            if (!objectFilter(obj, fd)) { ctx.stats().objects_culled++; continue; }
 
             perObject(ub_, ctx, obj);
 
             if (obj.mat.two_sided) ctx.setCullFace(false);
-            ctx.renderer()->drawMesh(obj.mesh);
+            ctx.drawMesh(obj.mesh);
+            ctx.stats().objects_drawn++;
             if (obj.mat.two_sided) ctx.setCullFace(state_.cull_face);
         }
     }

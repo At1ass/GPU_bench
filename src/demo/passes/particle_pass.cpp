@@ -30,7 +30,7 @@ void ParticlePass::execute(PassContext& ctx, FrameData& fd,
     r->setBlending(true);
     r->setCullFace(false);
 
-    r->drawMesh(res.core.particle_mesh);
+    ctx.drawMesh(res.core.particle_mesh);
 
     r->setDepthMask(true);
     r->setBlending(false);

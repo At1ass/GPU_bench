@@ -104,6 +104,7 @@ void GrassInstancedPass::execute(PassContext& ctx, FrameData& fd,
     r->setCullFace(false);  // grass visible from both sides
 
     g3->drawMeshInstanced(res.grass.blade_mesh, cfg.instanced_grass_count);
+    ctx.stats().draw_calls++;
 
     r->setBlending(false);
     r->setCullFace(true);

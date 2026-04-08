@@ -119,7 +119,7 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     ub_tone_map_.set(U::ChromaticStrength, cfg.chromatic_strength);
     ub_tone_map_.set(U::GrainStrength, cfg.grain_strength);
 
-    r->drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawMesh(res.bloom.fullscreen_quad);
 
     r->setDepthTest(true);
     r->setCullFace(true);

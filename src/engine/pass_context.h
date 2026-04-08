@@ -54,6 +54,12 @@ public:
     void bindSSBO(BufferHandle buf, int binding);
     void readSSBO(BufferHandle buf, void* out, int offset, int size);
 
+    // --- Draw ---
+    void drawMesh(MeshHandle h) {
+        r_->drawMesh(h);
+        stats_.draw_calls++;
+    }
+
     // --- Accessors ---
     Renderer* renderer() { return r_; }
     GL3Features* gl3();
