@@ -1,5 +1,6 @@
 #include "engine/state_cache.h"
-#include <cstring>
+
+static constexpr unsigned int INVALID_ID = 0xFFFFFFFF;
 
 void StateCache::reset() {
     depth_test_ = UNKNOWN;
@@ -7,10 +8,10 @@ void StateCache::reset() {
     cull_face_ = UNKNOWN;
     blend_ = UNKNOWN;
     blend_additive_ = UNKNOWN;
-    color_mask_[0] = color_mask_[1] = color_mask_[2] = color_mask_[3] = UNKNOWN;
-    current_program_ = 0xFFFFFFFF;
-    current_fbo_ = 0xFFFFFFFF;
-    memset(bound_textures_, 0xFF, sizeof(bound_textures_));
+    for (int i = 0; i < 4; i++) color_mask_[i] = UNKNOWN;
+    current_program_ = INVALID_ID;
+    current_fbo_ = INVALID_ID;
+    for (int i = 0; i < MAX_TEXTURE_UNITS; i++) bound_textures_[i] = INVALID_ID;
 }
 
 bool StateCache::setDepthTest(bool enable) {

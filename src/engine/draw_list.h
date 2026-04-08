@@ -34,6 +34,12 @@ struct DrawCmd {
 
 class DrawList {
 public:
+    DrawList() = default;
+    DrawList(const DrawList&) = delete;
+    DrawList& operator=(const DrawList&) = delete;
+    DrawList(DrawList&&) = default;
+    DrawList& operator=(DrawList&&) = default;
+
     void clear() { cmds_.clear(); }
 
     // Add object with sort parameters. depth: distance from camera (0 = near).

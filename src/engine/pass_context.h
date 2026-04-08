@@ -30,6 +30,9 @@ class PassContext {
 public:
     explicit PassContext(Renderer* r);
 
+    PassContext(const PassContext&) = delete;
+    PassContext& operator=(const PassContext&) = delete;
+
     // Frame lifecycle — call once at start of frame
     void beginFrame();
 
@@ -68,11 +71,11 @@ public:
     const FrameStats& stats() const { return stats_; }
 
 private:
-    Renderer* r_;
-    GL3Features* gl3_;
-    GL4Features* gl4_;
-    ComputeFeatures* compute_;
-    bool features_cached_;
+    Renderer* r_ = nullptr;           // non-owning: managed by caller
+    GL3Features* gl3_ = nullptr;      // non-owning: cached from r_->features<>()
+    GL4Features* gl4_ = nullptr;      // non-owning: cached from r_->features<>()
+    ComputeFeatures* compute_ = nullptr; // non-owning: cached from r_->features<>()
+    bool features_cached_ = false;
     RenderTargetHandle current_rt_;
     FrameStats stats_;
 

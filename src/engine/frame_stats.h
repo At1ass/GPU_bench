@@ -11,9 +11,8 @@
 //   // ... at end of frame, pass to DemoUI for display
 
 struct FrameStats {
-    // Scene
-    int objects_drawn;      // passed frustum culling
-    int objects_culled;     // failed frustum culling
+    int objects_drawn = 0;
+    int objects_culled = 0;
 
     void reset() { objects_drawn = 0; objects_culled = 0; }
 };

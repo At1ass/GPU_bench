@@ -1,4 +1,5 @@
 #include "engine/geometry_pass.h"
+#include "demo/demo_frame_data.h"
 #include "geometry/math_types.h"
 #include <cmath>
 
@@ -30,7 +31,7 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
             float dy = obj.bounds_center.y - fd.cam_pos.y;
             float dz = obj.bounds_center.z - fd.cam_pos.z;
             float dist = sqrtf(dx * dx + dy * dy + dz * dz);
-            float depth = dist / 50.0f; // normalize by far plane (~50)
+            float depth = dist / kDemoFar;
             dl.push(obj, shaderIdFor(obj), materialIdFor(obj), depth);
         }
         dl.sort();

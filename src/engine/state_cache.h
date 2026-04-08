@@ -15,6 +15,11 @@
 
 class StateCache {
 public:
+    StateCache() { reset(); }
+
+    StateCache(const StateCache&) = delete;
+    StateCache& operator=(const StateCache&) = delete;
+
     void reset();
 
     // Returns true if state changed (GL call needed)
@@ -31,7 +36,7 @@ public:
     bool bindTexture(int unit, unsigned int tex_id);
 
 private:
-    enum : int { UNKNOWN = -1 };
+    static constexpr int UNKNOWN = -1;
 
     int depth_test_;
     int depth_mask_;
@@ -42,6 +47,6 @@ private:
     unsigned int current_program_;
     unsigned int current_fbo_;
 
-    static const int MAX_TEXTURE_UNITS = 10;
+    static constexpr int MAX_TEXTURE_UNITS = 10;
     unsigned int bound_textures_[MAX_TEXTURE_UNITS];
 };
