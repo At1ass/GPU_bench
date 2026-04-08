@@ -127,7 +127,7 @@ public:
     const RendererStats& lastRendererStats() const { return last_renderer_stats_; }
 
 private:
-    Renderer* r_;
+    Renderer* r_ = nullptr;  // non-owning; valid between setup() and cleanup()
     DemoTier tier_;
     DemoTierConfig config_;
     CameraPath camera_;

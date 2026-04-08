@@ -23,6 +23,8 @@ public:
 
     ShaderCache(const ShaderCache&) = delete;
     ShaderCache& operator=(const ShaderCache&) = delete;
+    ShaderCache(ShaderCache&&) = delete;
+    ShaderCache& operator=(ShaderCache&&) = delete;
 
     void init(Renderer* r);
     void destroy();

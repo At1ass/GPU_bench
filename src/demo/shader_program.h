@@ -84,10 +84,10 @@ public:
     // Access underlying handle.
     ShaderHandle handle() const { return shader_.get(); }
     explicit operator bool() const { return static_cast<bool>(shader_); }
-    operator ShaderHandle() const { return shader_.get(); }
+    explicit operator ShaderHandle() const { return shader_.get(); }
 
 private:
     ScopedShader shader_;
-    Renderer* renderer_;
+    Renderer* renderer_ = nullptr;  // non-owning: valid after create()/adopt()
     std::unordered_map<std::string, int> cache_;
 };

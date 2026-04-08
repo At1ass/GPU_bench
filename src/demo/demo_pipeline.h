@@ -20,11 +20,11 @@ struct PipelineNode {
     bool enabled;
 
     // Pre-execute: render target control
-    enum RTAction : unsigned char {
-        RT_NONE,       // don't change RT
-        RT_BIND,       // bind specific RT
-        RT_UNBIND,     // unbind to default framebuffer
-        RT_BIND_DEST   // bind fd.dest_rt (resolved at execute time)
+    enum class RTAction : unsigned char {
+        None,       // don't change RT
+        Bind,       // bind specific RT
+        Unbind,     // unbind to default framebuffer
+        BindDest    // bind fd.dest_rt (resolved at execute time)
     };
     RTAction rt_action;
     RenderTargetHandle bind_rt;
@@ -38,7 +38,7 @@ struct PipelineNode {
 
     PipelineNode()
         : pass(nullptr), command(nullptr), enabled(true)
-        , rt_action(RT_NONE), bind_rt()
+        , rt_action(RTAction::None), bind_rt()
         , clear_rt(false), viewport_w(0), viewport_h(0)
         , barrier(false), unbind_image_count(0) {
         clear_color[0] = clear_color[1] = clear_color[2] = 0.0f;
@@ -65,7 +65,7 @@ public:
         PipelineNode n;
         n.pass = pass;
         n.enabled = true;
-        n.rt_action = (rt == INVALID_RENDER_TARGET) ? PipelineNode::RT_UNBIND : PipelineNode::RT_BIND;
+        n.rt_action = (rt == INVALID_RENDER_TARGET) ? PipelineNode::RTAction::Unbind : PipelineNode::RTAction::Bind;
         n.bind_rt = rt;
         n.clear_rt = clear;
         n.clear_color[0] = cr; n.clear_color[1] = cg;
@@ -82,7 +82,7 @@ public:
         PipelineNode n;
         n.pass = pass;
         n.enabled = true;
-        n.rt_action = PipelineNode::RT_BIND_DEST;
+        n.rt_action = PipelineNode::RTAction::BindDest;
         n.clear_rt = clear;
         n.clear_color[0] = cr; n.clear_color[1] = cg;
         n.clear_color[2] = cb; n.clear_color[3] = ca;
@@ -95,7 +95,7 @@ public:
     void addRTSwitch(RenderTargetHandle rt) {
         PipelineNode n;
         n.enabled = true;
-        n.rt_action = (rt == INVALID_RENDER_TARGET) ? PipelineNode::RT_UNBIND : PipelineNode::RT_BIND;
+        n.rt_action = (rt == INVALID_RENDER_TARGET) ? PipelineNode::RTAction::Unbind : PipelineNode::RTAction::Bind;
         n.bind_rt = rt;
         nodes_.push_back(n);
     }
@@ -122,7 +122,7 @@ public:
                                int vp_w, int vp_h) {
         PipelineNode n;
         n.enabled = true;
-        n.rt_action = PipelineNode::RT_UNBIND;
+        n.rt_action = PipelineNode::RTAction::Unbind;
         n.clear_rt = true;
         n.clear_color[0] = cr; n.clear_color[1] = cg;
         n.clear_color[2] = cb; n.clear_color[3] = ca;
@@ -147,7 +147,7 @@ public:
             int vp_h = n.viewport_h > 0 ? n.viewport_h : fd.viewport_h;
 
             switch (n.rt_action) {
-            case PipelineNode::RT_BIND:
+            case PipelineNode::RTAction::Bind:
                 r->bindRenderTarget(n.bind_rt);
                 r->setViewport(0, 0, vp_w, vp_h);
                 if (n.clear_rt) {
@@ -157,7 +157,7 @@ public:
                     r->setCullFace(true);
                 }
                 break;
-            case PipelineNode::RT_UNBIND:
+            case PipelineNode::RTAction::Unbind:
                 r->bindRenderTarget(INVALID_RENDER_TARGET);
                 if (n.viewport_w > 0 || n.viewport_h > 0)
                     r->setViewport(0, 0, vp_w, vp_h);
@@ -168,14 +168,14 @@ public:
                     r->setCullFace(true);
                 }
                 break;
-            case PipelineNode::RT_BIND_DEST:
+            case PipelineNode::RTAction::BindDest:
                 r->bindRenderTarget(fd.dest_rt);
                 r->setViewport(0, 0, vp_w, vp_h);
                 if (n.clear_rt)
                     r->clear(n.clear_color[0], n.clear_color[1],
                              n.clear_color[2], n.clear_color[3]);
                 break;
-            case PipelineNode::RT_NONE:
+            case PipelineNode::RTAction::None:
                 break;
             }
 
