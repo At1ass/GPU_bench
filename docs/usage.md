@@ -39,10 +39,10 @@ The demo is built as a separate binary (`gpu_demo`):
 ./gpu_demo
 
 # Specific tier only
-./gpu_demo --demo-tier 3
+./gpu_demo --tier 3
 
 # Custom duration (seconds per tier)
-./gpu_demo --demo-duration 20
+./gpu_demo --duration 20
 
 # Headless demo with JSON export
 ./gpu_demo --headless --output json --output-file demo.json

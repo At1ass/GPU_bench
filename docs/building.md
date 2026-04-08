@@ -14,12 +14,29 @@
 ```bash
 ./scripts/build.sh all        # Build all targets (native + mingw64 + mingw32)
 ./scripts/build.sh native     # Native build (auto-detects Linux/macOS/FreeBSD)
+./scripts/build.sh portable   # Portable static build (SDL2 from source, no runtime deps)
+./scripts/build.sh sanitize   # Debug build with ASan + UBSan (address/undefined sanitizers)
 ./scripts/build.sh mingw64    # Cross-compile Windows 64-bit
 ./scripts/build.sh mingw32    # Cross-compile Windows 32-bit (Win XP)
 ./scripts/build.sh clean      # Remove all build directories
 ```
 
 `linux`, `macos`, `freebsd` are accepted as aliases for `native`.
+
+### Clang build
+
+```bash
+CC=clang CXX=clang++ ./scripts/build.sh native
+```
+
+### Sanitizer build
+
+```bash
+./scripts/build.sh sanitize                    # Dedicated ASan+UBSan target
+SANITIZE=1 ./scripts/build.sh native           # Environment variable
+```
+
+Builds into `build_sanitize/` with Debug + `-fsanitize=address,undefined`. Also available as CMake option: `-DENABLE_SANITIZERS=ON`.
 
 ### Windows (native)
 

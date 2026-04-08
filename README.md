@@ -89,8 +89,8 @@ Scene: ~25 objects (Stanford Bunny on pedestal, columns, arch, rocks, grass, tre
 
 ```bash
 ./gpu_demo                                       # Auto-detect tiers
-./gpu_demo --demo-tier 3                         # Specific tier
-./gpu_demo --demo-duration 20                    # 20 sec per tier
+./gpu_demo --tier 3                              # Specific tier
+./gpu_demo --duration 20                         # 20 sec per tier
 ./gpu_demo --headless --output json              # Headless demo with JSON export
 ```
 
@@ -160,8 +160,8 @@ The demo mode is a separate binary with its own options:
 gpu_demo [options]
 
 Options:
-  --demo-tier <1-4>                            Run specific demo tier only
-  --demo-duration <seconds>                    Duration per tier (default: 15)
+  --tier <1-4>                                 Run specific demo tier only
+  --duration <seconds>                         Duration per tier (default: 15)
   --renderer <gl2|gl3|gl4|gles|auto>           Renderer (default: auto)
   --headless                                   No GUI, run demo, print results
   --output <text|csv|json>                     Output format (default: text)

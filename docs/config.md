@@ -174,26 +174,26 @@ work_groups=1024
 
 ## Preset Comparison
 
-| Parameter | Light | Medium | Heavy | Ultra |
-|-----------|-------|--------|-------|-------|
-| warmup_frames | 60 | 120 | 120 | 180 |
-| measure_frames | 300 | 600 | 600 | 900 |
-| min_duration_sec | 3.0 | 5.0 | 5.0 | 8.0 |
-| fillrate.layers | 100 | 500 | 1500 | 4000 |
-| geometry.grid_size | 10 | 25 | 35 | 50 |
-| texturing.tex_size | 512 | 1024 | 2048 | 4096 |
-| texturing.layers | 100 | 300 | 500 | 800 |
-| scene.terrain_res | 128 | 256 | 512 | 1024 |
-| drawcall.draws | 100 | 500 | 2000 | 5000 |
-| overdraw.layers | 50 | 200 | 500 | 1000 |
-| texupload.tex_size | 256 | 512 | 1024 | 2048 |
-| statechange.switches | 50 | 200 | 500 | 1000 |
-| vertex.count | 100K | 500K | 2M | 8M |
-| shader_alu.iterations | 50 | 200 | 500 | 1500 |
-| shader_fma.iterations | 50 | 100 | 200 | 400 |
-| instanced_draw.instance_count | 1000 | 5000 | 20000 | 50000 |
-| compute_fma.iterations | 50 | 100 | 200 | 400 |
-| compute_fma.work_groups | 256 | 1024 | 4096 | 16384 |
+| Parameter | Light | Medium | Heavy | Ultra | Extreme |
+|-----------|-------|--------|-------|-------|---------|
+| warmup_frames | 60 | 120 | 120 | 180 | 240 |
+| measure_frames | 300 | 600 | 600 | 900 | 1200 |
+| min_duration_sec | 3.0 | 5.0 | 5.0 | 8.0 | 10.0 |
+| fillrate.layers | 100 | 500 | 1500 | 4000 | 8000 |
+| geometry.grid_size | 10 | 25 | 35 | 50 | 80 |
+| texturing.tex_size | 512 | 1024 | 2048 | 4096 | 4096 |
+| texturing.layers | 100 | 300 | 500 | 800 | 1500 |
+| scene.terrain_res | 128 | 256 | 512 | 1024 | 2048 |
+| drawcall.draws | 100 | 500 | 2000 | 5000 | 10000 |
+| overdraw.layers | 50 | 200 | 500 | 1000 | 2000 |
+| texupload.tex_size | 256 | 512 | 1024 | 2048 | 4096 |
+| statechange.switches | 50 | 200 | 500 | 1000 | 2000 |
+| vertex.count | 100K | 500K | 2M | 8M | 16M |
+| shader_alu.iterations | 50 | 200 | 500 | 1500 | 3000 |
+| shader_fma.iterations | 50 | 100 | 200 | 400 | 800 |
+| instanced_draw.instance_count | 1000 | 5000 | 20000 | 50000 | 100000 |
+| compute_fma.iterations | 50 | 100 | 200 | 400 | 800 |
+| compute_fma.work_groups | 256 | 1024 | 4096 | 16384 | 32768 |
 
 ## Saving Configs
 
