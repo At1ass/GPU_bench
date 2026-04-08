@@ -37,7 +37,6 @@ void main() {
 )";
 
 static const int SMEM_LOCAL_SIZE = 256;
-static const int SMEM_SIZE_BYTES = 256 * 4; // 256 floats
 
 ComputeSharedMemTest::ComputeSharedMemTest(const ComputeSharedMemParams& params)
     : params_(params), shader_(INVALID_SHADER), ssbo_(INVALID_BUFFER),

@@ -42,6 +42,23 @@ endif()
 # --- Portable static build option ---
 option(PORTABLE_BUILD "Static-link SDL2 and libstdc++ for portable binary" OFF)
 
+# --- Sanitizers (Debug only) ---
+option(ENABLE_SANITIZERS "Enable AddressSanitizer + UndefinedBehaviorSanitizer" OFF)
+if(ENABLE_SANITIZERS)
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message(WARNING "ENABLE_SANITIZERS works best with Debug build type")
+    endif()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        set(SANITIZER_FLAGS "-fsanitize=address,undefined -fno-omit-frame-pointer")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS}")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZER_FLAGS}")
+        message(STATUS "Sanitizers enabled: ASan + UBSan")
+    else()
+        message(WARNING "Sanitizers not supported for ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+endif()
+
 # --- Dependencies ---
 if(PORTABLE_BUILD AND NOT WIN32)
     # Build SDL2 from source as static library

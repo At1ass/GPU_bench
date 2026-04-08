@@ -16,10 +16,12 @@ usage() {
     echo "  mingw64         Cross-compile for Windows 64-bit (MinGW-w64)"
     echo "  mingw32         Cross-compile for Windows 32-bit (MinGW-w64, Win XP)"
     echo "  portable        Portable static build (SDL2 built-in, no runtime deps)"
+    echo "  sanitize        Debug build with ASan + UBSan (address/undefined sanitizers)"
     echo "  clean           Remove all build directories"
     echo ""
     echo "Environment:"
     echo "  BUILD_TYPE      CMake build type (default: Release)"
+    echo "  SANITIZE=1      Enable ASan+UBSan for native build (forces Debug)"
     echo "  JOBS            Parallel jobs (default: nproc)"
     exit 1
 }
@@ -37,15 +39,31 @@ build_native() {
     local os_name
     os_name="$(uname -s)"
     local build_dir="$PROJECT_DIR/build_native"
-    echo "=== Building for ${os_name} (${BUILD_TYPE}) ==="
+    local cmake_extra=""
+
+    # SANITIZE=1 enables ASan+UBSan (forces Debug build)
+    if [ "${SANITIZE:-0}" = "1" ]; then
+        BUILD_TYPE="Debug"
+        cmake_extra="-DENABLE_SANITIZERS=ON"
+        build_dir="$PROJECT_DIR/build_sanitize"
+        echo "=== Building for ${os_name} (Debug + ASan/UBSan) ==="
+    else
+        echo "=== Building for ${os_name} (${BUILD_TYPE}) ==="
+    fi
+
     mkdir -p "$build_dir"
     cd "$build_dir"
-    cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 $cmake_extra
     $MAKE_CMD -j"$JOBS"
     echo ""
     echo "Done:"
     echo "  $build_dir/gpu_benchmark  (benchmark)"
     echo "  $build_dir/gpu_demo       (visual demo)"
+}
+
+build_sanitize() {
+    SANITIZE=1 build_native
 }
 
 build_mingw64() {
@@ -135,7 +153,8 @@ clean() {
     echo "Cleaning build directories..."
     rm -rf "$PROJECT_DIR"/build_native "$PROJECT_DIR"/build_linux
     rm -rf "$PROJECT_DIR"/build_mingw64 "$PROJECT_DIR"/build_mingw32
-    rm -rf "$PROJECT_DIR"/build_portable
+    rm -rf "$PROJECT_DIR"/build_portable "$PROJECT_DIR"/build_sanitize
+    rm -rf "$PROJECT_DIR"/build_asan
     echo "Done."
 }
 
@@ -156,6 +175,7 @@ case "${1:-}" in
     portable)                   build_portable ;;
     mingw64)                    build_mingw64 ;;
     mingw32)                    build_mingw32 ;;
+    sanitize)                   build_sanitize ;;
     clean)                      clean ;;
     *)                          usage ;;
 esac
