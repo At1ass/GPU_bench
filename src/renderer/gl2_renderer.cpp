@@ -712,6 +712,7 @@ void GL2Renderer::useCustomShader(ShaderHandle h) {
     current_shader_ = nullptr; // no built-in shader active
     last_drawn_mesh_ = INVALID_MESH; // shader change invalidates attrib state
     glUseProgram(custom_shaders_[h]);
+    renderer_stats_.shader_switches++;
 }
 
 void GL2Renderer::destroyCustomShader(ShaderHandle h) {
@@ -803,6 +804,7 @@ void GL2Renderer::bindTextureUnit(int unit, TextureHandle h) {
     else
         glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
+    renderer_stats_.texture_binds++;
 }
 
 void GL2Renderer::setUseTexture(bool use) {
@@ -846,6 +848,7 @@ void GL2Renderer::drawMesh(MeshHandle h) {
     }
 
     glDrawElements(GL_TRIANGLES, gm.index_count, gm.index_type, 0);
+    renderer_stats_.draw_calls++;
 }
 
 void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels, const unsigned char* pixels) {
@@ -857,13 +860,15 @@ void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels
 }
 
 void GL2Renderer::setColorMask(bool r, bool g, bool b, bool a) {
-    if (!state_cache_.setColorMask(r, g, b, a)) return;
+    if (!state_cache_.setColorMask(r, g, b, a)) { renderer_stats_.state_skipped++; return; }
+    renderer_stats_.state_applied++;
     glColorMask(r ? GL_TRUE : GL_FALSE, g ? GL_TRUE : GL_FALSE,
                 b ? GL_TRUE : GL_FALSE, a ? GL_TRUE : GL_FALSE);
 }
 
 void GL2Renderer::setBlending(bool enable) {
-    if (!state_cache_.setBlending(enable)) return;
+    if (!state_cache_.setBlending(enable)) { renderer_stats_.state_skipped++; return; }
+    renderer_stats_.state_applied++;
     if (enable) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -873,7 +878,8 @@ void GL2Renderer::setBlending(bool enable) {
 }
 
 void GL2Renderer::setBlendingAdditive(bool enable) {
-    if (!state_cache_.setBlendingAdditive(enable)) return;
+    if (!state_cache_.setBlendingAdditive(enable)) { renderer_stats_.state_skipped++; return; }
+    renderer_stats_.state_applied++;
     if (enable) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE);
@@ -883,7 +889,8 @@ void GL2Renderer::setBlendingAdditive(bool enable) {
 }
 
 void GL2Renderer::setDepthTest(bool enable) {
-    if (!state_cache_.setDepthTest(enable)) return;
+    if (!state_cache_.setDepthTest(enable)) { renderer_stats_.state_skipped++; return; }
+    renderer_stats_.state_applied++;
     if (enable)
         glEnable(GL_DEPTH_TEST);
     else
@@ -891,7 +898,8 @@ void GL2Renderer::setDepthTest(bool enable) {
 }
 
 void GL2Renderer::setCullFace(bool enable) {
-    if (!state_cache_.setCullFace(enable)) return;
+    if (!state_cache_.setCullFace(enable)) { renderer_stats_.state_skipped++; return; }
+    renderer_stats_.state_applied++;
     if (enable)
         glEnable(GL_CULL_FACE);
     else
@@ -899,11 +907,13 @@ void GL2Renderer::setCullFace(bool enable) {
 }
 
 void GL2Renderer::setDepthMask(bool write) {
-    if (!state_cache_.setDepthMask(write)) return;
+    if (!state_cache_.setDepthMask(write)) { renderer_stats_.state_skipped++; return; }
+    renderer_stats_.state_applied++;
     glDepthMask(write ? GL_TRUE : GL_FALSE);
 }
 
 void GL2Renderer::setPolygonOffset(bool enable, float factor, float units) {
+    renderer_stats_.state_applied++;
     if (enable) {
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(factor, units);
@@ -1033,6 +1043,7 @@ void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
 }
 
 void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
+    renderer_stats_.rt_switches++;
     if (rt == 0) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;

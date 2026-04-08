@@ -97,7 +97,6 @@ void FurPass::execute(PassContext& ctx, FrameData& fd,
         ub_.set(U::UseInstancing, 1);
         ub_.set(U::FurShells, num_shells);
         g3->drawMeshInstanced(scene.model_mesh, num_shells - 1);
-        ctx.stats().draw_calls++;
     } else {
         ub_.set(U::UseInstancing, 0);
         for (int i = 1; i < num_shells; i++) {

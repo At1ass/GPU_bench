@@ -64,7 +64,6 @@ void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd,
     r->setDepthTest(true);
     r->setCullFace(true);
     g4->drawMeshAsPatches(scene.model_mesh);
-    ctx.stats().draw_calls++;
 
     // Still draw fur on top of tessellated model
     if (fur_pass_)

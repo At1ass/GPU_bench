@@ -192,6 +192,7 @@ void GL4Renderer::dispatchCompute(int groups_x, int groups_y, int groups_z) {
 #else
     glDispatchCompute(static_cast<GLuint>(groups_x), static_cast<GLuint>(groups_y), static_cast<GLuint>(groups_z));
 #endif
+    renderer_stats_.compute_dispatches++;
 }
 
 void GL4Renderer::computeMemoryBarrier() {
@@ -203,6 +204,7 @@ void GL4Renderer::computeMemoryBarrier() {
 #else
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 #endif
+    renderer_stats_.barriers_issued++;
 }
 
 // --- SSBO ---
@@ -501,6 +503,7 @@ void GL4Renderer::drawMeshAsPatches(MeshHandle h) {
         glBindVertexArray(gm.vao);
         glDrawElements(GL_PATCHES, gm.index_count, gm.index_type, nullptr);
         glBindVertexArray(0);
+        renderer_stats_.draw_calls++;
     }
 }
 
@@ -569,6 +572,7 @@ void GL4Renderer::imageMemoryBarrier() {
 #else
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
 #endif
+    renderer_stats_.barriers_issued++;
 }
 
 // --- Texture copy (glCopyImageSubData) ---

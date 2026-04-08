@@ -230,8 +230,9 @@ void GL3Renderer::drawMesh(MeshHandle h) {
         glBindVertexArray(gm.vao);
         glDrawElements(GL_TRIANGLES, gm.index_count, gm.index_type, 0);
         glBindVertexArray(0);
+        renderer_stats_.draw_calls++;
     } else {
-        // Fallback to GL2 path
+        // Fallback to GL2 path (counts draw_calls there)
         GL2Renderer::drawMesh(h);
     }
 }
@@ -245,8 +246,9 @@ void GL3Renderer::drawMeshInstanced(MeshHandle h, int instance_count) {
         glDrawElementsInstanced(GL_TRIANGLES, gm.index_count, gm.index_type,
                                 0, instance_count);
         glBindVertexArray(0);
+        renderer_stats_.draw_calls++;
     } else {
-        // Fallback: draw in a loop (no real instancing)
+        // Fallback: draw in a loop (no real instancing, each counts individually)
         for (int i = 0; i < instance_count; i++)
             drawMesh(h);
     }

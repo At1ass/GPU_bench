@@ -61,7 +61,8 @@ public:
                              float tier_progress, double fps, double frame_ms,
                              const std::vector<double>& frame_history,
                              const TechniqueInfo* tech_info,
-                             const FrameStats* frame_stats = nullptr) = 0;
+                             const FrameStats* frame_stats = nullptr,
+                             const RendererStats* renderer_stats = nullptr) = 0;
 };
 
 // Runs the demo benchmark: iterates through supported tiers, measures FPS.

@@ -1,6 +1,7 @@
 #pragma once
 #include "demo/demo_runner.h"
 #include "engine/frame_stats.h"
+#include "renderer/renderer.h"
 #include <vector>
 
 class RenderContext;
@@ -20,7 +21,8 @@ public:
                      double fps, double frame_ms,
                      const std::vector<double>& frame_history,
                      const TechniqueInfo* tech_info,
-                     const FrameStats* stats = nullptr);
+                     const FrameStats* stats = nullptr,
+                     const RendererStats* rstats = nullptr);
 
     // Draw the final results screen
     void drawResults(RenderContext* ctx,

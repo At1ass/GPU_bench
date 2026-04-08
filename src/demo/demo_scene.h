@@ -124,6 +124,7 @@ public:
 
     TechniqueInfo getTechniqueInfo() const;
     const FrameStats& lastFrameStats() const { return last_frame_stats_; }
+    const RendererStats& lastRendererStats() const { return last_renderer_stats_; }
 
 private:
     Renderer* r_;
@@ -166,6 +167,7 @@ private:
     bool passes_logged_;
     DemoDebugOverrides debug_;
     FrameStats last_frame_stats_;
+    RendererStats last_renderer_stats_;
 
     RenderTargetHandle dest_rt_;
 

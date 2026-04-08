@@ -167,9 +167,10 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         float tier_progress = static_cast<float>(total_timer.elapsed_sec() / static_cast<double>(duration_sec));
         if (demo_cb) {
             const FrameStats* fstats = &scene.lastFrameStats();
+            const RendererStats* rstats = &scene.lastRendererStats();
             if (!demo_cb->onDemoFrame(tier, tier_index, total_tiers,
                                        tier_progress, prev_fps, prev_ms, frame_history,
-                                       &tech_info, fstats)) {
+                                       &tech_info, fstats, rstats)) {
                 break;
             }
         }

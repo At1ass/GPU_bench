@@ -794,6 +794,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     ctx.beginFrame();
     pipeline_.execute(ctx, fd, res_, config_, scene_data_);
     last_frame_stats_ = ctx.stats();
+    last_renderer_stats_ = r->rendererStats();
 
     // Restore GL state
     r->setDepthTest(true);

@@ -30,6 +30,22 @@ static const ShaderHandle       INVALID_SHADER;
 static const RenderTargetHandle INVALID_RENDER_TARGET;
 static const BufferHandle       INVALID_BUFFER;
 
+// Per-frame GPU call counters. Counted at the renderer level where GL calls
+// actually happen — follows bgfx/Godot/Ogre3D pattern.
+// Reset once per frame via resetRendererStats().
+struct RendererStats {
+    int draw_calls = 0;
+    int state_applied = 0;
+    int state_skipped = 0;
+    int texture_binds = 0;
+    int texture_skipped = 0;
+    int rt_switches = 0;
+    int shader_switches = 0;
+    int compute_dispatches = 0;
+    int barriers_issued = 0;
+    void reset() { *this = {}; }
+};
+
 // Feature tag: specializations in features.h assign compile-time IDs.
 // Usage: renderer.features<GL3Features>() returns GL3Features* or nullptr.
 template<typename T> struct FeatureTag;
@@ -169,6 +185,10 @@ public:
             const_cast<Renderer*>(this)->queryFeature(FeatureTag<T>::id));
     }
 
+    // Per-frame renderer stats (counted where GL calls happen)
+    const RendererStats& rendererStats() const { return renderer_stats_; }
+    void resetRendererStats() { renderer_stats_.reset(); }
+
     // Hardware capabilities
     virtual const RenderCaps& getCaps() const = 0;
 
@@ -183,6 +203,7 @@ public:
 
 protected:
     virtual void* queryFeature(int) { return nullptr; }
+    RendererStats renderer_stats_;
 };
 
 // Handle type safety

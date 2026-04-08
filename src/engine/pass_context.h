@@ -57,7 +57,6 @@ public:
     // --- Draw ---
     void drawMesh(MeshHandle h) {
         r_->drawMesh(h);
-        stats_.draw_calls++;
     }
 
     // --- Accessors ---
