@@ -226,6 +226,7 @@ set(DEMO_SOURCES
     src/demo/demo_camera.cpp
     src/demo/shader_loader.cpp
     src/demo/demo_scene.cpp
+    src/demo/scene_loader.cpp
     src/demo/materials.cpp
     src/demo/demo_tier_config.cpp
     src/demo/tier_config_validate.cpp

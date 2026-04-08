@@ -1,0 +1,448 @@
+# GPU Benchmark Demo Scene — Sanctuary
+# Format: [name]\nkey = value\n\n
+#
+# Mesh names: model, pedestal, ground, rock, grass,
+#   column_tall, column_stump, arch, fallen_column,
+#   slab, stone_sphere, mossy_block, bowl, obelisk,
+#   ring_inner, ring_outer, pond, puddle0..2, tree0..2, torch
+#
+# Material names: skin, stone, rock, foliage, moss, water, terrain
+#
+# Special keys:
+#   min_tier       = 1..4 (0 = all tiers, default 0)
+#   fur            = true/false
+#   vertex_wind    = true/false
+#   is_water       = true/false
+#   tessellated    = true/false/auto  (auto = follow tier config)
+#   snap_to_terrain = true/false
+#   shader_type    = model/island
+#   two_sided      = true/false
+#   roughness      = float
+#   noise_scale    = float
+#   warp_strength  = float
+#   bounds_radius  = float (override auto-compute)
+#   require_shadows = true/false (object only placed if shadows enabled)
+#   require_ssr     = true/false (object only placed if SSR enabled)
+#   require_point_lights = int (minimum point_light_count)
+
+# ============================================================
+# Central model — Stanford Bunny on pedestal
+# ============================================================
+
+[model]
+mesh = model
+pos = 0.0 0.40 -0.20
+scale = 1.0 1.0 1.0
+material = skin
+tessellated = auto
+bounds_radius = model
+
+[pedestal]
+mesh = pedestal
+pos = 0.0 -1.0 -0.20
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.50 0.47 0.42
+roughness = 0.85
+noise_scale = 1.5
+tessellated = false
+bounds_radius = 1.5
+
+# ============================================================
+# Ground plane
+# ============================================================
+
+[ground]
+mesh = ground
+pos = 0.0 -1.0 0.0
+scale = 1.0 1.0 1.0
+material = terrain
+shader_type = island
+tessellated = auto
+bounds_radius = 12.0
+
+# ============================================================
+# Rocks (batched mesh)
+# ============================================================
+
+[rocks]
+mesh = rock
+pos = 0.0 0.0 0.0
+scale = 1.0 1.0 1.0
+material = rock
+bounds_radius = 6.0
+
+# ============================================================
+# Grass tufts (T1 only — T2+ uses instanced grass)
+# ============================================================
+
+[grass]
+mesh = grass
+pos = 0.0 0.0 0.0
+scale = 1.0 1.0 1.0
+material = foliage
+tint = 0.30 0.50 0.20
+two_sided = true
+vertex_wind = true
+bounds_radius = 6.0
+max_instanced_grass = 0
+
+# ============================================================
+# Columns — two tall flanking the arch
+# ============================================================
+
+[column_left]
+mesh = column_tall
+pos = -1.8 0.0 -2.5
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.55 0.52 0.46
+roughness = 0.90
+snap_to_terrain = true
+snap_to_terrain_pair = column_right
+tessellated = false
+bounds_radius = 2.0
+
+[column_right]
+mesh = column_tall
+pos = 1.8 0.0 -2.5
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.55 0.52 0.46
+roughness = 0.90
+snap_to_terrain = true
+snap_to_terrain_pair = column_left
+tessellated = false
+bounds_radius = 2.0
+
+# ============================================================
+# Column stumps (T3+ — require point lights)
+# ============================================================
+
+[stump_left]
+mesh = column_stump
+pos = -3.0 0.0 -0.5
+rotation = 0.0 0.0 5.0
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.55 0.52 0.46
+roughness = 0.90
+noise_scale = 0.8
+snap_to_terrain = true
+tessellated = false
+bounds_radius = 1.0
+require_point_lights = 3
+
+[stump_right]
+mesh = column_stump
+pos = 3.0 0.0 -0.5
+rotation = 0.0 0.0 -3.0
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.55 0.52 0.46
+roughness = 0.90
+noise_scale = 1.2
+snap_to_terrain = true
+tessellated = false
+bounds_radius = 1.0
+require_point_lights = 3
+
+# ============================================================
+# Arch (T2+ — requires shadows)
+# ============================================================
+
+[arch]
+mesh = arch
+pos = 0.0 0.0 -2.5
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.48 0.45 0.40
+roughness = 0.92
+warp_strength = 0.4
+tessellated = auto
+bounds_radius = 2.5
+require_shadows = true
+arch_on_columns = true
+
+# ============================================================
+# Ruin elements
+# ============================================================
+
+[slab]
+mesh = slab
+pos = 3.0 0.15 0.5
+rotation = 0.0 45.0 12.0
+scale = 1.2 0.12 0.7
+material = stone
+tint = 0.52 0.49 0.44
+tessellated = false
+snap_to_terrain = true
+snap_to_terrain_offset = 0.15
+bounds_radius = 1.0
+
+[stone_sphere_a]
+mesh = stone_sphere
+pos = -2.8 0.25 1.5
+scale = 0.30 0.28 0.30
+material = stone
+tint = 0.50 0.48 0.43
+roughness = 0.80
+tessellated = auto
+snap_to_terrain = true
+snap_to_terrain_offset = 0.25
+bounds_radius = 0.35
+
+[stone_sphere_b]
+mesh = stone_sphere
+pos = 3.5 0.20 -1.5
+scale = 0.25 0.25 0.25
+material = stone
+tint = 0.50 0.48 0.43
+roughness = 0.80
+noise_scale = 1.3
+tessellated = auto
+snap_to_terrain = true
+snap_to_terrain_offset = 0.20
+bounds_radius = 0.30
+
+[fallen_column]
+mesh = fallen_column
+pos = -3.2 0.28 1.0
+rotation = 0.0 30.0 85.0
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.53 0.50 0.45
+roughness = 0.90
+warp_strength = 0.5
+tessellated = false
+snap_to_terrain = true
+snap_to_terrain_offset = 0.28
+bounds_radius = 1.5
+require_shadows = true
+
+[mossy_block]
+mesh = mossy_block
+pos = 3.8 0.25 2.5
+rotation = 0.0 25.0 0.0
+scale = 0.7 0.5 0.6
+material = moss
+shader_type = island
+tessellated = false
+snap_to_terrain = true
+snap_to_terrain_offset = 0.25
+bounds_radius = 0.8
+require_shadows = true
+
+[bowl]
+mesh = bowl
+pos = 1.8 0.1 1.2
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.45 0.42 0.38
+roughness = 0.75
+tessellated = auto
+snap_to_terrain = true
+snap_to_terrain_offset = 0.1
+bounds_radius = 0.40
+require_shadows = true
+
+[obelisk]
+mesh = obelisk
+pos = -3.5 0.0 -2.0
+rotation = 0.0 0.0 3.0
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.42 0.40 0.36
+noise_scale = 0.7
+tessellated = false
+snap_to_terrain = true
+bounds_radius = 1.5
+require_point_lights = 3
+
+[ring_inner]
+mesh = ring_inner
+pos = 0.0 -0.93 0.0
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.50 0.47 0.42
+tessellated = auto
+bounds_radius = 1.7
+require_point_lights = 3
+
+[ring_outer]
+mesh = ring_outer
+pos = 0.0 -0.95 0.0
+scale = 1.0 1.0 1.0
+material = stone
+tint = 0.48 0.45 0.40
+roughness = 0.87
+tessellated = auto
+bounds_radius = 2.4
+require_point_lights = 3
+
+# ============================================================
+# Trees (T2+ — require shadows)
+# ============================================================
+
+[tree_0]
+mesh = tree0
+pos = -5.0 0.0 -4.0
+rotation = 0.0 0.0 0.0
+scale = 1.0 1.0 1.0
+material = foliage
+tint = 0.22 0.32 0.12
+noise_scale = 0.8
+snap_to_terrain = true
+bounds_radius = 3.5
+require_shadows = true
+
+[tree_1]
+mesh = tree1
+pos = -6.5 0.0 1.0
+rotation = 0.0 72.0 0.0
+scale = 0.85 0.85 0.85
+material = foliage
+tint = 0.28 0.38 0.16
+noise_scale = 0.9
+snap_to_terrain = true
+bounds_radius = 2.975
+require_shadows = true
+
+[tree_2]
+mesh = tree2
+pos = 5.5 0.0 -3.0
+rotation = 0.0 144.0 0.0
+scale = 1.15 1.15 1.15
+material = foliage
+tint = 0.20 0.30 0.14
+noise_scale = 1.0
+snap_to_terrain = true
+bounds_radius = 4.025
+require_shadows = true
+
+[tree_3]
+mesh = tree0
+pos = -4.0 0.0 5.0
+rotation = 0.0 216.0 0.0
+scale = 0.75 0.75 0.75
+material = foliage
+tint = 0.26 0.36 0.18
+noise_scale = 1.1
+snap_to_terrain = true
+bounds_radius = 2.625
+require_shadows = true
+
+[tree_4]
+mesh = tree1
+pos = 6.0 0.0 2.5
+rotation = 0.0 288.0 0.0
+scale = 0.95 0.95 0.95
+material = foliage
+tint = 0.24 0.34 0.10
+noise_scale = 1.2
+snap_to_terrain = true
+bounds_radius = 3.325
+require_shadows = true
+
+# ============================================================
+# Pond (T4 — requires SSR)
+# ============================================================
+
+[pond]
+mesh = pond
+pos = 0.0 0.0 -3.5
+scale = 1.0 1.0 1.0
+material = water
+is_water = true
+snap_to_terrain = true
+snap_to_terrain_offset = 0.45
+bounds_radius = 2.5
+require_ssr = true
+
+[puddle_0]
+mesh = puddle0
+pos = 2.5 -0.95 0.8
+scale = 1.5 1.0 1.5
+material = water
+tint = 0.08 0.10 0.14
+is_water = true
+bounds_radius = 1.2
+require_ssr = true
+fallback_for_pond = true
+
+[puddle_1]
+mesh = puddle1
+pos = -1.8 -0.95 2.2
+scale = 1.2 1.0 1.2
+material = water
+tint = 0.08 0.10 0.14
+is_water = true
+bounds_radius = 0.96
+require_ssr = true
+fallback_for_pond = true
+
+[puddle_2]
+mesh = puddle2
+pos = 0.5 -0.95 -2.5
+scale = 1.0 1.0 1.0
+material = water
+tint = 0.08 0.10 0.14
+is_water = true
+bounds_radius = 0.8
+require_ssr = true
+fallback_for_pond = true
+
+# ============================================================
+# Camera keypoints (Catmull-Rom spline orbit)
+# 10 keypoints: position + look-at target
+# ============================================================
+
+[camera_0]
+type = camera
+position = 3.5 2.0 -3.0
+target = 0.0 0.2 0.0
+
+[camera_1]
+type = camera
+position = 3.0 0.8 3.0
+target = 0.0 -0.2 0.0
+
+[camera_2]
+type = camera
+position = 5.0 0.5 0.0
+target = 0.0 0.1 0.0
+
+[camera_3]
+type = camera
+position = 0.5 1.0 -4.0
+target = 0.0 -0.3 -2.5
+
+[camera_4]
+type = camera
+position = -2.5 3.2 2.5
+target = 0.0 0.0 0.0
+
+[camera_5]
+type = camera
+position = -3.5 0.6 2.0
+target = 0.0 0.0 0.0
+
+[camera_6]
+type = camera
+position = -5.0 0.5 -0.5
+target = 0.0 0.1 0.0
+
+[camera_7]
+type = camera
+position = -3.0 1.8 -3.0
+target = 0.5 0.0 0.5
+
+[camera_8]
+type = camera
+position = 0.3 3.8 0.2
+target = 0.0 0.0 0.0
+
+[camera_9]
+type = camera
+position = 3.5 2.0 -3.0
+target = 0.0 0.2 0.0

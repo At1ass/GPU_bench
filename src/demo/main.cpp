@@ -233,14 +233,16 @@ struct DemoApp {
             bool onDemoFrame(DemoTier tier, int tier_idx, int total,
                              float progress, double fps, double frame_ms,
                              const std::vector<double>& history,
-                             const TechniqueInfo* tech_info) override {
+                             const TechniqueInfo* tech_info,
+                             const FrameStats* frame_stats) override {
                 if (app->config.headless) { app->processEvents(); return app->running; }
                 app->renderer->setViewport(0, 0, app->window_w, app->window_h);
                 app->renderer->setDepthTest(false);
                 app->renderer->unbindState();
+                const FrameStats* show_stats = app->config.debug ? frame_stats : nullptr;
                 app->demo_ui.drawOverlay(app->ctx.get(), app->renderer->getGPURenderer(),
                                           tier, tier_idx, total, progress, fps, frame_ms,
-                                          history, tech_info);
+                                          history, tech_info, show_stats);
                 app->processEvents();
                 return app->running;
             }

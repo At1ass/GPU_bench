@@ -166,9 +166,10 @@ DemoTierResult DemoRunner::runTier(Renderer* r, RenderContext* ctx,
         // Demo overlay (drawn to screen, not FBO)
         float tier_progress = static_cast<float>(total_timer.elapsed_sec() / static_cast<double>(duration_sec));
         if (demo_cb) {
+            const FrameStats* fstats = &scene.lastFrameStats();
             if (!demo_cb->onDemoFrame(tier, tier_index, total_tiers,
                                        tier_progress, prev_fps, prev_ms, frame_history,
-                                       &tech_info)) {
+                                       &tech_info, fstats)) {
                 break;
             }
         }

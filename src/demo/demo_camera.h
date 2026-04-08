@@ -22,6 +22,13 @@ public:
 
     static const int NUM_KEYPOINTS = 10;
 
+    // Override keypoints from external data (e.g. scene file).
+    // count must be exactly NUM_KEYPOINTS.
+    void setKeypoints(const CameraKeypoint* kp, int count) {
+        int n = (count < NUM_KEYPOINTS) ? count : NUM_KEYPOINTS;
+        for (int i = 0; i < n; i++) keypoints_[i] = kp[i];
+    }
+
 private:
     CameraKeypoint keypoints_[NUM_KEYPOINTS];
 

@@ -60,7 +60,8 @@ public:
     virtual bool onDemoFrame(DemoTier current_tier, int tier_index, int total_tiers,
                              float tier_progress, double fps, double frame_ms,
                              const std::vector<double>& frame_history,
-                             const TechniqueInfo* tech_info) = 0;
+                             const TechniqueInfo* tech_info,
+                             const FrameStats* frame_stats = nullptr) = 0;
 };
 
 // Runs the demo benchmark: iterates through supported tiers, measures FPS.

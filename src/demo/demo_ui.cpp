@@ -31,7 +31,8 @@ void DemoUI::drawOverlay(RenderContext* ctx,
                           float tier_progress,
                           double fps, double frame_ms,
                           const std::vector<double>& frame_history,
-                          const TechniqueInfo* tech_info) {
+                          const TechniqueInfo* tech_info,
+                          const FrameStats* stats) {
     ctx->imguiNewFrame();
 
     // Left panel: FPS and progress
@@ -140,10 +141,38 @@ void DemoUI::drawOverlay(RenderContext* ctx,
         ImGui::Text("%s", tech_info->extras);
 
         ImGui::Separator();
-        char stats[64];
-        snprintf(stats, sizeof(stats), "Objects: %d  Draws: ~%d",
+        char info_buf[64];
+        snprintf(info_buf, sizeof(info_buf), "Objects: %d  Draws: ~%d",
                  tech_info->object_count, tech_info->estimated_draw_calls);
-        ImGui::TextDisabled("%s", stats);
+        ImGui::TextDisabled("%s", info_buf);
+
+        ImGui::End();
+    }
+
+    // Debug stats overlay (shown when --debug and stats available)
+    if (stats) {
+        ImVec2 viewport_size = ImGui::GetMainViewport()->Size;
+        ImGui::SetNextWindowPos(ImVec2(viewport_size.x - 260, viewport_size.y - 160));
+        ImGui::SetNextWindowSize(ImVec2(250, 0));
+        ImGui::SetNextWindowBgAlpha(0.6f);
+        ImGui::Begin("GL Stats", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                     ImGuiWindowFlags_NoInputs);
+
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "GL Stats (per frame)");
+        ImGui::Separator();
+
+        ImGui::Text("State:   %d applied, %d skipped",
+                     stats->state_applied, stats->state_skipped);
+        ImGui::Text("Draws:   %d", stats->draw_calls);
+        ImGui::Text("Tex:     %d binds, %d cached",
+                     stats->texture_binds, stats->texture_skipped);
+        ImGui::Text("RT:      %d switches", stats->rt_switches);
+        ImGui::Text("Compute: %d dispatch, %d barriers",
+                     stats->compute_dispatches, stats->barriers_issued);
+        ImGui::Text("Objects: %d drawn, %d culled",
+                     stats->objects_drawn, stats->objects_culled);
 
         ImGui::End();
     }

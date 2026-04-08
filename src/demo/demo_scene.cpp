@@ -1,9 +1,11 @@
 #include "demo/demo_scene.h"
 #include "demo/demo_utils.h"
+#include "demo/scene_loader.h"
 #include "demo/tier_config_validate.h"
 #include "engine/pass_context.h"
 #include "geometry/mesh_gen.h"
 #include "renderer/features.h"
+#include "platform/data_path.h"
 #include "platform/logger.h"
 #include <cmath>
 #include <cstring>
@@ -26,6 +28,197 @@ DemoScene::DemoScene()
 }
 
 DemoScene::~DemoScene() {
+}
+
+// ============================================================
+// Mesh name -> MeshHandle lookup
+// ============================================================
+
+static MeshHandle lookupMesh(const std::string& name, const TierResourceView& res) {
+    // Core meshes
+    if (name == "model")          return res.core.model_mesh;
+    if (name == "ground")         return res.core.ground_mesh;
+    if (name == "rock")           return res.core.rock_mesh;
+    if (name == "grass")          return res.core.grass_mesh;
+    if (name == "pedestal")       return res.core.pedestal_mesh;
+    if (name == "column_tall")    return res.core.column_tall_mesh;
+    if (name == "column_stump")   return res.core.column_stump_mesh;
+    if (name == "arch")           return res.core.arch_mesh;
+    if (name == "fallen_column")  return res.core.fallen_column_mesh;
+    if (name == "slab")           return res.core.slab_mesh;
+    if (name == "stone_sphere")   return res.core.stone_sphere_mesh;
+    if (name == "mossy_block")    return res.core.mossy_block_mesh;
+    if (name == "bowl")           return res.core.bowl_mesh;
+    if (name == "obelisk")        return res.core.obelisk_mesh;
+    if (name == "ring_inner")     return res.core.ring_inner_mesh;
+    if (name == "ring_outer")     return res.core.ring_outer_mesh;
+    if (name == "pond")           return res.core.pond_mesh;
+    if (name == "torch")          return res.core.torch_mesh;
+    // Tree variants
+    if (name == "tree0")          return res.core.tree_meshes[0];
+    if (name == "tree1")          return res.core.tree_meshes[1];
+    if (name == "tree2")          return res.core.tree_meshes[2];
+    // T4 puddles
+    if (name == "puddle0")        return res.t4.puddle_meshes[0];
+    if (name == "puddle1")        return res.t4.puddle_meshes[1];
+    if (name == "puddle2")        return res.t4.puddle_meshes[2];
+    return MeshHandle();
+}
+
+// ============================================================
+// Material name -> MaterialDef lookup
+// ============================================================
+
+static MaterialDef lookupMaterial(const std::string& name, const Vec3& tint, bool has_tint) {
+    if (name == "skin")    return has_tint ? Materials::skin(tint) : Materials::skin();
+    if (name == "stone")   return has_tint ? Materials::stone(tint) : Materials::stone();
+    if (name == "rock")    return has_tint ? Materials::rock(tint) : Materials::rock();
+    if (name == "foliage") return has_tint ? Materials::foliage(tint) : Materials::foliage();
+    if (name == "moss")    return has_tint ? Materials::moss(tint) : Materials::moss();
+    if (name == "water")   return has_tint ? Materials::water(tint) : Materials::water();
+    if (name == "terrain") return Materials::terrain();
+    // Default
+    return Materials::stone();
+}
+
+// ============================================================
+// loadSceneFromFile: data-driven scene construction
+// ============================================================
+
+bool DemoScene::loadSceneFromFile(Renderer* r) {
+    (void)r;
+    std::string scene_path = getDataPath("scenes/sanctuary.scene");
+    if (scene_path.empty()) {
+        LOG_DBG("SceneLoader: no scene file found, using built-in layout");
+        return false;
+    }
+
+    std::vector<SceneObjectDef> defs;
+    std::vector<SceneCameraKeypoint> cam_kps;
+    if (!SceneLoader::load(scene_path.c_str(), defs, cam_kps)) {
+        LOG_WRN("SceneLoader: failed to parse scene file, using built-in layout");
+        return false;
+    }
+
+    // Build mesh name -> SceneObjectDef index map for pair lookups
+    // (used for snap_to_terrain_pair: both columns use min height)
+    // Simple O(n^2) is fine for ~30 objects.
+
+    bool has_pond_mesh = (res_.core.pond_mesh != MeshHandle());
+
+    int placed = 0;
+    for (size_t i = 0; i < defs.size(); i++) {
+        const SceneObjectDef& def = defs[i];
+
+        // --- Conditional checks ---
+        if (def.require_shadows && !config_.enable_shadows) continue;
+        if (def.require_ssr && !config_.enable_ssr) continue;
+        if (def.require_point_lights > 0 && config_.point_light_count < def.require_point_lights) continue;
+        if (def.max_instanced_grass >= 0 && config_.instanced_grass_count > def.max_instanced_grass) continue;
+
+        // Pond/puddle fallback logic: if pond mesh exists, skip puddle fallbacks;
+        // if pond mesh absent, skip the pond entry but allow puddle fallbacks.
+        if (def.mesh == "pond" && !has_pond_mesh) continue;
+        if (def.fallback_for_pond && has_pond_mesh) continue;
+
+        // Resolve mesh
+        MeshHandle mesh = lookupMesh(def.mesh, res_);
+        if (mesh == MeshHandle()) {
+            LOG_DBG("SceneLoader: skipping [%s] — mesh '%s' not loaded", def.name.c_str(), def.mesh.c_str());
+            continue;
+        }
+
+        // Build transform: T * Rz * Ry * Rx * S
+        float px = def.pos.x;
+        float py = def.pos.y;
+        float pz = def.pos.z;
+
+        // Snap to terrain
+        if (def.snap_to_terrain) {
+            float h = sampleTerrainHeight(px, pz);
+            // If paired with another object, use min of both heights
+            if (!def.snap_to_terrain_pair.empty()) {
+                for (size_t j = 0; j < defs.size(); j++) {
+                    if (defs[j].name == def.snap_to_terrain_pair) {
+                        float h2 = sampleTerrainHeight(defs[j].pos.x, defs[j].pos.z);
+                        h = (h < h2) ? h : h2;
+                        break;
+                    }
+                }
+            }
+            py = h + def.snap_to_terrain_offset;
+        }
+
+        // Arch special: position on top of column pair
+        if (def.arch_on_columns) {
+            // Find paired columns (column_left/column_right at z=-2.5)
+            float h0 = sampleTerrainHeight(-1.8f, -2.5f);
+            float h1 = sampleTerrainHeight(1.8f, -2.5f);
+            float col_base_y = (h0 < h1) ? h0 : h1;
+            py = col_base_y + 1.5f;  // column top = base + half_height
+        }
+
+        Mat4 transform = Mat4::translate(px, py, pz);
+        if (def.rotation.z != 0.0f) transform = transform * Mat4::rotateZ(def.rotation.z);
+        if (def.rotation.y != 0.0f) transform = transform * Mat4::rotateY(def.rotation.y);
+        if (def.rotation.x != 0.0f) transform = transform * Mat4::rotateX(def.rotation.x);
+        if (def.scale.x != 1.0f || def.scale.y != 1.0f || def.scale.z != 1.0f)
+            transform = transform * Mat4::scale(def.scale.x, def.scale.y, def.scale.z);
+
+        // Build SceneObject
+        SceneObject obj;
+        obj.mesh = mesh;
+        obj.transform = transform;
+        obj.shader_type = def.shader_type;
+        obj.mat = lookupMaterial(def.material, def.tint, def.has_tint);
+
+        // Material property overrides
+        if (def.roughness >= 0.0f) obj.mat.roughness = def.roughness;
+        if (def.noise_scale >= 0.0f) obj.mat.noise_scale = def.noise_scale;
+        if (def.warp_strength >= 0.0f) obj.mat.warp_strength = def.warp_strength;
+        if (def.two_sided) obj.mat.two_sided = true;
+
+        // Flags
+        obj.vertex_wind = def.vertex_wind;
+        obj.is_water = def.is_water;
+        if (def.tessellated_auto)
+            obj.tessellated = config_.enable_tessellation;
+        else
+            obj.tessellated = def.tessellated;
+
+        // Bounds
+        float br = def.bounds_radius;
+        if (def.bounds_radius_is_model)
+            br = res_.core.model_bounding_radius;
+        if (br <= 0.0f) br = 1.0f;  // safe default
+        setBounds(obj, br);
+
+        // Track the model mesh/transform for fur passes
+        if (def.name == "model") {
+            model_mesh_ = mesh;
+            model_transform_ = transform;
+        }
+
+        opaque_objects_.push_back(obj);
+        placed++;
+    }
+
+    // Override camera keypoints if scene file provided them
+    if (static_cast<int>(cam_kps.size()) == CameraPath::NUM_KEYPOINTS) {
+        CameraKeypoint kp[CameraPath::NUM_KEYPOINTS];
+        for (int i = 0; i < CameraPath::NUM_KEYPOINTS; i++) {
+            kp[i].position = cam_kps[static_cast<size_t>(i)].position;
+            kp[i].target = cam_kps[static_cast<size_t>(i)].target;
+        }
+        camera_.setKeypoints(kp, CameraPath::NUM_KEYPOINTS);
+        LOG_INF("SceneLoader: loaded %d camera keypoints", CameraPath::NUM_KEYPOINTS);
+    } else if (!cam_kps.empty()) {
+        LOG_WRN("SceneLoader: expected %d camera keypoints, got %d — using defaults",
+                CameraPath::NUM_KEYPOINTS, static_cast<int>(cam_kps.size()));
+    }
+
+    LOG_INF("SceneLoader: placed %d/%d objects from scene file", placed, static_cast<int>(defs.size()));
+    return placed > 0;
 }
 
 // ============================================================
@@ -482,8 +675,10 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     int t = static_cast<int>(tier);
     LOG_INF("Demo scene setup: tier %d, viewport %dx%d", t, viewport_w, viewport_h);
 
-    // Build scene objects (cheap -- just fills SceneObject structs)
-    buildScene(r);
+    // Try loading scene from data file; fall back to hardcoded layout
+    if (!loadSceneFromFile(r)) {
+        buildScene(r);
+    }
 
     // Populate scene data for render passes
     scene_data_.opaque_objects = &opaque_objects_;
@@ -598,6 +793,7 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     PassContext ctx(r);
     ctx.beginFrame();
     pipeline_.execute(ctx, fd, res_, config_, scene_data_);
+    last_frame_stats_ = ctx.stats();
 
     // Restore GL state
     r->setDepthTest(true);

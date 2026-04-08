@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/render_state.h"
 #include "engine/texture_slots.h"
+#include "engine/frame_stats.h"
 #include "renderer/renderer.h"
 #include "renderer/features.h"
 
@@ -58,6 +59,8 @@ public:
     GL3Features* gl3();
     GL4Features* gl4();
     ComputeFeatures* compute();
+    FrameStats& stats() { return stats_; }
+    const FrameStats& stats() const { return stats_; }
 
 private:
     Renderer* r_;
@@ -66,6 +69,7 @@ private:
     ComputeFeatures* compute_;
     bool features_cached_;
     RenderTargetHandle current_rt_;
+    FrameStats stats_;
 
     void cacheFeatures();
 };

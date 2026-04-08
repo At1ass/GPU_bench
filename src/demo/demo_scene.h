@@ -123,6 +123,7 @@ public:
     void cleanup(Renderer* r);
 
     TechniqueInfo getTechniqueInfo() const;
+    const FrameStats& lastFrameStats() const { return last_frame_stats_; }
 
 private:
     Renderer* r_;
@@ -136,6 +137,9 @@ private:
     std::vector<SceneObject> opaque_objects_;
     std::vector<SceneObject> cloud_objects_;
     MeshHandle model_mesh_;
+
+    // Data-driven scene loading (falls back to buildScene on failure)
+    bool loadSceneFromFile(Renderer* r);
 
     // Scene building
     void buildScene(Renderer* r);
@@ -161,6 +165,7 @@ private:
     bool initialized_;
     bool passes_logged_;
     DemoDebugOverrides debug_;
+    FrameStats last_frame_stats_;
 
     RenderTargetHandle dest_rt_;
 

@@ -2,10 +2,13 @@
 
 PassContext::PassContext(Renderer* r)
     : r_(r), gl3_(nullptr), gl4_(nullptr), compute_(nullptr),
-      features_cached_(false), current_rt_() {}
+      features_cached_(false), current_rt_() {
+    stats_.reset();
+}
 
 void PassContext::beginFrame() {
     cacheFeatures();
+    stats_.reset();
 }
 
 void PassContext::cacheFeatures() {
@@ -26,6 +29,7 @@ void PassContext::beginRT(RenderTargetHandle rt, int w, int h,
         r_->clear(clear_color[0], clear_color[1],
                   clear_color[2], clear_color[3]);
     current_rt_ = rt;
+    stats_.rt_switches++;
 }
 
 void PassContext::beginScreen(int w, int h, const float* clear_color) {
@@ -35,6 +39,7 @@ void PassContext::beginScreen(int w, int h, const float* clear_color) {
         r_->clear(clear_color[0], clear_color[1],
                   clear_color[2], clear_color[3]);
     current_rt_ = RenderTargetHandle();
+    stats_.rt_switches++;
 }
 
 void PassContext::endRT() {
@@ -58,6 +63,7 @@ void PassContext::applyState(const RenderState& state) {
     } else {
         r_->setPolygonOffset(false, 0.0f, 0.0f);
     }
+    stats_.state_applied++;
 }
 
 void PassContext::setCullFace(bool enable) {
@@ -68,10 +74,12 @@ void PassContext::setCullFace(bool enable) {
 
 void PassContext::bindTexture(int slot, TextureHandle tex) {
     r_->bindTextureUnit(slot, tex);
+    stats_.texture_binds++;
 }
 
 void PassContext::bindRTTexture(int slot, RenderTargetHandle rt) {
     r_->bindRenderTargetTexture(rt, slot);
+    stats_.texture_binds++;
 }
 
 // --- Compute ---
@@ -85,11 +93,16 @@ void PassContext::dispatch(int gx, int gy, int gz, unsigned int barriers) {
     cacheFeatures();
     if (!compute_) return;
     compute_->dispatchCompute(gx, gy, gz);
+    stats_.compute_dispatches++;
     if (barriers == Barrier_None) return;
-    if ((barriers & Barrier_Image) && gl4_)
+    if ((barriers & Barrier_Image) && gl4_) {
         gl4_->imageMemoryBarrier();
-    if (barriers & (Barrier_Texture | Barrier_SSBO))
+        stats_.barriers_issued++;
+    }
+    if (barriers & (Barrier_Texture | Barrier_SSBO)) {
         compute_->computeMemoryBarrier();
+        stats_.barriers_issued++;
+    }
 }
 
 void PassContext::bindSSBO(BufferHandle buf, int binding) {
