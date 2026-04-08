@@ -2,7 +2,7 @@
 #include "geometry/math_types.h"
 
 // Procedural surface type — selects noise function in shader
-enum class ProceduralType : int {
+enum class ProceduralType : unsigned char {
     Flat     = 0,   // flat color + micro noise (particles, unclassified)
     Terrain  = 1,   // full terrain color (slope/height/moss/rock blend)
     Stone    = 2,   // weathered stone (Worley cracks, erosion, moss in crevices)
@@ -37,12 +37,12 @@ struct MaterialDef {
 // Predefined material palette — factory functions (impl in materials.cpp)
 namespace Materials {
     MaterialDef terrain();
-    MaterialDef stone(Vec3 tint = Vec3(0.50f, 0.47f, 0.42f));
-    MaterialDef rock(Vec3 tint = Vec3(0.45f, 0.42f, 0.38f));
-    MaterialDef foliage(Vec3 tint = Vec3(0.25f, 0.35f, 0.14f));
-    MaterialDef moss(Vec3 tint = Vec3(0.35f, 0.42f, 0.30f));
-    MaterialDef skin(Vec3 tint = Vec3(0.55f, 0.38f, 0.32f));
-    MaterialDef water(Vec3 tint = Vec3(0.06f, 0.08f, 0.14f));
+    MaterialDef stone(const Vec3& tint = Vec3(0.50f, 0.47f, 0.42f));
+    MaterialDef rock(const Vec3& tint = Vec3(0.45f, 0.42f, 0.38f));
+    MaterialDef foliage(const Vec3& tint = Vec3(0.25f, 0.35f, 0.14f));
+    MaterialDef moss(const Vec3& tint = Vec3(0.35f, 0.42f, 0.30f));
+    MaterialDef skin(const Vec3& tint = Vec3(0.55f, 0.38f, 0.32f));
+    MaterialDef water(const Vec3& tint = Vec3(0.06f, 0.08f, 0.14f));
 }
 
 // Legacy: opaque pass uses this for shader program selection (island vs fur)

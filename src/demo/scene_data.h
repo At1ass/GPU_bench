@@ -4,31 +4,26 @@
 #include "geometry/math_types.h"
 #include <vector>
 
-// A placed object in the scene
+// A placed object in the scene.
+// POD-like aggregate: default-constructible, copyable, movable.
 struct SceneObject {
     MeshHandle mesh;
     Mat4 transform;
-    MaterialType shader_type;   // pipeline routing: Island (terrain shader) or Model
-    MaterialDef mat;            // all visual material properties
-    bool vertex_wind;           // enable wind vertex displacement (grass only)
-    bool is_water;              // water material with ripples + Fresnel
-    bool tessellated;           // render via TessellatedModelPass with displacement (T4)
+    MaterialType shader_type = MaterialType::Model;  // pipeline routing
+    MaterialDef mat;
+    bool vertex_wind = false;   // enable wind vertex displacement (grass only)
+    bool is_water = false;      // water material with ripples + Fresnel
+    bool tessellated = false;   // render via TessellatedModelPass (T4)
     Vec3 bounds_center;         // world-space bounding sphere center
-    float bounds_radius;        // world-space bounding sphere radius
-
-    SceneObject() : mesh(), transform(), shader_type(MaterialType::Model),
-        mat(), vertex_wind(false), is_water(false), tessellated(false),
-        bounds_center(0.0f, 0.0f, 0.0f), bounds_radius(0.0f) {}
+    float bounds_radius = 0.0f; // world-space bounding sphere radius
 };
 
-// Shared scene geometry data — passed to render passes by const reference.
+// Shared scene geometry — passed to render passes by const reference.
+// Pointer members are non-owning observers into DemoScene::opaque_objects_
+// and cloud_objects_ vectors. Valid for the lifetime of the DemoScene.
 struct SceneData {
-    const std::vector<SceneObject>* opaque_objects;
-    const std::vector<SceneObject>* cloud_objects;
+    const std::vector<SceneObject>* opaque_objects = nullptr;  // non-owning
+    const std::vector<SceneObject>* cloud_objects = nullptr;   // non-owning
     MeshHandle model_mesh;        // fur target mesh
     Mat4 model_transform;         // model world transform
-
-    SceneData()
-        : opaque_objects(nullptr), cloud_objects(nullptr)
-        , model_mesh(), model_transform() {}
 };

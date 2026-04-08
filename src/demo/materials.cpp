@@ -12,7 +12,7 @@ MaterialDef terrain() {
     return m;
 }
 
-MaterialDef stone(Vec3 tint) {
+MaterialDef stone(const Vec3& tint) {
     MaterialDef m;
     m.color_a = tint;
     m.color_b = tint * 0.65f + Vec3(0.08f, 0.06f, 0.04f);  // darker, warmer crevice
@@ -27,7 +27,7 @@ MaterialDef stone(Vec3 tint) {
     return m;
 }
 
-MaterialDef rock(Vec3 tint) {
+MaterialDef rock(const Vec3& tint) {
     MaterialDef m;
     m.color_a = tint * 1.1f + Vec3(0.05f, 0.04f, 0.03f);  // lighter base
     m.color_b = tint * 0.8f + Vec3(0.06f, 0.04f, 0.02f);
@@ -43,7 +43,7 @@ MaterialDef rock(Vec3 tint) {
     return m;
 }
 
-MaterialDef foliage(Vec3 tint) {
+MaterialDef foliage(const Vec3& tint) {
     MaterialDef m;
     m.color_a = tint;
     m.color_b = tint * 1.4f + Vec3(0.05f, 0.08f, 0.0f);  // brighter canopy top
@@ -58,7 +58,7 @@ MaterialDef foliage(Vec3 tint) {
     return m;
 }
 
-MaterialDef moss(Vec3 tint) {
+MaterialDef moss(const Vec3& tint) {
     MaterialDef m;
     m.color_a = tint;
     m.color_b = Vec3(0.15f, 0.35f, 0.08f);  // deep moss green
@@ -73,7 +73,7 @@ MaterialDef moss(Vec3 tint) {
     return m;
 }
 
-MaterialDef skin(Vec3 tint) {
+MaterialDef skin(const Vec3& tint) {
     MaterialDef m;
     m.color_a = tint;
     m.color_b = tint * 0.8f;
@@ -84,7 +84,7 @@ MaterialDef skin(Vec3 tint) {
     return m;
 }
 
-MaterialDef water(Vec3 tint) {
+MaterialDef water(const Vec3& tint) {
     MaterialDef m;
     m.color_a = tint;
     m.color_b = tint;

@@ -2,9 +2,11 @@
 #include "renderer/renderer.h"
 #include "geometry/math_types.h"
 
-// Frustum culling planes (6 planes: left, right, bottom, top, near, far)
+// Frustum culling planes extracted from view-projection matrix.
 struct FrustumPlanes {
-    float planes[6][4]; // A,B,C,D for each plane
+    static constexpr int NUM_PLANES = 6;       // left, right, bottom, top, near, far
+    static constexpr int COMPONENTS = 4;       // A, B, C, D coefficients per plane
+    float planes[NUM_PLANES][COMPONENTS];
 };
 
 // Camera/projection constants shared across all render passes

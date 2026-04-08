@@ -28,10 +28,17 @@ enum class ResourceId {
     COUNT
 };
 
+// Resource access mode for inter-pass dependency tracking.
+enum class ResourceAccess : unsigned char { Read, Write };
+
 // Resource access declaration for a single pass.
 struct ResourceDecl {
     ResourceId id;
-    enum Access : unsigned char { READ, WRITE } access;
+    ResourceAccess access;
+
+    // Legacy compatibility aliases (used extensively in pass headers)
+    static constexpr ResourceAccess READ  = ResourceAccess::Read;
+    static constexpr ResourceAccess WRITE = ResourceAccess::Write;
 };
 
 // Queue type hint for future Vulkan async compute scheduling.

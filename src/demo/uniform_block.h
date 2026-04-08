@@ -20,6 +20,13 @@ public:
         for (int i = 0; i < U::COUNT; i++) locs_[i] = UNRESOLVED;
     }
 
+    // Non-copyable (shader_ is non-owning observer, but shallow copy
+    // would share mutable location cache — confusing semantics).
+    UniformBlock(const UniformBlock&) = delete;
+    UniformBlock& operator=(const UniformBlock&) = delete;
+    UniformBlock(UniformBlock&&) = default;
+    UniformBlock& operator=(UniformBlock&&) = default;
+
     void init(ShaderProgram* shader) {
         shader_ = shader;
         for (int i = 0; i < U::COUNT; i++) locs_[i] = UNRESOLVED;
