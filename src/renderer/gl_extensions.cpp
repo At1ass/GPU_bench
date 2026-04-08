@@ -2,6 +2,7 @@
 #include "renderer/gl_funcs.h"
 #include "renderer/gl_loader.h"
 #include "platform/logger.h"
+#include <algorithm>
 #include <vector>
 #include <string>
 #include <cstring>
@@ -58,10 +59,7 @@ bool GLExtensions::has(const char* name) {
     if (!initialized_) return false;
 
     if (s_modern) {
-        for (size_t i = 0; i < s_list.size(); i++) {
-            if (s_list[i] == name) return true;
-        }
-        return false;
+        return std::find(s_list.begin(), s_list.end(), name) != s_list.end();
     }
 
     // Legacy: word-boundary matching (not simple strstr)

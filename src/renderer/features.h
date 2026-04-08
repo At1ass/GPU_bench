@@ -164,9 +164,9 @@ static_assert(std::is_abstract<ComputeFeatures>::value, "Must be pure interface"
 // Compile-time: what does renderer R provide?
 template<typename R>
 struct renderer_traits {
-    static const bool provides_gl3    = std::is_base_of<GL3Features, R>::value;
-    static const bool provides_gl4    = std::is_base_of<GL4Features, R>::value;
-    static const bool provides_compute = std::is_base_of<ComputeFeatures, R>::value;
+    static constexpr bool provides_gl3    = std::is_base_of<GL3Features, R>::value;
+    static constexpr bool provides_gl4    = std::is_base_of<GL4Features, R>::value;
+    static constexpr bool provides_compute = std::is_base_of<ComputeFeatures, R>::value;
 };
 
 // Forward declarations for test base classes (defined in bench/bench.h)
@@ -177,7 +177,7 @@ class GL4BenchTest;
 // Compile-time: what does test T require?
 template<typename T>
 struct test_traits {
-    static const bool requires_gl3    = std::is_base_of<GL3BenchTest, T>::value;
-    static const bool requires_compute = std::is_base_of<ComputeBenchTest, T>::value;
-    static const bool requires_gl4    = std::is_base_of<GL4BenchTest, T>::value;
+    static constexpr bool requires_gl3    = std::is_base_of<GL3BenchTest, T>::value;
+    static constexpr bool requires_compute = std::is_base_of<ComputeBenchTest, T>::value;
+    static constexpr bool requires_gl4    = std::is_base_of<GL4BenchTest, T>::value;
 };
