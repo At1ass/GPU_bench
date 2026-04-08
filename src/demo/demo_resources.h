@@ -25,148 +25,124 @@ public:
     void destroy();
 
 private:
+    // Infrastructure
     Renderer* renderer_;
     bool prepared_;
     ShaderCache shader_cache_;
-
-    // Shared meshes
     MeshPool scene_meshes_;
-    MeshHandle model_mesh_;
-    MeshHandle ground_mesh_;
-    MeshHandle rock_mesh_;
-    MeshHandle grass_mesh_;
-    MeshHandle particle_mesh_;
-    float model_bounding_radius_;
-    ScopedMesh sky_mesh_;
 
-    // Shared textures
-    ScopedTexture fur_tex_;
-    ScopedTexture fur_mask_tex_;
+    // Core resources (T1+, always present)
+    struct CoreRes {
+        MeshHandle model_mesh, ground_mesh, rock_mesh, grass_mesh, particle_mesh;
+        ScopedMesh sky_mesh;
+        float model_bounding_radius = 0.0f;
+        ScopedTexture fur_tex, fur_mask_tex;
 
-    // Sky shader — per-tier variants for progressive atmosphere quality
-    ShaderProgram sky_shader_;           // legacy ownership (fallback)
-    ShaderProgram* sky_shader_from_cache_;  // non-owning, T1 fallback
-    ShaderProgram* sky_cache_[4];        // per-tier (domain warp T2+, physical sky T3+)
+        // Per-tier shader variants
+        static const int MAX_TIERS = 4;
+        ShaderProgram sky_shader;              // legacy fallback
+        ShaderProgram* sky_shader_from_cache = nullptr;
+        ShaderProgram* sky_cache[MAX_TIERS] = {};
 
-    // Per-tier shaders (index 0..3 = tier 1..4)
-    // Owned ShaderPrograms are legacy fallback; cache pointers are preferred.
-    static const int MAX_TIERS = 4;
-    ShaderProgram island_shaders_[MAX_TIERS];    // legacy (T4 only)
-    ShaderProgram fur_shaders_[MAX_TIERS];       // legacy (T4 only)
-    ShaderProgram* island_cache_[MAX_TIERS];     // non-owning, from ShaderCache (T1-T3)
-    ShaderProgram* fur_cache_[MAX_TIERS];        // non-owning, from ShaderCache (T1-T3)
+        ShaderProgram island_shaders[MAX_TIERS];   // legacy (T4 only)
+        ShaderProgram fur_shaders[MAX_TIERS];      // legacy (T4 only)
+        ShaderProgram* island_cache[MAX_TIERS] = {};
+        ShaderProgram* fur_cache[MAX_TIERS] = {};
 
-    // Particle shader (shared, T1+)
-    ShaderProgram particle_shader_;              // legacy fallback
-    ShaderProgram* particle_cache_;              // non-owning, from ShaderCache
-
-    // Torch shader (T3+, point light flames)
-    ShaderProgram* torch_cache_;                 // non-owning, from ShaderCache
-
-    // T2+ shadow mapping
-    ShaderProgram shadow_shader_;                // legacy fallback
-    ShaderProgram* shadow_cache_;                // non-owning, from ShaderCache
-    ScopedRenderTarget shadow_rt_;
-    TextureHandle shadow_depth_tex_;
-    int shadow_map_size_;
-
-    // T2+ bloom post-processing
-    ShaderProgram bloom_extract_shader_;         // legacy fallback
-    ShaderProgram bloom_blur_shader_;            // legacy fallback
-    ShaderProgram bloom_composite_shader_;       // legacy fallback
-    ShaderProgram* bloom_extract_cache_;         // non-owning, from ShaderCache
-    ShaderProgram* bloom_blur_cache_;            // non-owning, from ShaderCache
-    ShaderProgram* bloom_composite_cache_;       // non-owning, from ShaderCache
-    ScopedMesh fullscreen_quad_;
-    ScopedRenderTarget scene_rt_;
-    ScopedRenderTarget bright_rt_;
-    ScopedRenderTarget blur_rt_;
-    float bloom_strength_;
-
-    // T2+ instanced grass
-    ShaderProgram grass_shader_;                 // legacy fallback
-    ShaderProgram grass_shader_t3_;              // legacy fallback
-    ShaderProgram* grass_cache_;                 // non-owning, from ShaderCache (T2)
-    ShaderProgram* grass_t3_cache_;              // non-owning, from ShaderCache (T3)
-    MeshHandle grass_blade_mesh_;
+        ShaderProgram particle_shader;         // legacy fallback
+        ShaderProgram* particle_cache = nullptr;
+        ShaderProgram* torch_cache = nullptr;
+    } core_;
 
     // Sanctuary scene meshes
-    MeshHandle pedestal_mesh_;
-    MeshHandle column_tall_mesh_;    // merged cylinder + torus base
-    MeshHandle column_stump_mesh_;   // merged short cylinder + torus base
-    MeshHandle arch_mesh_;
-    MeshHandle fallen_column_mesh_;
-    MeshHandle slab_mesh_;
-    MeshHandle stone_sphere_mesh_;
-    MeshHandle mossy_block_mesh_;
-    MeshHandle bowl_mesh_;
-    MeshHandle obelisk_mesh_;
-    MeshHandle ring_inner_mesh_;
-    MeshHandle ring_outer_mesh_;
-    MeshHandle pond_mesh_;
-    MeshHandle torch_mesh_;
-    MeshHandle tree_meshes_[3];
+    struct SanctuaryMeshes {
+        MeshHandle pedestal, column_tall, column_stump, arch;
+        MeshHandle fallen_column, slab, stone_sphere, mossy_block;
+        MeshHandle bowl, obelisk, ring_inner, ring_outer;
+        MeshHandle pond, torch;
+        MeshHandle trees[3];
+    } sanctuary_;
 
-    // T2+ SSAO
-    ShaderProgram ssao_shader_;                  // legacy fallback
-    ShaderProgram ssao_blur_shader_;             // legacy fallback
-    ShaderProgram* ssao_cache_;                  // non-owning, from ShaderCache
-    ShaderProgram* ssao_blur_cache_;             // non-owning, from ShaderCache
-    ScopedRenderTarget ssao_rt_;
-    ScopedRenderTarget ssao_blur_rt_;
-    ScopedTexture ssao_noise_tex_;
-    TextureHandle scene_depth_tex_;
+    // Shadow mapping (T2+)
+    struct ShadowRes {
+        ShaderProgram shader;
+        ShaderProgram* cache = nullptr;
+        ScopedRenderTarget rt;
+        TextureHandle depth_tex;
+        int map_size = 0;
+    } shadow_;
 
-    // T3+ normal map texture
+    // Bloom post-processing (T2+)
+    struct BloomRes {
+        ShaderProgram extract_shader, blur_shader, composite_shader;
+        ShaderProgram* extract_cache = nullptr;
+        ShaderProgram* blur_cache = nullptr;
+        ShaderProgram* composite_cache = nullptr;
+        ScopedMesh fullscreen_quad;
+        ScopedRenderTarget scene_rt, bright_rt, blur_rt;
+        float strength = 0.0f;
+    } bloom_;
+
+    // Instanced grass (T2+)
+    struct GrassRes {
+        ShaderProgram shader, shader_t3;
+        ShaderProgram* cache = nullptr;
+        ShaderProgram* t3_cache = nullptr;
+        MeshHandle blade_mesh;
+    } grass_;
+
+    // SSAO (T2+)
+    struct SSAORes {
+        ShaderProgram shader, blur_shader;
+        ShaderProgram* cache = nullptr;
+        ShaderProgram* blur_cache = nullptr;
+        ScopedRenderTarget rt, blur_rt;
+        ScopedTexture noise_tex;
+        TextureHandle scene_depth_tex;
+    } ssao_;
+
+    // Normal map (T3+)
     ScopedTexture normal_map_tex_;
 
-    // T4+ PBR / compute / tessellation / HDR
-    ShaderProgram grass_shader_t4_;
-    ShaderProgram tess_shader_;
-    ShaderProgram compute_particle_shader_;
-    ShaderProgram particle_render_shader_;
-    ShaderProgram volumetric_fog_shader_;
-    ShaderProgram tone_map_shader_;
-    ScopedSSBO particle_ssbo_;
-    int compute_particle_count_;
-    ScopedRenderTarget hdr_scene_rt_;
-    ScopedRenderTarget hdr_bright_rt_;
-    TextureHandle hdr_depth_tex_;
-    TextureHandle hdr_color_tex_;  // non-owning view of HDR RT color (for copyImageSubData)
-    ScopedRenderTarget fog_rt_;
-    int fog_w_, fog_h_;
+    // T4 resources
+    struct T4Res {
+        ShaderProgram grass_shader_t4;
+        ShaderProgram tess_shader;
+        ShaderProgram compute_particle_shader, particle_render_shader;
+        ShaderProgram volumetric_fog_shader, tone_map_shader;
+        ScopedSSBO particle_ssbo;
+        int compute_particle_count = 0;
 
-    // T4 Ultra: Compute GTAO
-    ShaderProgram gtao_shader_;
-    ShaderProgram gtao_blur_shader_;
-    ScopedTexture gtao_tex_;      // full-res float AO output
-    ScopedTexture gtao_blur_tex_; // full-res float blurred AO
+        // HDR
+        ScopedRenderTarget hdr_scene_rt, hdr_bright_rt, fog_rt;
+        TextureHandle hdr_depth_tex, hdr_color_tex;
+        int fog_w = 0, fog_h = 0;
 
-    // T4 Ultra: Compute Bloom (mip chain)
-    ShaderProgram bloom_down_compute_;
-    ShaderProgram bloom_up_compute_;
-    static const int BLOOM_MIP_COUNT = 6;
-    ScopedTexture bloom_mips_[BLOOM_MIP_COUNT]; // progressively smaller float textures
+        // GTAO
+        ShaderProgram gtao_shader, gtao_blur_shader;
+        ScopedTexture gtao_tex, gtao_blur_tex;
 
-    // T4 Ultra: Auto-Exposure
-    ShaderProgram histogram_shader_;
-    ShaderProgram exposure_shader_;
-    ScopedSSBO histogram_ssbo_;  // 256 uint bins
-    ScopedSSBO exposure_ssbo_;   // 1 float
+        // Compute Bloom
+        ShaderProgram bloom_down_compute, bloom_up_compute;
+        static const int BLOOM_MIP_COUNT = 6;
+        ScopedTexture bloom_mips[BLOOM_MIP_COUNT];
 
-    // T4 Ultra: SSR
-    ShaderProgram ssr_shader_;
-    ScopedTexture ssr_tex_;  // float texture for SSR compute result
-    ScopedTexture ssr_color_snapshot_;  // RGBA16F snapshot of HDR color (for water SSR)
-    ScopedTexture ssr_depth_snapshot_;  // DEPTH_COMPONENT24 snapshot of HDR depth (for water SSR)
+        // Auto-Exposure
+        ShaderProgram histogram_shader, exposure_shader;
+        ScopedSSBO histogram_ssbo, exposure_ssbo;
 
-    // T4 Ultra: DoF
-    ShaderProgram dof_shader_;
-    ScopedTexture dof_tex_;  // float texture for DoF result
+        // SSR
+        ShaderProgram ssr_shader;
+        ScopedTexture ssr_tex, ssr_color_snapshot, ssr_depth_snapshot;
 
-    // T4 Ultra: Puddle meshes (3 unique shapes)
-    static const int PUDDLE_COUNT = 3;
-    MeshHandle puddle_meshes_[PUDDLE_COUNT];
+        // DoF
+        ShaderProgram dof_shader;
+        ScopedTexture dof_tex;
+
+        // Puddles
+        static const int PUDDLE_COUNT = 3;
+        MeshHandle puddle_meshes[PUDDLE_COUNT];
+    } t4_;
 
     bool loadSharedMeshes(Renderer* r);
     bool loadSharedTextures(Renderer* r);

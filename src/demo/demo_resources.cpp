@@ -31,32 +31,7 @@ static float terrainHeightRaw(float x, float z) {
 DemoResources::DemoResources()
     : renderer_(nullptr)
     , prepared_(false)
-    , model_mesh_()
-    , ground_mesh_()
-    , rock_mesh_()
-    , grass_mesh_()
-    , particle_mesh_()
-    , model_bounding_radius_(0.0f)
-    , sky_shader_from_cache_(nullptr)
-    , sky_cache_()
-    , particle_cache_(nullptr)
-    , torch_cache_(nullptr)
-    , shadow_cache_(nullptr)
-    , shadow_depth_tex_()
-    , shadow_map_size_(0)
-    , bloom_extract_cache_(nullptr)
-    , bloom_blur_cache_(nullptr)
-    , bloom_composite_cache_(nullptr)
-    , bloom_strength_(0.0f)
-    , grass_cache_(nullptr)
-    , grass_t3_cache_(nullptr)
-    , ssao_cache_(nullptr)
-    , ssao_blur_cache_(nullptr)
 {
-    for (int i = 0; i < MAX_TIERS; i++) {
-        island_cache_[i] = nullptr;
-        fur_cache_[i] = nullptr;
-    }
 }
 
 DemoResources::~DemoResources() {
@@ -69,7 +44,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     // Sky mesh (vertex shader scales ×500 and uses pos.xyww trick)
     {
         MeshData sd = MeshGen::sphere(32, 16);
-        sky_mesh_.assign(r, r->createMesh(sd));
+        core_.sky_mesh.assign(r, r->createMesh(sd));
     }
 
     // Model (OBJ or fallback sphere)
@@ -91,8 +66,8 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
             md = MeshGen::sphere(64, 32);
             ObjLoader::normalize(md);
         }
-        model_bounding_radius_ = MeshGen::boundingRadius(md);
-        model_mesh_ = scene_meshes_.add(md);
+        core_.model_bounding_radius = MeshGen::boundingRadius(md);
+        core_.model_mesh = scene_meshes_.add(md);
     }
 
     // Ground plane
@@ -121,7 +96,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
             gd.vertices[i].pos.y = h;
         }
         MeshGen::recomputeNormals(gd);
-        ground_mesh_ = scene_meshes_.add(gd);
+        core_.ground_mesh = scene_meshes_.add(gd);
     }
 
     // Scattered rocks
@@ -131,7 +106,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         for (size_t i = 0; i < rocks.vertices.size(); i++) {
             rocks.vertices[i].pos.y += terrainHeightRaw(rocks.vertices[i].pos.x, rocks.vertices[i].pos.z);
         }
-        rock_mesh_ = scene_meshes_.add(rocks);
+        core_.rock_mesh = scene_meshes_.add(rocks);
         LOG_INF("Resources: generated %d scattered rocks (%d verts)",
                   25, static_cast<int>(rocks.vertices.size()));
     }
@@ -143,7 +118,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         for (size_t i = 0; i < grass.vertices.size(); i++) {
             grass.vertices[i].pos.y += terrainHeightRaw(grass.vertices[i].pos.x, grass.vertices[i].pos.z);
         }
-        grass_mesh_ = scene_meshes_.add(grass);
+        core_.grass_mesh = scene_meshes_.add(grass);
         LOG_INF("Resources: generated %d grass blades (%d verts)",
                   800, static_cast<int>(grass.vertices.size()));
     }
@@ -151,7 +126,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     // Billboard particles
     {
         MeshData particles = MeshGen::particleQuads(200, 6.0f, 2.0f, 317u);
-        particle_mesh_ = scene_meshes_.add(particles);
+        core_.particle_mesh = scene_meshes_.add(particles);
         LOG_INF("Resources: generated %d particle quads (%d verts)",
                   200, static_cast<int>(particles.vertices.size()));
     }
@@ -159,7 +134,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     // Grass blade template (for T2+ instancing)
     {
         MeshData blade = MeshGen::grassBlade();
-        grass_blade_mesh_ = scene_meshes_.add(blade);
+        grass_.blade_mesh = scene_meshes_.add(blade);
         LOG_INF("Resources: generated grass blade template (%d verts)",
                   static_cast<int>(blade.vertices.size()));
     }
@@ -167,7 +142,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
     // Pedestal: hexagonal frustum (larger, prominent base for bunny)
     {
         MeshData md = MeshGen::frustum(6, 1.1f, 1.4f, 1.1f);
-        pedestal_mesh_ = scene_meshes_.add(md);
+        sanctuary_.pedestal = scene_meshes_.add(md);
     }
 
     // Tall column: thick cylinder + base ring + capital (top ring)
@@ -178,7 +153,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         // Capital at column top: wider torus to bridge column (r=0.30) → arch tube (r=0.25)
         MeshData capital = MeshGen::torus(16, 8, 0.30f, 0.12f);
         MeshGen::appendMesh(md, capital, Mat4::translate(0.0f, 1.5f, 0.0f));  // at cylinder top
-        column_tall_mesh_ = scene_meshes_.add(md);
+        sanctuary_.column_tall = scene_meshes_.add(md);
     }
 
     // Column stump: shorter but thick cylinder + torus base
@@ -186,71 +161,71 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         MeshData md = MeshGen::cylinder(16, 1.2f, 0.30f);
         MeshData ring = MeshGen::torus(16, 8, 0.30f, 0.08f);
         MeshGen::appendMesh(md, ring, Mat4());
-        column_stump_mesh_ = scene_meshes_.add(md);
+        sanctuary_.column_stump = scene_meshes_.add(md);
     }
 
     // Arch: massive half torus (proper stone arch)
     {
         MeshData md = MeshGen::halfTorus(32, 12, 1.8f, 0.25f);
-        arch_mesh_ = scene_meshes_.add(md);
+        sanctuary_.arch = scene_meshes_.add(md);
     }
 
     // Fallen column segment (thick, lying on ground)
     {
         MeshData md = MeshGen::cylinder(16, 2.2f, 0.28f);
-        fallen_column_mesh_ = scene_meshes_.add(md);
+        sanctuary_.fallen_column = scene_meshes_.add(md);
     }
 
     // Stone slab (cube will be scaled in scene)
     {
         MeshData md = MeshGen::cube();
-        slab_mesh_ = scene_meshes_.add(md);
+        sanctuary_.slab = scene_meshes_.add(md);
     }
 
     // Stone sphere (low-poly for carved stone look)
     {
         MeshData md = MeshGen::sphere(16, 10);
-        stone_sphere_mesh_ = scene_meshes_.add(md);
+        sanctuary_.stone_sphere = scene_meshes_.add(md);
     }
 
     // Mossy block (cube, will be scaled)
     {
         MeshData md = MeshGen::cube();
-        mossy_block_mesh_ = scene_meshes_.add(md);
+        sanctuary_.mossy_block = scene_meshes_.add(md);
     }
 
     // Offering bowl (larger, visible)
     {
         MeshData md = MeshGen::torus(16, 10, 0.30f, 0.10f);
-        bowl_mesh_ = scene_meshes_.add(md);
+        sanctuary_.bowl = scene_meshes_.add(md);
     }
 
     // Obelisk (taller, thicker)
     {
         MeshData md = MeshGen::frustum(8, 2.5f, 0.15f, 0.05f);
-        obelisk_mesh_ = scene_meshes_.add(md);
+        sanctuary_.obelisk = scene_meshes_.add(md);
     }
 
     // Step rings (thicker tori)
     {
         MeshData md = MeshGen::torus(32, 6, 1.5f, 0.08f);
-        ring_inner_mesh_ = scene_meshes_.add(md);
+        sanctuary_.ring_inner = scene_meshes_.add(md);
     }
     {
         MeshData md = MeshGen::torus(32, 6, 2.2f, 0.08f);
-        ring_outer_mesh_ = scene_meshes_.add(md);
+        sanctuary_.ring_outer = scene_meshes_.add(md);
     }
 
     // Pond (large disc, replaces 3 small puddles)
     {
         MeshData md = MeshGen::disc(2.5f, 64, 0);
-        pond_mesh_ = scene_meshes_.add(md);
+        sanctuary_.pond = scene_meshes_.add(md);
     }
 
     // Torch billboard quads (3 quads for 3 point lights)
     {
         MeshData md = MeshGen::torchQuads(2);
-        torch_mesh_ = scene_meshes_.add(md);
+        sanctuary_.torch = scene_meshes_.add(md);
     }
 
     // Procedural tree meshes: 3 variants with different seeds for variety
@@ -258,7 +233,7 @@ bool DemoResources::loadSharedMeshes(Renderer* r) {
         unsigned int seeds[] = { 42, 137, 293 };
         for (int i = 0; i < 3; i++) {
             MeshData md = MeshGen::proceduralTree(3.0f, 0.15f, 1.2f, 10, seeds[i]);
-            tree_meshes_[i] = scene_meshes_.add(md);
+            sanctuary_.trees[i] = scene_meshes_.add(md);
         }
     }
 
@@ -272,7 +247,7 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
     {
         const int fur_tex_size = 128;
         std::vector<unsigned char> fur_pixels = generateFurTexture(fur_tex_size, 0.75f);
-        fur_tex_.assign(r, r->createTexture(fur_tex_size, fur_tex_size, 4, fur_pixels.data()));
+        core_.fur_tex.assign(r, r->createTexture(fur_tex_size, fur_tex_size, 4, fur_pixels.data()));
         LOG_INF("Resources: generated fur texture %dx%d", fur_tex_size, fur_tex_size);
     }
 
@@ -284,7 +259,7 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
             stbi_set_flip_vertically_on_load(1);
             unsigned char* pixels = stbi_load(mask_path.c_str(), &mw, &mh, &mc, 4);
             if (pixels && mw > 0 && mh > 0) {
-                fur_mask_tex_.assign(r, r->createTexture(mw, mh, 4, pixels));
+                core_.fur_mask_tex.assign(r, r->createTexture(mw, mh, 4, pixels));
                 LOG_INF("Resources: loaded fur mask %dx%d from %s", mw, mh, mask_path.c_str());
             }
             if (pixels) stbi_image_free(pixels);
@@ -296,8 +271,8 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
 
 bool DemoResources::compileSkyShader(Renderer* r) {
     ShaderFeatureSet feat = r->isCoreProfile() ? SF_GLSL_150 : SF_GLSL_120;
-    sky_shader_from_cache_ = shader_cache_.get("sky", feat, feat);
-    if (!sky_shader_from_cache_) {
+    core_.sky_shader_from_cache = shader_cache_.get("sky", feat, feat);
+    if (!core_.sky_shader_from_cache) {
         LOG_ERR("Resources: failed to create sky shader");
         return false;
     }
@@ -306,31 +281,31 @@ bool DemoResources::compileSkyShader(Renderer* r) {
 
 bool DemoResources::compileTierShaders(Renderer* r, int tier) {
     int idx = tier - 1;  // tier 1..4 -> index 0..3
-    if (idx < 0 || idx >= MAX_TIERS) return false;
+    if (idx < 0 || idx >= CoreRes::MAX_TIERS) return false;
 
     ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), r->isCoreProfile());
 
     // Sky shader per-tier (domain warp T2+, physical atmosphere T3+)
-    sky_cache_[idx] = shader_cache_.get("sky", feat, feat);
+    core_.sky_cache[idx] = shader_cache_.get("sky", feat, feat);
 
     if (tier == 1) {
         // Island T1 via cache
-        island_cache_[idx] = shader_cache_.get("island", feat, feat);
-        if (!island_cache_[idx]) {
+        core_.island_cache[idx] = shader_cache_.get("island", feat, feat);
+        if (!core_.island_cache[idx]) {
             LOG_ERR("Resources: failed to compile island shader via cache (tier 1)");
             return false;
         }
 
         // Fur T1 via cache
-        fur_cache_[idx] = shader_cache_.get("fur", feat, feat);
-        if (!fur_cache_[idx]) {
+        core_.fur_cache[idx] = shader_cache_.get("fur", feat, feat);
+        if (!core_.fur_cache[idx]) {
             LOG_ERR("Resources: failed to compile fur shader via cache");
             return false;
         }
 
         // Particle via cache
-        particle_cache_ = shader_cache_.get("particle", feat, feat);
-        if (!particle_cache_) {
+        core_.particle_cache = shader_cache_.get("particle", feat, feat);
+        if (!core_.particle_cache) {
             LOG_WRN("Resources: failed to compile particle shader via cache (non-critical)");
         }
 
@@ -339,22 +314,22 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
     if (tier == 2) {
         // Island T2 via cache
-        island_cache_[idx] = shader_cache_.get("island", feat, feat);
-        if (!island_cache_[idx]) {
+        core_.island_cache[idx] = shader_cache_.get("island", feat, feat);
+        if (!core_.island_cache[idx]) {
             LOG_ERR("Resources: failed to compile island shader via cache (tier 2)");
             return false;
         }
 
         // Fur T2 via cache (unified uber shader, features drive #ifdefs)
-        fur_cache_[idx] = shader_cache_.get("fur", feat, feat);
-        if (!fur_cache_[idx]) {
+        core_.fur_cache[idx] = shader_cache_.get("fur", feat, feat);
+        if (!core_.fur_cache[idx]) {
             LOG_ERR("Resources: failed to compile fur shader via cache (tier 2)");
             return false;
         }
 
         // Grass T2 via cache (unified uber shader)
-        grass_cache_ = shader_cache_.get("grass", feat, feat);
-        if (!grass_cache_) {
+        grass_.cache = shader_cache_.get("grass", feat, feat);
+        if (!grass_.cache) {
             LOG_WRN("Resources: failed to compile grass shader via cache (non-critical)");
         }
 
@@ -363,28 +338,28 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
     if (tier == 3) {
         // Island T3 via cache
-        island_cache_[idx] = shader_cache_.get("island", feat, feat);
-        if (!island_cache_[idx]) {
+        core_.island_cache[idx] = shader_cache_.get("island", feat, feat);
+        if (!core_.island_cache[idx]) {
             LOG_ERR("Resources: failed to compile island shader via cache (tier 3)");
             return false;
         }
 
         // Fur T3 via cache (unified uber shader, features drive #ifdefs)
-        fur_cache_[idx] = shader_cache_.get("fur", feat, feat);
-        if (!fur_cache_[idx]) {
+        core_.fur_cache[idx] = shader_cache_.get("fur", feat, feat);
+        if (!core_.fur_cache[idx]) {
             LOG_ERR("Resources: failed to compile fur shader via cache (tier 3)");
             return false;
         }
 
         // Grass T3 via cache (unified uber shader)
-        grass_t3_cache_ = shader_cache_.get("grass", feat, feat);
-        if (!grass_t3_cache_) {
+        grass_.t3_cache = shader_cache_.get("grass", feat, feat);
+        if (!grass_.t3_cache) {
             LOG_WRN("Resources: failed to compile grass shader via cache (non-critical)");
         }
 
         // Torch T3+ via cache (point light flame billboards)
-        torch_cache_ = shader_cache_.get("torch", feat, feat);
-        if (!torch_cache_) {
+        core_.torch_cache = shader_cache_.get("torch", feat, feat);
+        if (!core_.torch_cache) {
             LOG_WRN("Resources: failed to compile torch shader via cache (non-critical)");
         }
 
@@ -436,7 +411,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         {
             std::string vs = ShaderLoader::load("gl4/island_t4.vert");
             std::string fs = ShaderLoader::load("gl4/island_t4.frag");
-            if (!island_shaders_[idx].create(r, vs.c_str(), fs.c_str())) {
+            if (!core_.island_shaders[idx].create(r, vs.c_str(), fs.c_str())) {
                 LOG_ERR("Resources: failed to create PBR island shader (tier 4)");
                 return false;
             }
@@ -445,7 +420,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         {
             std::string vs = ShaderLoader::load("gl4/fur_t4.vert");
             std::string fs = ShaderLoader::load("gl4/fur_t4.frag");
-            if (!fur_shaders_[idx].create(r, vs.c_str(), fs.c_str())) {
+            if (!core_.fur_shaders[idx].create(r, vs.c_str(), fs.c_str())) {
                 LOG_ERR("Resources: failed to create PBR fur shader (tier 4)");
                 return false;
             }
@@ -454,7 +429,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         {
             std::string vs = ShaderLoader::load("gl4/grass_t4.vert");
             std::string fs = ShaderLoader::load("gl4/grass_t4.frag");
-            if (!grass_shader_t4_.create(r, vs.c_str(), fs.c_str())) {
+            if (!t4_.grass_shader_t4.create(r, vs.c_str(), fs.c_str())) {
                 LOG_WRN("Resources: failed to create PBR grass shader (tier 4)");
             }
         }
@@ -469,7 +444,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 ShaderHandle sh = g4->createTessShader(vs.c_str(), tcs.c_str(),
                                                        tes.c_str(), fs.c_str());
                 if (sh != INVALID_SHADER) {
-                    tess_shader_.adopt(r, sh);
+                    t4_.tess_shader.adopt(r, sh);
                     LOG_INF("Resources: tessellation shader created");
                 } else {
                     LOG_WRN("Resources: failed to create tessellation shader");
@@ -483,7 +458,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
                 std::string cs = ShaderLoader::load("gl4/particles_t4.comp");
                 ShaderHandle sh = cf->createComputeShader(cs.c_str());
                 if (sh != INVALID_SHADER) {
-                    compute_particle_shader_.adopt(r, sh);
+                    t4_.compute_particle_shader.adopt(r, sh);
                     LOG_INF("Resources: compute particle shader created");
                 } else {
                     LOG_WRN("Resources: failed to create compute particle shader");
@@ -494,7 +469,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         {
             std::string vs = ShaderLoader::load("gl4/particle_render_t4.vert");
             std::string fs = ShaderLoader::load("gl4/particle_render_t4.frag");
-            if (!particle_render_shader_.create(r, vs.c_str(), fs.c_str())) {
+            if (!t4_.particle_render_shader.create(r, vs.c_str(), fs.c_str())) {
                 LOG_WRN("Resources: failed to create particle render shader");
             }
         }
@@ -502,7 +477,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         {
             std::string vs = ShaderLoader::load("gl4/volumetric_fog_t4.vert");
             std::string fs = ShaderLoader::load("gl4/volumetric_fog_t4.frag");
-            if (!volumetric_fog_shader_.create(r, vs.c_str(), fs.c_str())) {
+            if (!t4_.volumetric_fog_shader.create(r, vs.c_str(), fs.c_str())) {
                 LOG_WRN("Resources: failed to create volumetric fog shader");
             }
         }
@@ -510,7 +485,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
         {
             std::string vs = ShaderLoader::load("gl4/tone_map_t4.vert");
             std::string fs = ShaderLoader::load("gl4/tone_map_t4.frag");
-            if (!tone_map_shader_.create(r, vs.c_str(), fs.c_str())) {
+            if (!t4_.tone_map_shader.create(r, vs.c_str(), fs.c_str())) {
                 LOG_WRN("Resources: failed to create tone map shader");
             }
         }
@@ -522,29 +497,29 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 }
 
 bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
-    shadow_map_size_ = shadow_size;
+    shadow_.map_size = shadow_size;
     // Shadow depth shader via cache (T2+ feature set)
     {
         ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile());
-        shadow_cache_ = shader_cache_.get("shadow_depth", feat, feat);
-        if (!shadow_cache_) {
+        shadow_.cache = shader_cache_.get("shadow_depth", feat, feat);
+        if (!shadow_.cache) {
             LOG_WRN("Resources: failed to compile shadow_depth shader via cache");
             return false;
         }
     }
 
     // Shadow depth render target (size set by caller)
-    RenderTargetHandle srt = r->createDepthRenderTarget(shadow_map_size_, shadow_map_size_);
+    RenderTargetHandle srt = r->createDepthRenderTarget(shadow_.map_size, shadow_.map_size);
     if (srt == INVALID_RENDER_TARGET) {
         LOG_WRN("Resources: failed to create shadow depth FBO");
-        shadow_cache_ = nullptr;
-        shadow_map_size_ = 0;
+        shadow_.cache = nullptr;
+        shadow_.map_size = 0;
         return false;
     }
-    shadow_rt_.assign(r, srt);
-    shadow_depth_tex_ = r->getDepthTexture(srt);
+    shadow_.rt.assign(r, srt);
+    shadow_.depth_tex = r->getDepthTexture(srt);
 
-    LOG_INF("Resources: shadow map %dx%d created", shadow_map_size_, shadow_map_size_);
+    LOG_INF("Resources: shadow map %dx%d created", shadow_.map_size, shadow_.map_size);
     return true;
 }
 
@@ -552,26 +527,26 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
     ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile());
 
     // Bloom extract shader via cache
-    bloom_extract_cache_ = shader_cache_.get("bloom_extract", feat, feat);
-    if (!bloom_extract_cache_) {
+    bloom_.extract_cache = shader_cache_.get("bloom_extract", feat, feat);
+    if (!bloom_.extract_cache) {
         LOG_WRN("Resources: failed to compile bloom_extract shader via cache");
         return false;
     }
 
     // Bloom blur shader via cache
-    bloom_blur_cache_ = shader_cache_.get("bloom_blur", feat, feat);
-    if (!bloom_blur_cache_) {
+    bloom_.blur_cache = shader_cache_.get("bloom_blur", feat, feat);
+    if (!bloom_.blur_cache) {
         LOG_WRN("Resources: failed to compile bloom_blur shader via cache");
-        bloom_extract_cache_ = nullptr;
+        bloom_.extract_cache = nullptr;
         return false;
     }
 
     // Bloom composite shader via cache
-    bloom_composite_cache_ = shader_cache_.get("bloom_composite", feat, feat);
-    if (!bloom_composite_cache_) {
+    bloom_.composite_cache = shader_cache_.get("bloom_composite", feat, feat);
+    if (!bloom_.composite_cache) {
         LOG_WRN("Resources: failed to compile bloom_composite shader via cache");
-        bloom_extract_cache_ = nullptr;
-        bloom_blur_cache_ = nullptr;
+        bloom_.extract_cache = nullptr;
+        bloom_.blur_cache = nullptr;
         return false;
     }
 
@@ -581,12 +556,12 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
         MeshHandle qh = r->createMesh(qd);
         if (qh == MeshHandle()) {
             LOG_WRN("Resources: failed to create fullscreen quad mesh");
-            bloom_extract_cache_ = nullptr;
-            bloom_blur_cache_ = nullptr;
-            bloom_composite_cache_ = nullptr;
+            bloom_.extract_cache = nullptr;
+            bloom_.blur_cache = nullptr;
+            bloom_.composite_cache = nullptr;
             return false;
         }
-        fullscreen_quad_.assign(r, qh);
+        bloom_.fullscreen_quad.assign(r, qh);
     }
 
     // Scene FBO (full resolution, color + sampleable depth for SSAO)
@@ -594,13 +569,13 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
         RenderTargetHandle srt = r->createRenderTargetWithDepth(render_w, render_h);
         if (srt == INVALID_RENDER_TARGET) {
             LOG_WRN("Resources: failed to create scene FBO for bloom");
-            bloom_extract_cache_ = nullptr;
-            bloom_blur_cache_ = nullptr;
-            bloom_composite_cache_ = nullptr;
-            fullscreen_quad_.reset();
+            bloom_.extract_cache = nullptr;
+            bloom_.blur_cache = nullptr;
+            bloom_.composite_cache = nullptr;
+            bloom_.fullscreen_quad.reset();
             return false;
         }
-        scene_rt_.assign(r, srt);
+        bloom_.scene_rt.assign(r, srt);
     }
 
     // Bright extract FBO (half resolution, color only)
@@ -613,14 +588,14 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
         RenderTargetHandle brt = r->createRenderTarget(bw, bh);
         if (brt == INVALID_RENDER_TARGET) {
             LOG_WRN("Resources: failed to create bright FBO for bloom");
-            bloom_extract_cache_ = nullptr;
-            bloom_blur_cache_ = nullptr;
-            bloom_composite_cache_ = nullptr;
-            fullscreen_quad_.reset();
-            scene_rt_.reset();
+            bloom_.extract_cache = nullptr;
+            bloom_.blur_cache = nullptr;
+            bloom_.composite_cache = nullptr;
+            bloom_.fullscreen_quad.reset();
+            bloom_.scene_rt.reset();
             return false;
         }
-        bright_rt_.assign(r, brt);
+        bloom_.bright_rt.assign(r, brt);
     }
 
     // Blur FBO (half resolution, color only)
@@ -628,18 +603,18 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
         RenderTargetHandle blrt = r->createRenderTarget(bw, bh);
         if (blrt == INVALID_RENDER_TARGET) {
             LOG_WRN("Resources: failed to create blur FBO for bloom");
-            bloom_extract_cache_ = nullptr;
-            bloom_blur_cache_ = nullptr;
-            bloom_composite_cache_ = nullptr;
-            fullscreen_quad_.reset();
-            scene_rt_.reset();
-            bright_rt_.reset();
+            bloom_.extract_cache = nullptr;
+            bloom_.blur_cache = nullptr;
+            bloom_.composite_cache = nullptr;
+            bloom_.fullscreen_quad.reset();
+            bloom_.scene_rt.reset();
+            bloom_.bright_rt.reset();
             return false;
         }
-        blur_rt_.assign(r, blrt);
+        bloom_.blur_rt.assign(r, blrt);
     }
 
-    bloom_strength_ = 0.3f;
+    bloom_.strength = 0.3f;
 
     LOG_INF("Resources: bloom FBOs created (scene %dx%d, bloom %dx%d)",
               render_w, render_h, bw, bh);
@@ -650,17 +625,17 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
     ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile());
 
     // SSAO shader via cache
-    ssao_cache_ = shader_cache_.get("ssao", feat, feat);
-    if (!ssao_cache_) {
+    ssao_.cache = shader_cache_.get("ssao", feat, feat);
+    if (!ssao_.cache) {
         LOG_WRN("Resources: failed to compile ssao shader via cache");
         return false;
     }
 
     // SSAO blur shader via cache
-    ssao_blur_cache_ = shader_cache_.get("ssao_blur", feat, feat);
-    if (!ssao_blur_cache_) {
+    ssao_.blur_cache = shader_cache_.get("ssao_blur", feat, feat);
+    if (!ssao_.blur_cache) {
         LOG_WRN("Resources: failed to compile ssao_blur shader via cache");
-        ssao_cache_ = nullptr;
+        ssao_.cache = nullptr;
         return false;
     }
 
@@ -674,23 +649,23 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
         RenderTargetHandle srt = r->createRenderTarget(sw, sh);
         if (srt == INVALID_RENDER_TARGET) {
             LOG_WRN("Resources: failed to create SSAO FBO");
-            ssao_cache_ = nullptr;
-            ssao_blur_cache_ = nullptr;
+            ssao_.cache = nullptr;
+            ssao_.blur_cache = nullptr;
             return false;
         }
-        ssao_rt_.assign(r, srt);
+        ssao_.rt.assign(r, srt);
     }
 
     {
         RenderTargetHandle brt = r->createRenderTarget(sw, sh);
         if (brt == INVALID_RENDER_TARGET) {
             LOG_WRN("Resources: failed to create SSAO blur FBO");
-            ssao_cache_ = nullptr;
-            ssao_blur_cache_ = nullptr;
-            ssao_rt_.reset();
+            ssao_.cache = nullptr;
+            ssao_.blur_cache = nullptr;
+            ssao_.rt.reset();
             return false;
         }
-        ssao_blur_rt_.assign(r, brt);
+        ssao_.blur_rt.assign(r, brt);
     }
 
     // 4x4 noise texture for kernel rotation
@@ -707,24 +682,24 @@ bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h)
         TextureHandle nt = r->createTexture(4, 4, 3, noise);
         if (nt == INVALID_TEXTURE) {
             LOG_WRN("Resources: failed to create SSAO noise texture");
-            ssao_cache_ = nullptr;
-            ssao_blur_cache_ = nullptr;
-            ssao_rt_.reset();
-            ssao_blur_rt_.reset();
+            ssao_.cache = nullptr;
+            ssao_.blur_cache = nullptr;
+            ssao_.rt.reset();
+            ssao_.blur_rt.reset();
             return false;
         }
-        ssao_noise_tex_.assign(r, nt);
+        ssao_.noise_tex.assign(r, nt);
     }
 
     // Get depth texture from scene FBO
-    scene_depth_tex_ = r->getRTDepthTexture(scene_rt_.get());
-    if (scene_depth_tex_ == INVALID_TEXTURE) {
+    ssao_.scene_depth_tex = r->getRTDepthTexture(bloom_.scene_rt.get());
+    if (ssao_.scene_depth_tex == INVALID_TEXTURE) {
         LOG_WRN("Resources: scene FBO has no sampleable depth texture, SSAO disabled");
-        ssao_cache_ = nullptr;
-        ssao_blur_cache_ = nullptr;
-        ssao_rt_.reset();
-        ssao_blur_rt_.reset();
-        ssao_noise_tex_.reset();
+        ssao_.cache = nullptr;
+        ssao_.blur_cache = nullptr;
+        ssao_.rt.reset();
+        ssao_.blur_rt.reset();
+        ssao_.noise_tex.reset();
         return false;
     }
 
@@ -736,15 +711,15 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
     ComputeFeatures* cf = r->features<ComputeFeatures>();
 
     // Create particle SSBO
-    if (cf && cf->hasCompute() && compute_particle_shader_) {
-        compute_particle_count_ = 1024;
+    if (cf && cf->hasCompute() && t4_.compute_particle_shader) {
+        t4_.compute_particle_count = 1024;
         int particle_size = static_cast<int>(12 * sizeof(float)); // 3 vec4s
-        BufferHandle ssbo = cf->createSSBO(compute_particle_count_ * particle_size);
+        BufferHandle ssbo = cf->createSSBO(t4_.compute_particle_count * particle_size);
         if (ssbo != INVALID_BUFFER) {
             // Initialize particle data
-            std::vector<float> init_data(static_cast<size_t>(compute_particle_count_) * 12);
+            std::vector<float> init_data(static_cast<size_t>(t4_.compute_particle_count) * 12);
             unsigned int seed = 12345;
-            for (int i = 0; i < compute_particle_count_; i++) {
+            for (int i = 0; i < t4_.compute_particle_count; i++) {
                 size_t base = static_cast<size_t>(i) * 12;
                 seed = seed * 1103515245u + 12345u;
                 float rx = (static_cast<float>((seed >> 16) & 0xFFFF) / 65535.0f - 0.5f) * 6.0f;
@@ -772,9 +747,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 init_data[base + 10] = 0.2f;
                 init_data[base + 11] = 1.0f;
             }
-            cf->updateSSBO(ssbo, init_data.data(), compute_particle_count_ * particle_size);
-            particle_ssbo_.assign(renderer_, ssbo);
-            LOG_INF("Resources: compute particle SSBO created (%d particles)", compute_particle_count_);
+            cf->updateSSBO(ssbo, init_data.data(), t4_.compute_particle_count * particle_size);
+            t4_.particle_ssbo.assign(renderer_, ssbo);
+            LOG_INF("Resources: compute particle SSBO created (%d particles)", t4_.compute_particle_count);
         }
     }
 
@@ -782,9 +757,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
     {
         RenderTargetHandle hrt = r->createFloatRenderTargetWithDepth(render_w, render_h);
         if (hrt != INVALID_RENDER_TARGET) {
-            hdr_scene_rt_.assign(r, hrt);
-            hdr_depth_tex_ = r->getRTDepthTexture(hrt);
-            hdr_color_tex_ = r->getRTColorTexture(hrt);
+            t4_.hdr_scene_rt.assign(r, hrt);
+            t4_.hdr_depth_tex = r->getRTDepthTexture(hrt);
+            t4_.hdr_color_tex = r->getRTColorTexture(hrt);
             LOG_INF("Resources: HDR scene FBO created %dx%d", render_w, render_h);
         } else {
             LOG_WRN("Resources: failed to create HDR FBO, falling back to LDR");
@@ -798,7 +773,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (bh < 1) bh = 1;
         RenderTargetHandle brt = r->createFloatRenderTarget(bw, bh);
         if (brt != INVALID_RENDER_TARGET) {
-            hdr_bright_rt_.assign(r, brt);
+            t4_.hdr_bright_rt.assign(r, brt);
         }
     }
 
@@ -809,9 +784,9 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (fh < 1) fh = 1;
         RenderTargetHandle frt = r->createFloatRenderTarget(fw, fh);
         if (frt != INVALID_RENDER_TARGET) {
-            fog_rt_.assign(r, frt);
-            fog_w_ = fw;
-            fog_h_ = fh;
+            t4_.fog_rt.assign(r, frt);
+            t4_.fog_w = fw;
+            t4_.fog_h = fh;
             LOG_INF("Resources: HDR fog FBO created %dx%d", fw, fh);
         }
     }
@@ -824,7 +799,7 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (!gtao_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(gtao_src.c_str());
             if (sh != INVALID_SHADER) {
-                gtao_shader_.adopt(r, sh);
+                t4_.gtao_shader.adopt(r, sh);
                 LOG_INF("Resources: GTAO compute shader created");
             }
         }
@@ -832,28 +807,28 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (!gtao_blur_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(gtao_blur_src.c_str());
             if (sh != INVALID_SHADER) {
-                gtao_blur_shader_.adopt(r, sh);
+                t4_.gtao_blur_shader.adopt(r, sh);
                 LOG_INF("Resources: GTAO blur compute shader created");
             }
         }
 
-        if (gtao_shader_ && gtao_blur_shader_) {
+        if (t4_.gtao_shader && t4_.gtao_blur_shader) {
             TextureHandle ao_tex = r->createFloatTexture(render_w, render_h);
             if (ao_tex != INVALID_TEXTURE) {
-                gtao_tex_.assign(r, ao_tex);
+                t4_.gtao_tex.assign(r, ao_tex);
             }
             TextureHandle ao_blur = r->createFloatTexture(render_w, render_h);
             if (ao_blur != INVALID_TEXTURE) {
-                gtao_blur_tex_.assign(r, ao_blur);
+                t4_.gtao_blur_tex.assign(r, ao_blur);
             }
-            if (gtao_tex_ && gtao_blur_tex_) {
+            if (t4_.gtao_tex && t4_.gtao_blur_tex) {
                 LOG_INF("Resources: GTAO textures created %dx%d", render_w, render_h);
             } else {
                 LOG_WRN("Resources: failed to create GTAO textures");
-                gtao_shader_.reset();
-                gtao_blur_shader_.reset();
-                gtao_tex_.reset();
-                gtao_blur_tex_.reset();
+                t4_.gtao_shader.reset();
+                t4_.gtao_blur_shader.reset();
+                t4_.gtao_tex.reset();
+                t4_.gtao_blur_tex.reset();
             }
         }
     }
@@ -864,26 +839,26 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (!bloom_down_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(bloom_down_src.c_str());
             if (sh != INVALID_SHADER) {
-                bloom_down_compute_.adopt(r, sh);
+                t4_.bloom_down_compute.adopt(r, sh);
             }
         }
         std::string bloom_up_src = ShaderLoader::load("gl4/bloom_upsample_t4.comp");
         if (!bloom_up_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(bloom_up_src.c_str());
             if (sh != INVALID_SHADER) {
-                bloom_up_compute_.adopt(r, sh);
+                t4_.bloom_up_compute.adopt(r, sh);
             }
         }
 
-        if (bloom_down_compute_ && bloom_up_compute_) {
+        if (t4_.bloom_down_compute && t4_.bloom_up_compute) {
             int mw = render_w / 2, mh = render_h / 2;
             bool all_ok = true;
-            for (int i = 0; i < BLOOM_MIP_COUNT; i++) {
+            for (int i = 0; i < T4Res::BLOOM_MIP_COUNT; i++) {
                 if (mw < 1) mw = 1;
                 if (mh < 1) mh = 1;
                 TextureHandle mt = r->createFloatTexture(mw, mh);
                 if (mt != INVALID_TEXTURE) {
-                    bloom_mips_[i].assign(r, mt);
+                    t4_.bloom_mips[i].assign(r, mt);
                 } else {
                     all_ok = false;
                     break;
@@ -892,12 +867,12 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
                 mh /= 2;
             }
             if (all_ok) {
-                LOG_INF("Resources: compute bloom mip chain created (%d levels)", BLOOM_MIP_COUNT);
+                LOG_INF("Resources: compute bloom mip chain created (%d levels)", T4Res::BLOOM_MIP_COUNT);
             } else {
                 LOG_WRN("Resources: failed to create bloom mip chain");
-                bloom_down_compute_.reset();
-                bloom_up_compute_.reset();
-                for (int i = 0; i < BLOOM_MIP_COUNT; i++) bloom_mips_[i].reset();
+                t4_.bloom_down_compute.reset();
+                t4_.bloom_up_compute.reset();
+                for (int i = 0; i < T4Res::BLOOM_MIP_COUNT; i++) t4_.bloom_mips[i].reset();
             }
         }
     }
@@ -908,25 +883,25 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (!hist_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(hist_src.c_str());
             if (sh != INVALID_SHADER) {
-                histogram_shader_.adopt(r, sh);
+                t4_.histogram_shader.adopt(r, sh);
             }
         }
         std::string exp_src = ShaderLoader::load("gl4/exposure_t4.comp");
         if (!exp_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(exp_src.c_str());
             if (sh != INVALID_SHADER) {
-                exposure_shader_.adopt(r, sh);
+                t4_.exposure_shader.adopt(r, sh);
             }
         }
 
-        if (histogram_shader_ && exposure_shader_) {
+        if (t4_.histogram_shader && t4_.exposure_shader) {
             // 256 bins * 4 bytes = 1024 bytes
             BufferHandle hist = cf->createSSBO(static_cast<int>(256 * sizeof(unsigned int)));
             if (hist != INVALID_BUFFER) {
                 // Zero-initialize histogram
                 std::vector<unsigned int> zeros(256, 0);
                 cf->updateSSBO(hist, zeros.data(), static_cast<int>(256 * sizeof(unsigned int)));
-                histogram_ssbo_.assign(renderer_, hist);
+                t4_.histogram_ssbo.assign(renderer_, hist);
             }
             // Single float for exposure
             BufferHandle exp_buf = cf->createSSBO(static_cast<int>(sizeof(float)),
@@ -934,14 +909,14 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
             if (exp_buf != INVALID_BUFFER) {
                 float init_exp = 1.0f;
                 cf->updateSSBO(exp_buf, &init_exp, static_cast<int>(sizeof(float)));
-                exposure_ssbo_.assign(renderer_, exp_buf);
+                t4_.exposure_ssbo.assign(renderer_, exp_buf);
             }
-            if (histogram_ssbo_ && exposure_ssbo_) {
+            if (t4_.histogram_ssbo && t4_.exposure_ssbo) {
                 LOG_INF("Resources: auto-exposure SSBOs created");
             } else {
                 LOG_WRN("Resources: failed to create exposure SSBOs");
-                histogram_shader_.reset();
-                exposure_shader_.reset();
+                t4_.histogram_shader.reset();
+                t4_.exposure_shader.reset();
             }
         }
     }
@@ -952,10 +927,10 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (!ssr_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(ssr_src.c_str());
             if (sh != INVALID_SHADER) {
-                ssr_shader_.adopt(r, sh);
+                t4_.ssr_shader.adopt(r, sh);
                 TextureHandle st = r->createFloatTexture(render_w, render_h);
                 if (st != INVALID_TEXTURE) {
-                    ssr_tex_.assign(r, st);
+                    t4_.ssr_tex.assign(r, st);
                     LOG_INF("Resources: SSR compute shader + texture created");
                 }
             }
@@ -966,13 +941,13 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
     if (g4) {
         TextureHandle col_snap = g4->createFloat16Texture(render_w, render_h);
         if (col_snap != INVALID_TEXTURE) {
-            ssr_color_snapshot_.assign(r, col_snap);
+            t4_.ssr_color_snapshot.assign(r, col_snap);
         }
         TextureHandle depth_snap = g4->createDepthTexture(render_w, render_h);
         if (depth_snap != INVALID_TEXTURE) {
-            ssr_depth_snapshot_.assign(r, depth_snap);
+            t4_.ssr_depth_snapshot.assign(r, depth_snap);
         }
-        if (ssr_color_snapshot_ && ssr_depth_snapshot_) {
+        if (t4_.ssr_color_snapshot && t4_.ssr_depth_snapshot) {
             LOG_INF("Resources: SSR snapshot textures created (RGBA16F + DEPTH24) %dx%d",
                     render_w, render_h);
         }
@@ -984,10 +959,10 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
         if (!dof_src.empty()) {
             ShaderHandle sh = cf->createComputeShader(dof_src.c_str());
             if (sh != INVALID_SHADER) {
-                dof_shader_.adopt(r, sh);
+                t4_.dof_shader.adopt(r, sh);
                 TextureHandle dt = r->createFloatTexture(render_w, render_h);
                 if (dt != INVALID_TEXTURE) {
-                    dof_tex_.assign(r, dt);
+                    t4_.dof_tex.assign(r, dt);
                     LOG_INF("Resources: DoF compute shader + texture created");
                 }
             }
@@ -995,12 +970,12 @@ bool DemoResources::createT4Resources(Renderer* r, int render_w, int render_h) {
     }
 
     // Puddle disc meshes (3 unique organic shapes)
-    for (int i = 0; i < PUDDLE_COUNT; i++) {
+    for (int i = 0; i < T4Res::PUDDLE_COUNT; i++) {
         MeshData pd = MeshGen::disc(0.8f, 48, static_cast<unsigned int>(i));
-        puddle_meshes_[i] = scene_meshes_.add(pd);
+        t4_.puddle_meshes[i] = scene_meshes_.add(pd);
     }
-    if (puddle_meshes_[0] != MeshHandle()) {
-        LOG_INF("Resources: %d puddle meshes created", PUDDLE_COUNT);
+    if (t4_.puddle_meshes[0] != MeshHandle()) {
+        LOG_INF("Resources: %d puddle meshes created", T4Res::PUDDLE_COUNT);
     }
 
     return true;
@@ -1011,20 +986,20 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     renderer_ = r;
 
     // Reset all cache pointers
-    sky_shader_from_cache_ = nullptr;
-    particle_cache_ = nullptr;
-    torch_cache_ = nullptr;
-    shadow_cache_ = nullptr;
-    bloom_extract_cache_ = nullptr;
-    bloom_blur_cache_ = nullptr;
-    bloom_composite_cache_ = nullptr;
-    grass_cache_ = nullptr;
-    grass_t3_cache_ = nullptr;
-    ssao_cache_ = nullptr;
-    ssao_blur_cache_ = nullptr;
-    for (int i = 0; i < MAX_TIERS; i++) {
-        island_cache_[i] = nullptr;
-        fur_cache_[i] = nullptr;
+    core_.sky_shader_from_cache = nullptr;
+    core_.particle_cache = nullptr;
+    core_.torch_cache = nullptr;
+    shadow_.cache = nullptr;
+    bloom_.extract_cache = nullptr;
+    bloom_.blur_cache = nullptr;
+    bloom_.composite_cache = nullptr;
+    grass_.cache = nullptr;
+    grass_.t3_cache = nullptr;
+    ssao_.cache = nullptr;
+    ssao_.blur_cache = nullptr;
+    for (int i = 0; i < CoreRes::MAX_TIERS; i++) {
+        core_.island_cache[i] = nullptr;
+        core_.fur_cache[i] = nullptr;
     }
 
     shader_cache_.init(r);
@@ -1049,7 +1024,7 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     }
 
     // Compile higher tier shaders (non-critical: fall back to tier 1)
-    for (int t = 2; t <= max_tier && t <= MAX_TIERS; t++) {
+    for (int t = 2; t <= max_tier && t <= CoreRes::MAX_TIERS; t++) {
         compileTierShaders(r, t);
     }
 
@@ -1072,7 +1047,7 @@ bool DemoResources::prepare(Renderer* r, int max_tier, int render_w, int render_
     }
 
     // Create SSAO resources for T2+ (non-critical, requires bloom's scene FBO with depth tex)
-    if (max_tier >= 2 && scene_rt_ && render_w > 0 && render_h > 0) {
+    if (max_tier >= 2 && bloom_.scene_rt && render_w > 0 && render_h > 0) {
         createSSAOResources(r, render_w, render_h);
     }
 
@@ -1094,16 +1069,16 @@ int DemoResources::validateShaders(int max_tier) {
         bool valid = true;
 
         // Island shader: T1-T3 use cache, T4 uses legacy owned ShaderProgram
-        bool has_island = (t <= 3) ? (island_cache_[idx] != nullptr)
-                                   : static_cast<bool>(island_shaders_[idx]);
+        bool has_island = (t <= 3) ? (core_.island_cache[idx] != nullptr)
+                                   : static_cast<bool>(core_.island_shaders[idx]);
         if (!has_island) {
             LOG_WRN("Shader validation: tier %d missing island shader", t);
             valid = false;
         }
 
-        // Sky shader: per-tier cache, with fallback to sky_shader_from_cache_
-        bool has_sky = (sky_cache_[idx] != nullptr);
-        if (!has_sky && t == 1 && sky_shader_from_cache_)
+        // Sky shader: per-tier cache, with fallback to sky_shader_from_cache
+        bool has_sky = (core_.sky_cache[idx] != nullptr);
+        if (!has_sky && t == 1 && core_.sky_shader_from_cache)
             has_sky = true;
         if (!has_sky) {
             LOG_WRN("Shader validation: tier %d missing sky shader", t);
@@ -1111,8 +1086,8 @@ int DemoResources::validateShaders(int max_tier) {
         }
 
         // Fur shader: same pattern as island
-        bool has_fur = (t <= 3) ? (fur_cache_[idx] != nullptr)
-                                : static_cast<bool>(fur_shaders_[idx]);
+        bool has_fur = (t <= 3) ? (core_.fur_cache[idx] != nullptr)
+                                : static_cast<bool>(core_.fur_shaders[idx]);
         if (!has_fur) {
             LOG_WRN("Shader validation: tier %d missing fur shader", t);
             valid = false;
@@ -1133,99 +1108,99 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
     // Use per-tier sky shader (with domain warp / physical atmosphere), fallback to base
     {
         int si = static_cast<int>(tier) - 1;
-        if (si >= 0 && si < MAX_TIERS && sky_cache_[si])
-            view.core.sky_shader = sky_cache_[si];
+        if (si >= 0 && si < CoreRes::MAX_TIERS && core_.sky_cache[si])
+            view.core.sky_shader = core_.sky_cache[si];
         else
-            view.core.sky_shader = sky_shader_from_cache_ ? sky_shader_from_cache_ : &sky_shader_;
+            view.core.sky_shader = core_.sky_shader_from_cache ? core_.sky_shader_from_cache : &core_.sky_shader;
     }
-    view.core.model_mesh = model_mesh_;
-    view.core.sky_mesh = sky_mesh_.get();
-    view.core.ground_mesh = ground_mesh_;
-    view.core.rock_mesh = rock_mesh_;
-    view.core.grass_mesh = grass_mesh_;
-    view.core.particle_mesh = particle_mesh_;
-    view.core.fur_tex = fur_tex_.get();
-    view.core.fur_mask_tex = fur_mask_tex_.get();
-    view.core.pedestal_mesh = pedestal_mesh_;
-    view.core.column_tall_mesh = column_tall_mesh_;
-    view.core.column_stump_mesh = column_stump_mesh_;
-    view.core.arch_mesh = arch_mesh_;
-    view.core.fallen_column_mesh = fallen_column_mesh_;
-    view.core.slab_mesh = slab_mesh_;
-    view.core.stone_sphere_mesh = stone_sphere_mesh_;
-    view.core.mossy_block_mesh = mossy_block_mesh_;
-    view.core.bowl_mesh = bowl_mesh_;
-    view.core.obelisk_mesh = obelisk_mesh_;
-    view.core.ring_inner_mesh = ring_inner_mesh_;
-    view.core.ring_outer_mesh = ring_outer_mesh_;
-    view.core.pond_mesh = pond_mesh_;
-    view.core.torch_mesh = torch_mesh_;
-    view.core.torch_shader = torch_cache_;
-    for (int i = 0; i < 3; i++) view.core.tree_meshes[i] = tree_meshes_[i];
-    view.core.model_bounding_radius = model_bounding_radius_;
-    view.core.particle_shader = particle_cache_ ? particle_cache_
-                               : (particle_shader_ ? &particle_shader_ : nullptr);
+    view.core.model_mesh = core_.model_mesh;
+    view.core.sky_mesh = core_.sky_mesh.get();
+    view.core.ground_mesh = core_.ground_mesh;
+    view.core.rock_mesh = core_.rock_mesh;
+    view.core.grass_mesh = core_.grass_mesh;
+    view.core.particle_mesh = core_.particle_mesh;
+    view.core.fur_tex = core_.fur_tex.get();
+    view.core.fur_mask_tex = core_.fur_mask_tex.get();
+    view.core.pedestal_mesh = sanctuary_.pedestal;
+    view.core.column_tall_mesh = sanctuary_.column_tall;
+    view.core.column_stump_mesh = sanctuary_.column_stump;
+    view.core.arch_mesh = sanctuary_.arch;
+    view.core.fallen_column_mesh = sanctuary_.fallen_column;
+    view.core.slab_mesh = sanctuary_.slab;
+    view.core.stone_sphere_mesh = sanctuary_.stone_sphere;
+    view.core.mossy_block_mesh = sanctuary_.mossy_block;
+    view.core.bowl_mesh = sanctuary_.bowl;
+    view.core.obelisk_mesh = sanctuary_.obelisk;
+    view.core.ring_inner_mesh = sanctuary_.ring_inner;
+    view.core.ring_outer_mesh = sanctuary_.ring_outer;
+    view.core.pond_mesh = sanctuary_.pond;
+    view.core.torch_mesh = sanctuary_.torch;
+    view.core.torch_shader = core_.torch_cache;
+    for (int i = 0; i < 3; i++) view.core.tree_meshes[i] = sanctuary_.trees[i];
+    view.core.model_bounding_radius = core_.model_bounding_radius;
+    view.core.particle_shader = core_.particle_cache ? core_.particle_cache
+                               : (core_.particle_shader ? &core_.particle_shader : nullptr);
 
     int idx = static_cast<int>(tier) - 1;
-    if (idx < 0 || idx >= MAX_TIERS) idx = 0;
+    if (idx < 0 || idx >= CoreRes::MAX_TIERS) idx = 0;
 
     // Use cached tier-specific shaders (T1-T3), fall back to legacy owned (T4), then tier 1
-    if (island_cache_[idx]) {
-        view.core.island_shader = island_cache_[idx];
-    } else if (island_shaders_[idx]) {
-        view.core.island_shader = &island_shaders_[idx];
-    } else if (island_cache_[0]) {
-        view.core.island_shader = island_cache_[0];
+    if (core_.island_cache[idx]) {
+        view.core.island_shader = core_.island_cache[idx];
+    } else if (core_.island_shaders[idx]) {
+        view.core.island_shader = &core_.island_shaders[idx];
+    } else if (core_.island_cache[0]) {
+        view.core.island_shader = core_.island_cache[0];
     } else {
-        view.core.island_shader = &island_shaders_[0];
+        view.core.island_shader = &core_.island_shaders[0];
     }
 
-    if (fur_cache_[idx]) {
-        view.core.fur_shader = fur_cache_[idx];
-    } else if (fur_shaders_[idx]) {
-        view.core.fur_shader = &fur_shaders_[idx];
-    } else if (fur_cache_[0]) {
-        view.core.fur_shader = fur_cache_[0];
+    if (core_.fur_cache[idx]) {
+        view.core.fur_shader = core_.fur_cache[idx];
+    } else if (core_.fur_shaders[idx]) {
+        view.core.fur_shader = &core_.fur_shaders[idx];
+    } else if (core_.fur_cache[0]) {
+        view.core.fur_shader = core_.fur_cache[0];
     } else {
-        view.core.fur_shader = &fur_shaders_[0];
+        view.core.fur_shader = &core_.fur_shaders[0];
     }
 
     // T2+ shadow mapping resources (prefer cache, fallback to legacy)
-    if (idx >= 1 && (shadow_cache_ || shadow_shader_) && shadow_rt_) {
-        view.shadow.shader = shadow_cache_ ? shadow_cache_ : &shadow_shader_;
-        view.shadow.rt = shadow_rt_.get();
-        view.shadow.depth_tex = shadow_depth_tex_;
-        view.shadow.map_size = shadow_map_size_;
+    if (idx >= 1 && (shadow_.cache || shadow_.shader) && shadow_.rt) {
+        view.shadow.shader = shadow_.cache ? shadow_.cache : &shadow_.shader;
+        view.shadow.rt = shadow_.rt.get();
+        view.shadow.depth_tex = shadow_.depth_tex;
+        view.shadow.map_size = shadow_.map_size;
     }
 
     // T2+ bloom post-processing resources (prefer cache, fallback to legacy)
     {
-        ShaderProgram* bex = bloom_extract_cache_ ? bloom_extract_cache_
-                           : (bloom_extract_shader_ ? &bloom_extract_shader_ : nullptr);
-        ShaderProgram* bbl = bloom_blur_cache_ ? bloom_blur_cache_
-                           : (bloom_blur_shader_ ? &bloom_blur_shader_ : nullptr);
-        ShaderProgram* bco = bloom_composite_cache_ ? bloom_composite_cache_
-                           : (bloom_composite_shader_ ? &bloom_composite_shader_ : nullptr);
-        if (idx >= 1 && bex && bbl && bco && scene_rt_ && bright_rt_ && blur_rt_) {
+        ShaderProgram* bex = bloom_.extract_cache ? bloom_.extract_cache
+                           : (bloom_.extract_shader ? &bloom_.extract_shader : nullptr);
+        ShaderProgram* bbl = bloom_.blur_cache ? bloom_.blur_cache
+                           : (bloom_.blur_shader ? &bloom_.blur_shader : nullptr);
+        ShaderProgram* bco = bloom_.composite_cache ? bloom_.composite_cache
+                           : (bloom_.composite_shader ? &bloom_.composite_shader : nullptr);
+        if (idx >= 1 && bex && bbl && bco && bloom_.scene_rt && bloom_.bright_rt && bloom_.blur_rt) {
             view.bloom.extract_shader = bex;
             view.bloom.blur_shader = bbl;
             view.bloom.composite_shader = bco;
-            view.bloom.fullscreen_quad = fullscreen_quad_.get();
-            view.bloom.scene_rt = scene_rt_.get();
-            view.bloom.bright_rt = bright_rt_.get();
-            view.bloom.blur_rt = blur_rt_.get();
-            view.bloom.strength = bloom_strength_;
+            view.bloom.fullscreen_quad = bloom_.fullscreen_quad.get();
+            view.bloom.scene_rt = bloom_.scene_rt.get();
+            view.bloom.bright_rt = bloom_.bright_rt.get();
+            view.bloom.blur_rt = bloom_.blur_rt.get();
+            view.bloom.strength = bloom_.strength;
         }
     }
 
     // T2+ instanced grass resources (prefer cache, fallback to legacy)
     if (idx >= 1) {
-        if (idx >= 2 && (grass_t3_cache_ || grass_shader_t3_)) {
-            view.grass.shader = grass_t3_cache_ ? grass_t3_cache_ : &grass_shader_t3_;
-        } else if (grass_cache_ || grass_shader_) {
-            view.grass.shader = grass_cache_ ? grass_cache_ : &grass_shader_;
+        if (idx >= 2 && (grass_.t3_cache || grass_.shader_t3)) {
+            view.grass.shader = grass_.t3_cache ? grass_.t3_cache : &grass_.shader_t3;
+        } else if (grass_.cache || grass_.shader) {
+            view.grass.shader = grass_.cache ? grass_.cache : &grass_.shader;
         }
-        view.grass.blade_mesh = grass_blade_mesh_;
+        view.grass.blade_mesh = grass_.blade_mesh;
     }
 
     // T3+ normal map texture
@@ -1235,79 +1210,79 @@ TierResourceView DemoResources::viewForTier(DemoTier tier) {
 
     // T2+ SSAO resources (prefer cache, fallback to legacy)
     {
-        ShaderProgram* ssao_prog = ssao_cache_ ? ssao_cache_
-                                 : (ssao_shader_ ? &ssao_shader_ : nullptr);
-        ShaderProgram* ssao_blur_prog = ssao_blur_cache_ ? ssao_blur_cache_
-                                      : (ssao_blur_shader_ ? &ssao_blur_shader_ : nullptr);
-        if (idx >= 1 && ssao_prog && ssao_blur_prog && ssao_rt_ && ssao_blur_rt_) {
+        ShaderProgram* ssao_prog = ssao_.cache ? ssao_.cache
+                                 : (ssao_.shader ? &ssao_.shader : nullptr);
+        ShaderProgram* ssao_blur_prog = ssao_.blur_cache ? ssao_.blur_cache
+                                      : (ssao_.blur_shader ? &ssao_.blur_shader : nullptr);
+        if (idx >= 1 && ssao_prog && ssao_blur_prog && ssao_.rt && ssao_.blur_rt) {
             view.ssao.shader = ssao_prog;
             view.ssao.blur_shader = ssao_blur_prog;
-            view.ssao.rt = ssao_rt_.get();
-            view.ssao.blur_rt = ssao_blur_rt_.get();
-            view.ssao.noise_tex = ssao_noise_tex_.get();
-            view.ssao.scene_depth_tex = scene_depth_tex_;
+            view.ssao.rt = ssao_.rt.get();
+            view.ssao.blur_rt = ssao_.blur_rt.get();
+            view.ssao.noise_tex = ssao_.noise_tex.get();
+            view.ssao.scene_depth_tex = ssao_.scene_depth_tex;
         }
     }
 
     // T4+ resources
     if (idx >= 3) {
         // Use T4 grass shader if available
-        if (grass_shader_t4_) {
-            view.grass.shader = &grass_shader_t4_;
+        if (t4_.grass_shader_t4) {
+            view.grass.shader = &t4_.grass_shader_t4;
         }
-        if (tess_shader_) view.t4.tess_shader = &tess_shader_;
-        if (compute_particle_shader_) view.t4.compute_particle_shader = &compute_particle_shader_;
-        if (particle_render_shader_) view.t4.particle_render_shader = &particle_render_shader_;
-        if (volumetric_fog_shader_) view.t4.hdr.volumetric_fog_shader = &volumetric_fog_shader_;
-        if (tone_map_shader_) view.t4.hdr.tone_map_shader = &tone_map_shader_;
-        view.t4.particle_ssbo = particle_ssbo_.get();
-        view.t4.compute_particle_count = compute_particle_count_;
-        if (hdr_scene_rt_) {
-            view.t4.hdr.scene_rt = hdr_scene_rt_.get();
-            view.t4.hdr.depth_tex = hdr_depth_tex_;
-            view.t4.hdr.color_tex = hdr_color_tex_;
+        if (t4_.tess_shader) view.t4.tess_shader = &t4_.tess_shader;
+        if (t4_.compute_particle_shader) view.t4.compute_particle_shader = &t4_.compute_particle_shader;
+        if (t4_.particle_render_shader) view.t4.particle_render_shader = &t4_.particle_render_shader;
+        if (t4_.volumetric_fog_shader) view.t4.hdr.volumetric_fog_shader = &t4_.volumetric_fog_shader;
+        if (t4_.tone_map_shader) view.t4.hdr.tone_map_shader = &t4_.tone_map_shader;
+        view.t4.particle_ssbo = t4_.particle_ssbo.get();
+        view.t4.compute_particle_count = t4_.compute_particle_count;
+        if (t4_.hdr_scene_rt) {
+            view.t4.hdr.scene_rt = t4_.hdr_scene_rt.get();
+            view.t4.hdr.depth_tex = t4_.hdr_depth_tex;
+            view.t4.hdr.color_tex = t4_.hdr_color_tex;
             // Override scene_depth_tex for SSAO to use HDR depth
-            view.ssao.scene_depth_tex = hdr_depth_tex_;
+            view.ssao.scene_depth_tex = t4_.hdr_depth_tex;
         }
-        if (hdr_bright_rt_) view.t4.hdr.bright_rt = hdr_bright_rt_.get();
-        if (fog_rt_) {
-            view.t4.hdr.fog_rt = fog_rt_.get();
-            view.t4.hdr.fog_w = fog_w_;
-            view.t4.hdr.fog_h = fog_h_;
+        if (t4_.hdr_bright_rt) view.t4.hdr.bright_rt = t4_.hdr_bright_rt.get();
+        if (t4_.fog_rt) {
+            view.t4.hdr.fog_rt = t4_.fog_rt.get();
+            view.t4.hdr.fog_w = t4_.fog_w;
+            view.t4.hdr.fog_h = t4_.fog_h;
         }
 
         // T4 Ultra: GTAO
-        if (gtao_shader_) view.t4.gtao.shader = &gtao_shader_;
-        if (gtao_blur_shader_) view.t4.gtao.blur_shader = &gtao_blur_shader_;
-        if (gtao_tex_) view.t4.gtao.tex = gtao_tex_.get();
-        if (gtao_blur_tex_) view.t4.gtao.blur_tex = gtao_blur_tex_.get();
+        if (t4_.gtao_shader) view.t4.gtao.shader = &t4_.gtao_shader;
+        if (t4_.gtao_blur_shader) view.t4.gtao.blur_shader = &t4_.gtao_blur_shader;
+        if (t4_.gtao_tex) view.t4.gtao.tex = t4_.gtao_tex.get();
+        if (t4_.gtao_blur_tex) view.t4.gtao.blur_tex = t4_.gtao_blur_tex.get();
 
         // T4 Ultra: Compute Bloom
-        if (bloom_down_compute_) view.t4.bloom.down_compute = &bloom_down_compute_;
-        if (bloom_up_compute_) view.t4.bloom.up_compute = &bloom_up_compute_;
-        for (int i = 0; i < BLOOM_MIP_COUNT; i++) {
-            if (bloom_mips_[i]) view.t4.bloom.mips[i] = bloom_mips_[i].get();
+        if (t4_.bloom_down_compute) view.t4.bloom.down_compute = &t4_.bloom_down_compute;
+        if (t4_.bloom_up_compute) view.t4.bloom.up_compute = &t4_.bloom_up_compute;
+        for (int i = 0; i < T4Res::BLOOM_MIP_COUNT; i++) {
+            if (t4_.bloom_mips[i]) view.t4.bloom.mips[i] = t4_.bloom_mips[i].get();
         }
 
         // T4 Ultra: Auto-Exposure
-        if (histogram_shader_) view.t4.exposure.histogram_shader = &histogram_shader_;
-        if (exposure_shader_) view.t4.exposure.exposure_shader = &exposure_shader_;
-        view.t4.exposure.histogram_ssbo = histogram_ssbo_.get();
-        view.t4.exposure.exposure_ssbo = exposure_ssbo_.get();
+        if (t4_.histogram_shader) view.t4.exposure.histogram_shader = &t4_.histogram_shader;
+        if (t4_.exposure_shader) view.t4.exposure.exposure_shader = &t4_.exposure_shader;
+        view.t4.exposure.histogram_ssbo = t4_.histogram_ssbo.get();
+        view.t4.exposure.exposure_ssbo = t4_.exposure_ssbo.get();
 
         // T4 Ultra: SSR
-        if (ssr_shader_) view.t4.ssr.shader = &ssr_shader_;
-        if (ssr_tex_) view.t4.ssr.tex = ssr_tex_.get();
-        if (ssr_color_snapshot_) view.t4.ssr.color_snapshot = ssr_color_snapshot_.get();
-        if (ssr_depth_snapshot_) view.t4.ssr.depth_snapshot = ssr_depth_snapshot_.get();
+        if (t4_.ssr_shader) view.t4.ssr.shader = &t4_.ssr_shader;
+        if (t4_.ssr_tex) view.t4.ssr.tex = t4_.ssr_tex.get();
+        if (t4_.ssr_color_snapshot) view.t4.ssr.color_snapshot = t4_.ssr_color_snapshot.get();
+        if (t4_.ssr_depth_snapshot) view.t4.ssr.depth_snapshot = t4_.ssr_depth_snapshot.get();
 
         // T4 Ultra: DoF
-        if (dof_shader_) view.t4.dof.shader = &dof_shader_;
-        if (dof_tex_) view.t4.dof.tex = dof_tex_.get();
+        if (t4_.dof_shader) view.t4.dof.shader = &t4_.dof_shader;
+        if (t4_.dof_tex) view.t4.dof.tex = t4_.dof_tex.get();
 
         // T4 Ultra: Puddles
-        for (int i = 0; i < PUDDLE_COUNT; i++)
-            view.t4.puddle_meshes[i] = puddle_meshes_[i];
+        for (int i = 0; i < T4Res::PUDDLE_COUNT; i++)
+            view.t4.puddle_meshes[i] = t4_.puddle_meshes[i];
     }
 
     return view;
@@ -1317,100 +1292,100 @@ void DemoResources::destroy() {
     if (!prepared_) return;
 
     scene_meshes_.destroyAll();
-    sky_mesh_.reset();
-    fur_tex_.reset();
-    fur_mask_tex_.reset();
-    sky_shader_.reset();
-    sky_shader_from_cache_ = nullptr;
-    for (int i = 0; i < MAX_TIERS; i++) sky_cache_[i] = nullptr;
+    core_.sky_mesh.reset();
+    core_.fur_tex.reset();
+    core_.fur_mask_tex.reset();
+    core_.sky_shader.reset();
+    core_.sky_shader_from_cache = nullptr;
+    for (int i = 0; i < CoreRes::MAX_TIERS; i++) core_.sky_cache[i] = nullptr;
 
     // Null out all cache pointers BEFORE destroying the cache (which frees the programs)
-    for (int i = 0; i < MAX_TIERS; i++) {
-        island_cache_[i] = nullptr;
-        fur_cache_[i] = nullptr;
+    for (int i = 0; i < CoreRes::MAX_TIERS; i++) {
+        core_.island_cache[i] = nullptr;
+        core_.fur_cache[i] = nullptr;
     }
-    particle_cache_ = nullptr;
-    torch_cache_ = nullptr;
-    shadow_cache_ = nullptr;
-    bloom_extract_cache_ = nullptr;
-    bloom_blur_cache_ = nullptr;
-    bloom_composite_cache_ = nullptr;
-    grass_cache_ = nullptr;
-    grass_t3_cache_ = nullptr;
-    ssao_cache_ = nullptr;
-    ssao_blur_cache_ = nullptr;
+    core_.particle_cache = nullptr;
+    core_.torch_cache = nullptr;
+    shadow_.cache = nullptr;
+    bloom_.extract_cache = nullptr;
+    bloom_.blur_cache = nullptr;
+    bloom_.composite_cache = nullptr;
+    grass_.cache = nullptr;
+    grass_.t3_cache = nullptr;
+    ssao_.cache = nullptr;
+    ssao_.blur_cache = nullptr;
 
     shader_cache_.destroy();
 
-    for (int i = 0; i < MAX_TIERS; i++) {
-        island_shaders_[i].reset();
-        fur_shaders_[i].reset();
+    for (int i = 0; i < CoreRes::MAX_TIERS; i++) {
+        core_.island_shaders[i].reset();
+        core_.fur_shaders[i].reset();
     }
-    particle_shader_.reset();
+    core_.particle_shader.reset();
 
     // Shadow resources
-    shadow_shader_.reset();
-    shadow_rt_.reset();
-    shadow_depth_tex_ = TextureHandle();
-    shadow_map_size_ = 0;
+    shadow_.shader.reset();
+    shadow_.rt.reset();
+    shadow_.depth_tex = TextureHandle();
+    shadow_.map_size = 0;
 
     // Bloom resources
-    bloom_extract_shader_.reset();
-    bloom_blur_shader_.reset();
-    bloom_composite_shader_.reset();
-    fullscreen_quad_.reset();
-    scene_rt_.reset();
-    bright_rt_.reset();
-    blur_rt_.reset();
-    bloom_strength_ = 0.0f;
+    bloom_.extract_shader.reset();
+    bloom_.blur_shader.reset();
+    bloom_.composite_shader.reset();
+    bloom_.fullscreen_quad.reset();
+    bloom_.scene_rt.reset();
+    bloom_.bright_rt.reset();
+    bloom_.blur_rt.reset();
+    bloom_.strength = 0.0f;
 
     // Grass resources
-    grass_shader_.reset();
-    grass_shader_t3_.reset();
+    grass_.shader.reset();
+    grass_.shader_t3.reset();
 
     // Normal map
     normal_map_tex_.reset();
 
     // T4 resources
-    grass_shader_t4_.reset();
-    tess_shader_.reset();
-    compute_particle_shader_.reset();
-    particle_render_shader_.reset();
-    volumetric_fog_shader_.reset();
-    tone_map_shader_.reset();
-    particle_ssbo_.reset();
-    compute_particle_count_ = 0;
-    hdr_scene_rt_.reset();
-    hdr_bright_rt_.reset();
-    hdr_depth_tex_ = TextureHandle();
-    fog_rt_.reset();
-    fog_w_ = 0;
-    fog_h_ = 0;
+    t4_.grass_shader_t4.reset();
+    t4_.tess_shader.reset();
+    t4_.compute_particle_shader.reset();
+    t4_.particle_render_shader.reset();
+    t4_.volumetric_fog_shader.reset();
+    t4_.tone_map_shader.reset();
+    t4_.particle_ssbo.reset();
+    t4_.compute_particle_count = 0;
+    t4_.hdr_scene_rt.reset();
+    t4_.hdr_bright_rt.reset();
+    t4_.hdr_depth_tex = TextureHandle();
+    t4_.fog_rt.reset();
+    t4_.fog_w = 0;
+    t4_.fog_h = 0;
 
     // T4 Ultra resources
-    gtao_shader_.reset();
-    gtao_blur_shader_.reset();
-    gtao_tex_.reset();
-    gtao_blur_tex_.reset();
-    bloom_down_compute_.reset();
-    bloom_up_compute_.reset();
-    for (int i = 0; i < BLOOM_MIP_COUNT; i++) bloom_mips_[i].reset();
-    histogram_shader_.reset();
-    exposure_shader_.reset();
-    histogram_ssbo_.reset();
-    exposure_ssbo_.reset();
-    ssr_shader_.reset();
-    ssr_tex_.reset();
-    dof_shader_.reset();
-    dof_tex_.reset();
+    t4_.gtao_shader.reset();
+    t4_.gtao_blur_shader.reset();
+    t4_.gtao_tex.reset();
+    t4_.gtao_blur_tex.reset();
+    t4_.bloom_down_compute.reset();
+    t4_.bloom_up_compute.reset();
+    for (int i = 0; i < T4Res::BLOOM_MIP_COUNT; i++) t4_.bloom_mips[i].reset();
+    t4_.histogram_shader.reset();
+    t4_.exposure_shader.reset();
+    t4_.histogram_ssbo.reset();
+    t4_.exposure_ssbo.reset();
+    t4_.ssr_shader.reset();
+    t4_.ssr_tex.reset();
+    t4_.dof_shader.reset();
+    t4_.dof_tex.reset();
 
     // SSAO resources
-    ssao_shader_.reset();
-    ssao_blur_shader_.reset();
-    ssao_rt_.reset();
-    ssao_blur_rt_.reset();
-    ssao_noise_tex_.reset();
-    scene_depth_tex_ = TextureHandle();
+    ssao_.shader.reset();
+    ssao_.blur_shader.reset();
+    ssao_.rt.reset();
+    ssao_.blur_rt.reset();
+    ssao_.noise_tex.reset();
+    ssao_.scene_depth_tex = TextureHandle();
 
     prepared_ = false;
     renderer_ = nullptr;
