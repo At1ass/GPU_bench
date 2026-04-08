@@ -37,11 +37,10 @@ void GrassInstancedPass::execute(PassContext& ctx, FrameData& fd,
     ub_.set(U::GrassCount, cfg.instanced_grass_count);
     ub_.set(U::AreaSize, cfg.grass_area_size);
 
-    // Wind (same as fur)
+    // Wind (shared formula in demo_utils.h)
     if (cfg.enable_wind) {
-        float wind_x = sinf(fd.time * 0.7f) * 1.8f;
-        float wind_z = cosf(fd.time * 0.5f) * 1.2f;
-        ub_.set(U::WindDir, wind_x, 0.0f, wind_z);
+        Vec3 wind = computeWindDir(fd.time);
+        ub_.set(U::WindDir, wind.x, wind.y, wind.z);
     } else {
         ub_.set(U::WindDir, 0.0f, 0.0f, 0.0f);
     }

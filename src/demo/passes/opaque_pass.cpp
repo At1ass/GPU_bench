@@ -34,11 +34,10 @@ void OpaquePass::sceneSetup(UniformBlock& ub, PassContext& ctx,
     ub.set(U::Time, fd.time);
     ub.set(U::NormalStrength, cfg.enable_normal_maps ? cfg.normal_map_strength : 0.0f);
 
-    // Wind direction (same as fur pass for consistency)
+    // Wind direction (shared formula in demo_utils.h)
     if (cfg.enable_wind) {
-        float wind_x = sinf(fd.time * 0.7f) * 1.8f;
-        float wind_z = cosf(fd.time * 0.5f) * 1.2f;
-        ub.set(U::WindDir, wind_x, 0.0f, wind_z);
+        Vec3 wind = computeWindDir(fd.time);
+        ub.set(U::WindDir, wind.x, wind.y, wind.z);
     } else {
         ub.set(U::WindDir, 0.0f, 0.0f, 0.0f);
     }

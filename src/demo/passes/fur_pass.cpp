@@ -31,10 +31,9 @@ void FurPass::execute(PassContext& ctx, FrameData& fd,
     ub_.set(U::FurAoPower, 1.5f);
     ub_.set(U::Time, fd.time);
 
-    // Breeze: slowly varying direction
-    float wind_x = sinf(fd.time * 0.7f) * 1.8f;
-    float wind_z = cosf(fd.time * 0.5f) * 1.2f;
-    ub_.set(U::WindDir, wind_x, 0.0f, wind_z);
+    // Breeze: slowly varying direction (shared formula in demo_utils.h)
+    Vec3 wind = computeWindDir(fd.time);
+    ub_.set(U::WindDir, wind.x, wind.y, wind.z);
 
     // Viewport size for vignette + color grading
     ub_.set(U::ViewportSize,

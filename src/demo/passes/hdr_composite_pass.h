@@ -7,7 +7,7 @@
 // Reads from many textures and applies final post-processing.
 class HDRCompositePass : public DemoRenderPass {
 public:
-    HDRCompositePass() : prev_exposure_(1.0f) {}
+    HDRCompositePass() = default;
 
     const char* name() const override { return "hdr_composite"; }
     void init(const TierResourceView& res);
@@ -37,5 +37,4 @@ public:
 
 private:
     UniformBlock ub_tone_map_;
-    float prev_exposure_;
 };

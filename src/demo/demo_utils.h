@@ -120,3 +120,28 @@ inline void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd, in
         shader->set3f(name, colors[i][0], colors[i][1], colors[i][2]);
     }
 }
+
+// Compute wind direction from time — shared across OpaquePass, FurPass, GrassInstancedPass.
+// Returns (wind_x, 0, wind_z) vector.
+inline Vec3 computeWindDir(float time) {
+    float wx = sinf(time * 0.7f) * 1.8f;
+    float wz = cosf(time * 0.5f) * 1.2f;
+    return Vec3(wx, 0.0f, wz);
+}
+
+// Compute view inverse matrix (transpose of rotation + recalculated translation).
+// Used by SSR and VolumetricFog passes for world-space reconstruction from depth.
+inline Mat4 computeViewInverse(const Mat4& view) {
+    Mat4 vi;
+    // Transpose 3x3 rotation block (column-major)
+    vi.m[0]  = view.m[0]; vi.m[1]  = view.m[4]; vi.m[2]  = view.m[8];
+    vi.m[4]  = view.m[1]; vi.m[5]  = view.m[5]; vi.m[6]  = view.m[9];
+    vi.m[8]  = view.m[2]; vi.m[9]  = view.m[6]; vi.m[10] = view.m[10];
+    // Recalculate translation: -R^T * t
+    vi.m[12] = -(vi.m[0]*view.m[12] + vi.m[4]*view.m[13] + vi.m[8]*view.m[14]);
+    vi.m[13] = -(vi.m[1]*view.m[12] + vi.m[5]*view.m[13] + vi.m[9]*view.m[14]);
+    vi.m[14] = -(vi.m[2]*view.m[12] + vi.m[6]*view.m[13] + vi.m[10]*view.m[14]);
+    vi.m[3] = vi.m[7] = vi.m[11] = 0.0f;
+    vi.m[15] = 1.0f;
+    return vi;
+}
