@@ -1,5 +1,5 @@
 #include "demo/passes/composite_pass.h"
-#include "demo/uniform_id.h"
+#include "engine/uniform_id.h"
 #include "demo/tier_resource_view.h"
 
 void CompositePass::init(const TierResourceView& res) {

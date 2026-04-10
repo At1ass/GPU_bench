@@ -7,6 +7,12 @@
 #include <utility>
 #include <vector>
 
+// Validate that SSBOUsage enum values match GL constants
+static_assert(static_cast<unsigned>(ComputeFeatures::SSBOUsage::GpuReadWrite) == GL_DYNAMIC_DRAW,
+              "SSBOUsage::GpuReadWrite must match GL_DYNAMIC_DRAW");
+static_assert(static_cast<unsigned>(ComputeFeatures::SSBOUsage::CpuReadBack) == GL_DYNAMIC_READ,
+              "SSBOUsage::CpuReadBack must match GL_DYNAMIC_READ");
+
 GL4Renderer::GL4Renderer() {}
 // ~GL4Renderer: default. shutdown() must be called explicitly before destruction.
 
@@ -105,11 +111,11 @@ bool GL4Renderer::init(int w, int h) {
     return true;
 }
 
-void* GL4Renderer::queryFeature(int id) {
+void* GL4Renderer::queryFeature(int id) const {
     if (id == FeatureTag<GL4Features>::id)
-        return static_cast<GL4Features*>(this);
+        return const_cast<GL4Renderer*>(this);
     if (id == FeatureTag<ComputeFeatures>::id)
-        return static_cast<ComputeFeatures*>(this);
+        return const_cast<GL4Renderer*>(this);
     return GL3Renderer::queryFeature(id);
 }
 
@@ -177,7 +183,7 @@ ShaderHandle GL4Renderer::createComputeShader(const char* source) {
     if (!free_custom_slots_.empty()) {
         h = free_custom_slots_.back();
         free_custom_slots_.pop_back();
-        custom_shaders_[h] = prog;
+        custom_shaders_[h.id] = prog;
     } else {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
@@ -223,7 +229,7 @@ BufferHandle GL4Renderer::createSSBO(int size_bytes, SSBOUsage usage) {
     if (!free_ssbo_slots_.empty()) {
         h = free_ssbo_slots_.back();
         free_ssbo_slots_.pop_back();
-        ssbos_[h] = buf;
+        ssbos_[h.id] = buf;
     } else {
         h = BufferHandle(static_cast<unsigned int>(ssbos_.size()));
         ssbos_.push_back(buf);
@@ -233,32 +239,32 @@ BufferHandle GL4Renderer::createSSBO(int size_bytes, SSBOUsage usage) {
 }
 
 void GL4Renderer::destroySSBO(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid) return;
-    glDeleteBuffers(1, &ssbos_[h].id);
-    ssbos_[h].valid = false;
+    if (h == INVALID_BUFFER || h.id >= ssbos_.size() || !ssbos_[h.id].valid) return;
+    glDeleteBuffers(1, &ssbos_[h.id].id);
+    ssbos_[h.id].valid = false;
     free_ssbo_slots_.push_back(h);
 }
 
 void GL4Renderer::bindSSBO(BufferHandle h, int binding) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid) return;
+    if (h == INVALID_BUFFER || h.id >= ssbos_.size() || !ssbos_[h.id].valid) return;
 #ifdef CB_NEED_GL_LOAD
     if (cb_glBindBufferBase)
-        cb_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(binding), ssbos_[h].id);
+        cb_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(binding), ssbos_[h.id].id);
 #else
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(binding), ssbos_[h].id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(binding), ssbos_[h.id].id);
 #endif
 }
 
 void GL4Renderer::updateSSBO(BufferHandle h, const void* data, int size_bytes) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid) return;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h].id);
+    if (h == INVALID_BUFFER || h.id >= ssbos_.size() || !ssbos_[h.id].valid) return;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h.id].id);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, size_bytes, data);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void GL4Renderer::readSSBO(BufferHandle h, void* data, int offset, int size_bytes) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ssbos_.size() || !ssbos_[h].valid || !data) return;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h].id);
+    if (h == INVALID_BUFFER || h.id >= ssbos_.size() || !ssbos_[h.id].valid || !data) return;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos_[h.id].id);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, size_bytes, data);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
@@ -310,7 +316,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTarget(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = std::move(rt);
+        render_targets_[handle.id] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(std::move(rt));
@@ -370,7 +376,7 @@ RenderTargetHandle GL4Renderer::createFloatRenderTargetWithDepth(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = std::move(rt);
+        render_targets_[handle.id] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(std::move(rt));
@@ -394,7 +400,7 @@ BufferHandle GL4Renderer::createIndirectBuffer(int size_bytes, const void* data)
     if (!free_indirect_slots_.empty()) {
         h = free_indirect_slots_.back();
         free_indirect_slots_.pop_back();
-        indirect_buffers_[h] = buf;
+        indirect_buffers_[h.id] = buf;
     } else {
         h = BufferHandle(static_cast<unsigned int>(indirect_buffers_.size()));
         indirect_buffers_.push_back(buf);
@@ -404,24 +410,24 @@ BufferHandle GL4Renderer::createIndirectBuffer(int size_bytes, const void* data)
 }
 
 void GL4Renderer::destroyIndirectBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= indirect_buffers_.size() || !indirect_buffers_[h].valid) return;
-    glDeleteBuffers(1, &indirect_buffers_[h].id);
-    indirect_buffers_[h].valid = false;
+    if (h == INVALID_BUFFER || h.id >= indirect_buffers_.size() || !indirect_buffers_[h.id].valid) return;
+    glDeleteBuffers(1, &indirect_buffers_[h.id].id);
+    indirect_buffers_[h.id].valid = false;
     free_indirect_slots_.push_back(h);
 }
 
 void GL4Renderer::multiDrawMeshIndirect(MeshHandle mesh, BufferHandle indirect,
                                          int draw_count, int stride) {
     if (!isValidMesh(mesh)) return;
-    if (indirect == INVALID_BUFFER || static_cast<size_t>(indirect) >= indirect_buffers_.size()
-        || !indirect_buffers_[indirect].valid) return;
+    if (indirect == INVALID_BUFFER || indirect.id >= indirect_buffers_.size()
+        || !indirect_buffers_[indirect.id].valid) return;
 
-    const GLMesh& gm = meshes_[mesh];
+    const GLMesh& gm = meshes_[mesh.id];
     if (gm.vao) {
         glBindVertexArray(gm.vao);
     }
 
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirect_buffers_[indirect].id);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirect_buffers_[indirect.id].id);
 
 #ifdef CB_NEED_GL_LOAD
     if (cb_glMultiDrawElementsIndirect)
@@ -488,7 +494,7 @@ ShaderHandle GL4Renderer::createTessShader(const char* vs, const char* tcs,
     if (!free_custom_slots_.empty()) {
         h = free_custom_slots_.back();
         free_custom_slots_.pop_back();
-        custom_shaders_[h] = prog;
+        custom_shaders_[h.id] = prog;
     } else {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
@@ -499,7 +505,7 @@ ShaderHandle GL4Renderer::createTessShader(const char* vs, const char* tcs,
 
 void GL4Renderer::drawMeshAsPatches(MeshHandle h) {
     if (!isValidMesh(h)) return;
-    const GLMesh& gm = meshes_[h];
+    const GLMesh& gm = meshes_[h.id];
     if (gm.vao) {
         glBindVertexArray(gm.vao);
         glDrawElements(GL_PATCHES, gm.index_count, gm.index_type, nullptr);
@@ -526,7 +532,7 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
     if (!free_tex_slots_.empty()) {
         handle = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[handle] = std::move(tex);
+        textures_[handle.id] = std::move(tex);
     } else {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(tex));
@@ -539,7 +545,7 @@ TextureHandle GL4Renderer::createFloatTexture(int w, int h) {
 
 void GL4Renderer::bindImageTexture(TextureHandle h, int unit,
                                     bool read, bool write) {
-    if (h == INVALID_TEXTURE || static_cast<size_t>(h) >= textures_.size() || !textures_[h].valid) {
+    if (h == INVALID_TEXTURE || h.id >= textures_.size() || !textures_[h.id].valid) {
         // Unbind: bind texture 0 to release the image unit
 #ifdef CB_NEED_GL_LOAD
         if (cb_glBindImageTexture)
@@ -555,9 +561,9 @@ void GL4Renderer::bindImageTexture(TextureHandle h, int unit,
 
 #ifdef CB_NEED_GL_LOAD
     if (cb_glBindImageTexture)
-        cb_glBindImageTexture(static_cast<GLuint>(unit), textures_[h].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
+        cb_glBindImageTexture(static_cast<GLuint>(unit), textures_[h.id].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
 #else
-    glBindImageTexture(static_cast<GLuint>(unit), textures_[h].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
+    glBindImageTexture(static_cast<GLuint>(unit), textures_[h.id].id, 0, GL_FALSE, 0, access, GL_RGBA32F);
 #endif
 }
 
@@ -580,8 +586,8 @@ void GL4Renderer::imageMemoryBarrier() {
 
 void GL4Renderer::copyImageSubData(TextureHandle src, TextureHandle dst, int w, int h) {
     if (!isValidTexture(src) || !isValidTexture(dst)) return;
-    GLuint src_id = textures_[src].id;
-    GLuint dst_id = textures_[dst].id;
+    GLuint src_id = textures_[src.id].id;
+    GLuint dst_id = textures_[dst.id].id;
 #ifdef CB_NEED_GL_LOAD
     if (cb_glCopyImageSubData)
         cb_glCopyImageSubData(src_id, GL_TEXTURE_2D, 0, 0, 0, 0,
@@ -612,7 +618,7 @@ TextureHandle GL4Renderer::createFloat16Texture(int w, int h) {
     if (!free_tex_slots_.empty()) {
         handle = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[handle] = std::move(tex);
+        textures_[handle.id] = std::move(tex);
     } else {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(tex));
@@ -640,7 +646,7 @@ TextureHandle GL4Renderer::createDepthTexture(int w, int h) {
     if (!free_tex_slots_.empty()) {
         handle = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[handle] = std::move(tex);
+        textures_[handle.id] = std::move(tex);
     } else {
         handle = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(tex));
@@ -676,7 +682,7 @@ BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {
     if (!free_persistent_slots_.empty()) {
         h = free_persistent_slots_.back();
         free_persistent_slots_.pop_back();
-        persistent_buffers_[h] = pb;
+        persistent_buffers_[h.id] = pb;
     } else {
         h = BufferHandle(static_cast<unsigned int>(persistent_buffers_.size()));
         persistent_buffers_.push_back(pb);
@@ -686,10 +692,10 @@ BufferHandle GL4Renderer::createPersistentBuffer(int size_bytes) {
 }
 
 void* GL4Renderer::mapPersistentBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= persistent_buffers_.size()
-        || !persistent_buffers_[h].valid) return nullptr;
+    if (h == INVALID_BUFFER || h.id >= persistent_buffers_.size()
+        || !persistent_buffers_[h.id].valid) return nullptr;
 
-    PersistentBuffer& pb = persistent_buffers_[h];
+    PersistentBuffer& pb = persistent_buffers_[h.id];
     if (pb.mapped) return pb.mapped;
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, pb.id);
@@ -705,10 +711,10 @@ void* GL4Renderer::mapPersistentBuffer(BufferHandle h) {
 }
 
 void GL4Renderer::persistentBufferFence(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= persistent_buffers_.size()
-        || !persistent_buffers_[h].valid) return;
+    if (h == INVALID_BUFFER || h.id >= persistent_buffers_.size()
+        || !persistent_buffers_[h.id].valid) return;
 
-    PersistentBuffer& pb = persistent_buffers_[h];
+    PersistentBuffer& pb = persistent_buffers_[h.id];
 
     // Wait for previous fence if any
     if (pb.fence) {
@@ -733,10 +739,10 @@ void GL4Renderer::persistentBufferFence(BufferHandle h) {
 }
 
 void GL4Renderer::destroyPersistentBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= persistent_buffers_.size()
-        || !persistent_buffers_[h].valid) return;
+    if (h == INVALID_BUFFER || h.id >= persistent_buffers_.size()
+        || !persistent_buffers_[h.id].valid) return;
 
-    PersistentBuffer& pb = persistent_buffers_[h];
+    PersistentBuffer& pb = persistent_buffers_[h.id];
     if (pb.fence) {
 #ifdef CB_NEED_GL_LOAD
         if (cb_glDeleteSync) cb_glDeleteSync(pb.fence);
@@ -755,9 +761,9 @@ void GL4Renderer::destroyPersistentBuffer(BufferHandle h) {
 
 uint64_t GL4Renderer::getBindlessHandle(TextureHandle h) {
     if (!has_bindless_texture_) return 0;
-    if (h == INVALID_TEXTURE || static_cast<size_t>(h) >= textures_.size() || !textures_[h].valid) return 0;
+    if (h == INVALID_TEXTURE || h.id >= textures_.size() || !textures_[h.id].valid) return 0;
     if (cb_glGetTextureHandleARB)
-        return cb_glGetTextureHandleARB(textures_[h].id);
+        return cb_glGetTextureHandleARB(textures_[h.id].id);
     return 0;
 }
 

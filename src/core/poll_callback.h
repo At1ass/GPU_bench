@@ -2,7 +2,7 @@
 
 class PollCallback {
 public:
-    virtual ~PollCallback() {}
+    virtual ~PollCallback() = default;
     PollCallback(const PollCallback&) = delete;
     PollCallback& operator=(const PollCallback&) = delete;
     PollCallback(PollCallback&&) = delete;

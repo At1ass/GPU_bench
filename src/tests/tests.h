@@ -562,7 +562,7 @@ public:
     const char* description() const override;
     double computeScore(const std::vector<double>& t, int vw, int vh) override;
     SanityType sanityType() const override { return SanityType::ComputeBuffer; }
-    BufferHandle getOutputBuffer() const override { return ssbo_out_; }
+    BufferHandle getOutputBuffer() const override { return ssbo_in_; }
 protected:
     void setupCompute(Renderer& r, ComputeFeatures& comp, int vw, int vh) override;
     void renderCompute(Renderer& r, ComputeFeatures& comp) override;
@@ -571,7 +571,6 @@ private:
     ComputePrefixParams params_;
     ShaderHandle shader_;
     BufferHandle ssbo_in_;
-    BufferHandle ssbo_out_;
     int u_count_loc_;
 };
 

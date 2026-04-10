@@ -1,10 +1,10 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/render_pass.h"
+#include "engine/uniform_block.h"
 #include "demo/demo_scene.h"
 #include "demo/demo_debug.h"
 
-class GTAOPass : public DemoRenderPass {
+class GTAOPass : public RenderPassBase {
 public:
     const char* name() const override { return "gtao"; }
     void init(const TierResourceView& res);

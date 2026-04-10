@@ -3,40 +3,14 @@
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
 #include "platform/logger.h"
+#include "platform/shader_compat.h"
 #include <cmath>
+#include <string>
 
-// GLSL 140: VS does vertex transforms, output captured by transform feedback.
+// Shader bodies WITHOUT #version (injected via testShaderPreamble140).
+// VS does vertex transforms, output captured by transform feedback.
 // Rasterizer is disabled — pure vertex processing + streaming write to TF buffer.
-static const char* TF_VS_140 = R"(
-#version 140
-in vec3 a_pos;
-in vec3 a_normal;
-out vec3 tf_position;
-out vec3 tf_normal;
-
-void main() {
-    // Non-trivial vertex work to avoid being optimized away
-    vec3 p = a_pos;
-    p.x += sin(a_normal.x * 3.14) * 0.01;
-    p.y += cos(a_normal.y * 3.14) * 0.01;
-    p.z += sin(a_normal.z * 2.0 + a_pos.x) * 0.01;
-    tf_position = p;
-    tf_normal = normalize(a_normal + p * 0.001);
-    gl_Position = vec4(p, 1.0);
-}
-)";
-
-static const char* TF_FS_140 = R"(
-#version 140
-out vec4 frag_color;
-void main() {
-    frag_color = vec4(1.0);
-}
-)";
-
-// GLSL 150 core profile variants
-static const char* TF_VS_150 = R"(
-#version 150
+static const char* TF_VS_BODY = R"(
 in vec3 a_pos;
 in vec3 a_normal;
 out vec3 tf_position;
@@ -53,8 +27,7 @@ void main() {
 }
 )";
 
-static const char* TF_FS_150 = R"(
-#version 150
+static const char* TF_FS_BODY = R"(
 out vec4 frag_color;
 void main() {
     frag_color = vec4(1.0);
@@ -97,9 +70,9 @@ void TransformFeedbackTest::setupGL3(Renderer& r, GL3Features& gl3, int, int) {
     mesh_ = r.createMesh(md);
 
     // Create shader with transform feedback varyings set before link
-    const char* vs = r.isCoreProfile() ? TF_VS_150 : TF_VS_140;
-    const char* fs = r.isCoreProfile() ? TF_FS_150 : TF_FS_140;
-    shader_ = gl3.createTransformFeedbackShader(vs, fs,
+    std::string vs = std::string(testShaderPreamble140(&r)) + TF_VS_BODY;
+    std::string fs = std::string(testShaderPreamble140(&r)) + TF_FS_BODY;
+    shader_ = gl3.createTransformFeedbackShader(vs.c_str(), fs.c_str(),
                                                 TF_VARYINGS, TF_VARYING_COUNT);
 
     // TF buffer must hold all output: indices drawn * bytes_per_vertex.

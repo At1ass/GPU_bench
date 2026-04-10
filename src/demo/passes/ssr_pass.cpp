@@ -1,5 +1,5 @@
 #include "demo/passes/ssr_pass.h"
-#include "demo/uniform_id.h"
+#include "engine/uniform_id.h"
 #include "demo/tier_resource_view.h"
 #include "demo/demo_utils.h"
 #include <cmath>

@@ -28,6 +28,11 @@ elseif(MSVC)
     add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
 endif()
 
+# --- Stack protection and fortification ---
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-fstack-protector-strong)
+endif()
+
 # --- Release optimizations ---
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # -O3 + LTO for release builds; x86-64-v2 covers SSE4.2+ (~2010 CPUs)
@@ -282,8 +287,29 @@ set(DEMO_SOURCES
 add_executable(gpu_demo ${DEMO_SOURCES})
 target_link_libraries(gpu_demo PRIVATE gpubench_engine)
 
-# --- Platform link flags (both executables) ---
-foreach(target gpu_benchmark gpu_demo)
+# --- Launcher executable (no OpenGL) ---
+add_executable(gpu_launcher
+    src/launcher/main.cpp
+    src/launcher/launcher_ui.cpp
+    src/launcher/process_launch.cpp
+)
+target_include_directories(gpu_launcher PRIVATE src extern)
+target_link_libraries(gpu_launcher PRIVATE imgui_lib)
+if(TARGET OpenGL::GL)
+    target_link_libraries(gpu_launcher PRIVATE OpenGL::GL)
+else()
+    target_link_libraries(gpu_launcher PRIVATE ${OPENGL_LIBRARIES})
+endif()
+# Platform sources (hwinfo, gpu_select, logger, data_path) — no renderer dependency
+target_sources(gpu_launcher PRIVATE
+    src/platform/hwinfo.cpp
+    src/platform/gpu_select.cpp
+    src/platform/logger.cpp
+    src/platform/data_path.cpp
+)
+
+# --- Platform link flags (all executables) ---
+foreach(target gpu_benchmark gpu_demo gpu_launcher)
     if(TARGET SDL2::SDL2main)
         target_link_libraries(${target} PRIVATE SDL2::SDL2main)
     endif()
@@ -323,7 +349,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h" AND NOT CMAKE_CROSSCOMP
 endif()
 
 # --- Install ---
-install(TARGETS gpu_benchmark gpu_demo RUNTIME DESTINATION bin)
+install(TARGETS gpu_benchmark gpu_demo gpu_launcher RUNTIME DESTINATION bin)
 install(DIRECTORY data/ DESTINATION share/gpu_benchmark/data
         FILES_MATCHING
         PATTERN "*.glsl"

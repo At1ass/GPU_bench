@@ -1,5 +1,5 @@
 #pragma once
-#include "demo/render_pass.h"
+#include "engine/render_pass.h"
 #include "engine/pass_context.h"
 #include "renderer/features.h"
 #include "renderer/gl_debug.h"
@@ -15,7 +15,7 @@ typedef void (*PipelineCommandFn)(PassContext&, FrameData&,
 
 // Pipeline node: pass or command with optional RT management and barriers.
 struct PipelineNode {
-    DemoRenderPass* pass;
+    RenderPassBase* pass;
     PipelineCommandFn command;
     bool enabled;
 
@@ -51,7 +51,7 @@ struct PipelineNode {
 class DemoPipeline {
 public:
     // Simple pass (no RT change)
-    void addPass(DemoRenderPass* pass, bool enabled = true) {
+    void addPass(RenderPassBase* pass, bool enabled = true) {
         PipelineNode n;
         n.pass = pass;
         n.enabled = enabled;
@@ -59,7 +59,7 @@ public:
     }
 
     // Pass with render target bind + optional clear before execution
-    void addPassWithRT(DemoRenderPass* pass, RenderTargetHandle rt,
+    void addPassWithRT(RenderPassBase* pass, RenderTargetHandle rt,
                        bool clear, float cr, float cg, float cb, float ca,
                        int vp_w = 0, int vp_h = 0) {
         PipelineNode n;
@@ -76,7 +76,7 @@ public:
     }
 
     // Pass that binds fd.dest_rt (resolved at execute time)
-    void addPassToDest(DemoRenderPass* pass, bool clear,
+    void addPassToDest(RenderPassBase* pass, bool clear,
                        float cr, float cg, float cb, float ca,
                        int vp_w = 0, int vp_h = 0) {
         PipelineNode n;

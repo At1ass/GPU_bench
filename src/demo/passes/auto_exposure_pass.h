@@ -1,10 +1,10 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/render_pass.h"
+#include "engine/uniform_block.h"
 #include "demo/demo_scene.h"
 #include "demo/demo_debug.h"
 
-class AutoExposurePass : public DemoRenderPass {
+class AutoExposurePass : public RenderPassBase {
 public:
     const char* name() const override { return "auto_exposure"; }
     void init(const TierResourceView& res);

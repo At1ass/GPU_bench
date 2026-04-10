@@ -47,7 +47,7 @@ static const int PREFIX_LOCAL_SIZE = 256;
 
 ComputePrefixTest::ComputePrefixTest(const ComputePrefixParams& params)
     : params_(params), shader_(INVALID_SHADER),
-      ssbo_in_(INVALID_BUFFER), ssbo_out_(INVALID_BUFFER), u_count_loc_(-1) {}
+      ssbo_in_(INVALID_BUFFER), u_count_loc_(-1) {}
 
 const char* ComputePrefixTest::name() const { return "ComputePrefix"; }
 const char* ComputePrefixTest::scoreUnit() const { return "GB/s"; }
@@ -66,7 +66,6 @@ void ComputePrefixTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, in
     int ssbo_size = params_.element_count * 4; // uint = 4 bytes
     ssbo_in_ = comp.createSSBO(ssbo_size);
     // ssbo_out_ unused in this scan variant but kept for API consistency
-    (void)ssbo_out_;
     LOG_DBG("Test '%s': setup complete (%d elements, %d workgroups)", name(), params_.element_count, params_.work_groups);
 }
 

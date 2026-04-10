@@ -21,11 +21,13 @@ void ShaderCache::destroy() {
 }
 
 const char* ShaderCache::versionString(ShaderFeatureSet features) {
-    if (features & SF_GLSL_430) return "#version 430\n";
-    if (features & SF_GLSL_330) return "#version 330\n";
-    if (features & SF_GLSL_150) return "#version 150\n";
-    if (features & SF_GLSL_140) return "#version 140\n";
-    if (features & SF_GLSL_120) return "#version 120\n";
+    if (features & SF_GLES_300)  return "#version 300 es\n";
+    if (features & SF_GLES_100)  return "#version 100\n";
+    if (features & SF_GLSL_430)  return "#version 430\n";
+    if (features & SF_GLSL_330)  return "#version 330\n";
+    if (features & SF_GLSL_150)  return "#version 150\n";
+    if (features & SF_GLSL_140)  return "#version 140\n";
+    if (features & SF_GLSL_120)  return "#version 120\n";
     return "#version 120\n"; // fallback
 }
 
@@ -33,11 +35,15 @@ std::string ShaderCache::buildPreamble(ShaderFeatureSet features, bool is_fragme
     std::string preamble;
     preamble.reserve(512);
 
+    bool is_gles = (features & (SF_GLES_100 | SF_GLES_300)) != 0;
+    bool uses_legacy_syntax = (features & (SF_GLSL_120 | SF_GLES_100)) != 0;
+
     // 1. Version directive
     preamble += versionString(features);
 
     // 2. Feature #defines
-    if (features & SF_GLSL_120)       preamble += "#define GLSL_120\n";
+    if (uses_legacy_syntax)  preamble += "#define GLSL_120\n";
+    if (is_gles)             preamble += "#define GLES\n";
     if (features & SF_SHADOWS)        preamble += "#define HAS_SHADOWS\n";
     if (features & SF_SHADOW_PCF3)    preamble += "#define HAS_SHADOW_PCF3\n";
     if (features & SF_SHADOW_PCF5)    preamble += "#define HAS_SHADOW_PCF5\n";
@@ -54,19 +60,28 @@ std::string ShaderCache::buildPreamble(ShaderFeatureSet features, bool is_fragme
     if (features & SF_PHYSICAL_SKY)   preamble += "#define HAS_PHYSICAL_SKY\n";
     if (features & SF_FILM_GRAIN)     preamble += "#define HAS_FILM_GRAIN\n";
 
-    // 3. Fragment shader output declaration (non-120 only)
-    if (is_fragment && !(features & SF_GLSL_120)) {
+    // 3. GLES precision qualifiers (required by spec, must come after #version).
+    //    Use highp for both VS and FS to avoid precision mismatch on shared uniforms.
+    if (is_gles) {
+        preamble += "precision highp float;\n";
+    }
+
+    // 4. Fragment shader output declaration
+    //    GLSL 120 and GLES 100 use gl_FragColor; all others declare FragColor.
+    if (is_fragment && !uses_legacy_syntax) {
         preamble += "out vec4 FragColor;\n";
     }
 
-    // 4. Compatibility macros
-    if (features & SF_GLSL_120) {
+    // 5. Compatibility macros
+    if (uses_legacy_syntax) {
+        // GLSL 1.20 / GLES 2.0: attribute, varying, texture2D, gl_FragColor
         preamble += "#define ATTR_IN attribute\n";
         preamble += "#define VS_OUT varying\n";
         preamble += "#define FS_IN varying\n";
         preamble += "#define FRAG_COLOR gl_FragColor\n";
         preamble += "#define COMPAT_TEX2D texture2D\n";
     } else {
+        // GLSL 1.50+ / GLES 3.0+: in, out, texture, FragColor
         preamble += "#define ATTR_IN in\n";
         preamble += "#define VS_OUT out\n";
         preamble += "#define FS_IN in\n";
@@ -214,9 +229,36 @@ ShaderProgram* ShaderCache::getTess(const char* base_name,
 }
 
 // Tier-to-features mapping
-ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile) {
+ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles, bool gles3) {
     ShaderFeatureSet f = SF_NONE;
 
+    // GLES path: limited tier support
+    if (is_gles) {
+        if (gles3) {
+            // GLES 3.0+: Tier 1-2 (#version 300 es, in/out syntax)
+            switch (tier) {
+            case DemoTier::Basic:
+                f |= SF_GLES_300 | SF_VIGNETTE;
+                break;
+            case DemoTier::Enhanced:
+                f |= SF_GLES_300;
+                f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
+                f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
+                break;
+            default: // Quality/Ultra: cap at Enhanced
+                f |= SF_GLES_300;
+                f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
+                f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
+                break;
+            }
+        } else {
+            // GLES 2.0: Tier 1 only (#version 100, attribute/varying syntax)
+            f |= SF_GLES_100 | SF_VIGNETTE;
+        }
+        return f;
+    }
+
+    // Desktop GL path (unchanged)
     switch (tier) {
     case DemoTier::Basic:
         f |= core_profile ? SF_GLSL_150 : SF_GLSL_120;

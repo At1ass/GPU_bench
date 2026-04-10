@@ -1,11 +1,14 @@
 #include "tests/tests.h"
 #include "geometry/mesh_gen.h"
 #include "platform/logger.h"
+#include "platform/shader_compat.h"
 #include <cstdio>
 #include <cmath>
+#include <string>
 
-static const char* SHADER_FMA_VS_120 = R"(
-#version 120
+// Shader bodies WITHOUT #version (injected via testShaderPreamble120)
+
+static const char* SHADER_FMA_VS_LEGACY = R"(
 attribute vec2 a_pos;
 attribute vec2 a_uv;
 varying vec2 v_uv;
@@ -18,8 +21,7 @@ void main() {
 // Pure FMA shader with data-dependent operands to prevent driver optimization.
 // Two interleaved accumulator chains create a dependency that can't be collapsed.
 // Each iteration: 2x vec4 mul + 2x vec4 add + 1x vec4 add (cross-feed) = 20 FLOPs
-static const char* SHADER_FMA_FS_120 = R"(
-#version 120
+static const char* SHADER_FMA_FS_LEGACY = R"(
 varying vec2 v_uv;
 uniform int u_iterations;
 uniform float u_time;
@@ -35,9 +37,7 @@ void main() {
 }
 )";
 
-// GLSL 150 core profile variants
-static const char* SHADER_FMA_VS_150 = R"(
-#version 150
+static const char* SHADER_FMA_VS_MODERN = R"(
 in vec2 a_pos;
 in vec2 a_uv;
 out vec2 v_uv;
@@ -47,8 +47,7 @@ void main() {
 }
 )";
 
-static const char* SHADER_FMA_FS_150 = R"(
-#version 150
+static const char* SHADER_FMA_FS_MODERN = R"(
 in vec2 v_uv;
 uniform int u_iterations;
 uniform float u_time;
@@ -81,9 +80,12 @@ void ShaderFMATest::setup(Renderer* r, int vw, int vh) {
     time_ = 0.0f;
     quad_ = r->createMesh(MeshGen::quad());
 
-    const char* vs = r->isCoreProfile() ? SHADER_FMA_VS_150 : SHADER_FMA_VS_120;
-    const char* fs = r->isCoreProfile() ? SHADER_FMA_FS_150 : SHADER_FMA_FS_120;
-    shader_ = r->createCustomShader(vs, fs);
+    bool legacy = testShaderUsesLegacy(r);
+    std::string vs = std::string(testShaderPreamble120(r))
+        + (legacy ? SHADER_FMA_VS_LEGACY : SHADER_FMA_VS_MODERN);
+    std::string fs = std::string(testShaderPreamble120(r))
+        + (legacy ? SHADER_FMA_FS_LEGACY : SHADER_FMA_FS_MODERN);
+    shader_ = r->createCustomShader(vs.c_str(), fs.c_str());
     if (shader_ != INVALID_SHADER) {
         u_iterations_loc_ = r->getCustomUniformLoc(shader_, "u_iterations");
         u_time_loc_ = r->getCustomUniformLoc(shader_, "u_time");

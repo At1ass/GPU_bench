@@ -1,10 +1,10 @@
 #pragma once
-#include "demo/render_pass.h"
+#include "engine/render_pass.h"
 #include "engine/pass_context.h"
 #include "engine/render_state.h"
 #include "engine/draw_list.h"
-#include "demo/uniform_block.h"
-#include "demo/scene_data.h"
+#include "engine/uniform_block.h"
+#include "engine/scene_data.h"
 #include "demo/demo_utils.h"
 
 // Template for "geometry draw" passes: camera + objects -> shader -> RT.
@@ -15,7 +15,7 @@
 //
 // Covers: opaque, shadow, water, torch, particle (~5 passes).
 
-class GeometryPass : public DemoRenderPass {
+class GeometryPass : public RenderPassBase {
 public:
     virtual void setup(const TierResourceView& res) = 0;
 

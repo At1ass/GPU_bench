@@ -60,6 +60,7 @@ build_native() {
     echo "Done:"
     echo "  $build_dir/gpu_benchmark  (benchmark)"
     echo "  $build_dir/gpu_demo       (visual demo)"
+    echo "  $build_dir/gpu_launcher   (GUI launcher)"
 }
 
 build_sanitize() {
@@ -95,6 +96,7 @@ build_mingw64() {
     echo "Done:"
     echo "  $build_dir/gpu_benchmark.exe  (benchmark)"
     echo "  $build_dir/gpu_demo.exe       (visual demo)"
+    echo "  $build_dir/gpu_launcher.exe   (GUI launcher)"
 }
 
 build_mingw32() {
@@ -126,6 +128,7 @@ build_mingw32() {
     echo "Done:"
     echo "  $build_dir/gpu_benchmark.exe  (benchmark)"
     echo "  $build_dir/gpu_demo.exe       (visual demo)"
+    echo "  $build_dir/gpu_launcher.exe   (GUI launcher)"
 }
 
 build_portable() {
@@ -147,6 +150,7 @@ build_portable() {
     echo "Done:"
     echo "  $build_dir/gpu_benchmark  (benchmark)"
     echo "  $build_dir/gpu_demo       (visual demo)"
+    echo "  $build_dir/gpu_launcher   (GUI launcher)"
 }
 
 clean() {
@@ -164,9 +168,9 @@ build_all() {
     build_mingw32
     echo ""
     echo "=== All targets built ==="
-    echo "  Native:  $PROJECT_DIR/build_native/gpu_benchmark + gpu_demo"
-    echo "  Win64:   $PROJECT_DIR/build_mingw64/gpu_benchmark.exe + gpu_demo.exe"
-    echo "  Win32:   $PROJECT_DIR/build_mingw32/gpu_benchmark.exe + gpu_demo.exe"
+    echo "  Native:  $PROJECT_DIR/build_native/gpu_benchmark + gpu_demo + gpu_launcher"
+    echo "  Win64:   $PROJECT_DIR/build_mingw64/gpu_benchmark.exe + gpu_demo.exe + gpu_launcher.exe"
+    echo "  Win32:   $PROJECT_DIR/build_mingw32/gpu_benchmark.exe + gpu_demo.exe + gpu_launcher.exe"
 }
 
 case "${1:-}" in

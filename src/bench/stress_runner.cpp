@@ -137,7 +137,7 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
     r->setBlending(true);
 
     for (int attempt = 0; attempt < 8; attempt++) {
-        if (cb && !cb->onPoll()) goto done;
+        if (cb && !cb->onPoll()) break;
 
         r->clear(0.1f, 0.1f, 0.12f, 1.0f);
         for (int i = 0; i < passes; i++) STRESS_RENDER_PASS(stress_time);
@@ -234,7 +234,6 @@ void StressRunner::run(Renderer* r, RenderContext* ctx,
                 (total_sec > 0) ? total_frames / total_sec : 0);
     }
 
-done:
     #undef STRESS_RENDER_PASS
 
     r->destroyMesh(stress_quad);

@@ -1,0 +1,4 @@
+[DBG   +0.070s] [platform ] hwinfo.cpp:160  HWInfo: CPU 'AMD Ryzen 9 9950X3D 16-Core Processor'
+[DBG   +0.070s] [platform ] hwinfo.cpp:161  HWInfo: OS 'Arch Linux 6.19.11-zen1-1-zen'
+[INF   +8.103s] [launcher ] process_launch.cpp:82  Launched gpu_demo (pid 1845935)
+[LOG] Messages: 0 trc, 2 dbg, 1 info, 0 warn, 0 err

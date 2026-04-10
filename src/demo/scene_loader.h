@@ -1,6 +1,6 @@
 #pragma once
-#include "demo/scene_data.h"
-#include "demo/material.h"
+#include "engine/scene_data.h"
+#include "engine/material.h"
 #include "geometry/math_types.h"
 #include <vector>
 #include <string>

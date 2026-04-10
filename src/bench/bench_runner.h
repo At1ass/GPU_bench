@@ -14,7 +14,7 @@ struct BenchPreset;
 // Implemented by the application to handle events, UI, and buffer swaps.
 class BenchCallbacks : public PollCallback {
 public:
-    virtual ~BenchCallbacks() {}
+    virtual ~BenchCallbacks() = default;
     BenchCallbacks(const BenchCallbacks&) = delete;
     BenchCallbacks& operator=(const BenchCallbacks&) = delete;
     BenchCallbacks(BenchCallbacks&&) = delete;

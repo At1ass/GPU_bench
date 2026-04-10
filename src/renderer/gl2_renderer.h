@@ -47,7 +47,7 @@ public:
 
     void drawMesh(MeshHandle h) override;
 
-    void uploadTextureData(TextureHandle h, int w, int h_,
+    void uploadTextureData(TextureHandle h, int width, int height,
                            int channels, const unsigned char* pixels) override;
     void setColorMask(bool r, bool g, bool b, bool a) override;
 
@@ -170,8 +170,25 @@ protected:
         GLFBO() = default;
         GLFBO(const GLFBO&) = delete;
         GLFBO& operator=(const GLFBO&) = delete;
-        GLFBO(GLFBO&&) = default;
-        GLFBO& operator=(GLFBO&&) = default;
+        GLFBO(GLFBO&& o) noexcept
+            : fbo(o.fbo), color_tex(o.color_tex), num_extra_color(o.num_extra_color),
+              depth_rb(o.depth_rb), depth_tex(o.depth_tex), w(o.w), h(o.h), valid(o.valid),
+              cached_depth_th(o.cached_depth_th), cached_color_th(o.cached_color_th) {
+            for (int i = 0; i < 3; i++) { extra_color_tex[i] = o.extra_color_tex[i]; o.extra_color_tex[i] = 0; }
+            o.fbo = 0; o.color_tex = 0; o.depth_rb = 0; o.depth_tex = 0;
+            o.num_extra_color = 0; o.valid = false;
+        }
+        GLFBO& operator=(GLFBO&& o) noexcept {
+            if (this != &o) {
+                fbo = o.fbo; color_tex = o.color_tex; num_extra_color = o.num_extra_color;
+                depth_rb = o.depth_rb; depth_tex = o.depth_tex; w = o.w; h = o.h; valid = o.valid;
+                cached_depth_th = o.cached_depth_th; cached_color_th = o.cached_color_th;
+                for (int i = 0; i < 3; i++) { extra_color_tex[i] = o.extra_color_tex[i]; o.extra_color_tex[i] = 0; }
+                o.fbo = 0; o.color_tex = 0; o.depth_rb = 0; o.depth_tex = 0;
+                o.num_extra_color = 0; o.valid = false;
+            }
+            return *this;
+        }
     };
     std::vector<GLFBO> render_targets_;
     std::vector<RenderTargetHandle> free_rt_slots_;
@@ -192,23 +209,23 @@ protected:
 
     // Handle validation helpers (debug-log on invalid access)
     bool isValidMesh(MeshHandle h) const {
-        bool ok = h != 0 && h < meshes_.size() && meshes_[h].valid;
-        if (!ok && h != 0) LOG_DBG("Invalid MeshHandle %u", static_cast<unsigned>(h));
+        bool ok = h.id != 0 && h.id < meshes_.size() && meshes_[h.id].valid;
+        if (!ok && h.id != 0) LOG_DBG("Invalid MeshHandle %u", h.id);
         return ok;
     }
     bool isValidTexture(TextureHandle h) const {
-        bool ok = h != 0 && h < textures_.size() && textures_[h].valid;
-        if (!ok && h != 0) LOG_DBG("Invalid TextureHandle %u", static_cast<unsigned>(h));
+        bool ok = h.id != 0 && h.id < textures_.size() && textures_[h.id].valid;
+        if (!ok && h.id != 0) LOG_DBG("Invalid TextureHandle %u", h.id);
         return ok;
     }
     bool isValidShader(ShaderHandle h) const {
-        bool ok = h != 0 && h < custom_shaders_.size() && custom_shaders_[h] != 0;
-        if (!ok && h != 0) LOG_DBG("Invalid ShaderHandle %u", static_cast<unsigned>(h));
+        bool ok = h.id != 0 && h.id < custom_shaders_.size() && custom_shaders_[h.id] != 0;
+        if (!ok && h.id != 0) LOG_DBG("Invalid ShaderHandle %u", h.id);
         return ok;
     }
     bool isValidRenderTarget(RenderTargetHandle h) const {
-        bool ok = h != INVALID_RENDER_TARGET && h < render_targets_.size() && render_targets_[h].valid;
-        if (!ok && h != INVALID_RENDER_TARGET) LOG_DBG("Invalid RenderTargetHandle %u", static_cast<unsigned>(h));
+        bool ok = h != INVALID_RENDER_TARGET && h.id < render_targets_.size() && render_targets_[h.id].valid;
+        if (!ok && h != INVALID_RENDER_TARGET) LOG_DBG("Invalid RenderTargetHandle %u", h.id);
         return ok;
     }
 };

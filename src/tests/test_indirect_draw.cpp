@@ -13,6 +13,8 @@ struct DrawElementsIndirectCommand {
     unsigned int baseVertex;
     unsigned int baseInstance;
 };
+static_assert(sizeof(DrawElementsIndirectCommand) == 20, "Must match GL spec layout (5 x uint32)");
+static_assert(alignof(DrawElementsIndirectCommand) <= 4, "Must match GL spec alignment");
 
 // Simple GLSL 430 shader for indirect draw test
 static const char* INDIRECT_VS = R"(

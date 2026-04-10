@@ -1,9 +1,9 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/render_pass.h"
+#include "engine/uniform_block.h"
 #include "demo/demo_scene.h"
 
-class TessellatedModelPass : public DemoRenderPass {
+class TessellatedModelPass : public RenderPassBase {
 public:
     const char* name() const override { return "tessellated_model"; }
     void init(const TierResourceView& res);
@@ -12,7 +12,7 @@ public:
 
     // TessellatedModelPass calls FurPass at the end.
     // Set via this setter so DemoScene can wire it up.
-    void setFurPass(DemoRenderPass* fur) { fur_pass_ = fur; }
+    void setFurPass(RenderPassBase* fur) { fur_pass_ = fur; }
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -32,5 +32,5 @@ public:
 
 private:
     UniformBlock ub_;
-    DemoRenderPass* fur_pass_ = nullptr;
+    RenderPassBase* fur_pass_ = nullptr;
 };

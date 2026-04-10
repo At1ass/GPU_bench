@@ -10,9 +10,9 @@ struct FrustumPlanes {
 };
 
 // Camera/projection constants shared across all render passes
-static const float kDemoFovDeg = 60.0f;
-static const float kDemoNear   = 0.1f;
-static const float kDemoFar    = 50.0f;
+static constexpr float kDemoFovDeg = 60.0f;
+static constexpr float kDemoNear   = 0.1f;
+static constexpr float kDemoFar    = 50.0f;
 
 // Per-frame data shared between render passes.
 // Built once at the start of renderFrame(), passed to all passes.

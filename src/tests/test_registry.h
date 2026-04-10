@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <memory>
 #include <type_traits>
 
 class BenchTest;
@@ -42,8 +43,8 @@ enum class TestCategory {
     Count
 };
 
-// Factory function: creates a test from preset parameters
-using TestFactoryFn = BenchTest*(*)(const BenchPreset&);
+// Factory function: creates a test from preset parameters (caller owns result)
+using TestFactoryFn = std::unique_ptr<BenchTest>(*)(const BenchPreset&);
 
 // Metadata for one test — populated from test_registry.def
 struct TestInfo {

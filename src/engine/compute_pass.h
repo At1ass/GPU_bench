@@ -1,7 +1,7 @@
 #pragma once
-#include "demo/render_pass.h"
+#include "engine/render_pass.h"
 #include "engine/pass_context.h"
-#include "demo/uniform_block.h"
+#include "engine/uniform_block.h"
 
 // Template for compute dispatch passes: input textures/SSBOs -> compute shader -> output.
 // Automatically handles: feature check, shader bind, dispatch, barrier.
@@ -30,7 +30,7 @@
 //       unsigned int barrierFlags() const override { return Barrier_Image; }
 //   };
 
-class ComputePassBase : public DemoRenderPass {
+class ComputePassBase : public RenderPassBase {
 public:
     virtual void setup(const TierResourceView& res) = 0;
 

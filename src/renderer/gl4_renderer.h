@@ -65,7 +65,7 @@ public:
     void         setUniformHandle(int loc, uint64_t handle) override;
 
 protected:
-    void* queryFeature(int id) override;
+    void* queryFeature(int id) const override;
 
 private:
     // SSBO storage

@@ -10,7 +10,7 @@
 const TestInfo g_tests[NUM_TESTS] = {
 #define X(id, cls, dname, cname, cat, desc, unit, field, caps) \
     { TestId::id, dname, cname, TestCategory::cat, desc, unit, \
-      +[](const BenchPreset& p) -> BenchTest* { return new cls(p.field); }, caps },
+      +[](const BenchPreset& p) -> std::unique_ptr<BenchTest> { return std::unique_ptr<BenchTest>(new cls(p.field)); }, caps },
 #include "tests/test_registry.def"
 #undef X
 };

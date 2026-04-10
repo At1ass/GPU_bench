@@ -4,6 +4,12 @@
 #include <vector>
 #include <type_traits>
 
+#if defined(__GNUC__) || defined(__clang__)
+#define CB_NODISCARD __attribute__((warn_unused_result))
+#else
+#define CB_NODISCARD
+#endif
+
 struct RenderCaps {
     int max_texture_size = 256;
     int max_vertex_attribs = 8;
@@ -26,9 +32,9 @@ using ShaderHandle       = Handle<ShaderTag>;
 using RenderTargetHandle = Handle<RenderTargetTag>;
 using BufferHandle       = Handle<BufferTag>;
 
-static const ShaderHandle       INVALID_SHADER;
-static const RenderTargetHandle INVALID_RENDER_TARGET;
-static const BufferHandle       INVALID_BUFFER;
+static constexpr ShaderHandle       INVALID_SHADER{};
+static constexpr RenderTargetHandle INVALID_RENDER_TARGET{};
+static constexpr BufferHandle       INVALID_BUFFER{};
 
 // Per-frame GPU call counters. Counted at the renderer level where GL calls
 // actually happen — follows bgfx/Godot/Ogre3D pattern.
@@ -53,7 +59,7 @@ template<typename T> struct FeatureTag;
 // Abstract renderer interface.
 class Renderer {
 public:
-    virtual ~Renderer() {}
+    virtual ~Renderer() = default;
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
     Renderer(Renderer&&) = delete;
@@ -70,9 +76,9 @@ public:
     virtual void clear(float r, float g, float b, float a) = 0;
 
     // Resources
-    virtual MeshHandle    createMesh(const MeshData& data) = 0;
+    CB_NODISCARD virtual MeshHandle    createMesh(const MeshData& data) = 0;
     virtual void          destroyMesh(MeshHandle h) = 0;
-    virtual TextureHandle createTexture(int w, int h, int channels, const unsigned char* pixels) = 0;
+    CB_NODISCARD virtual TextureHandle createTexture(int w, int h, int channels, const unsigned char* pixels) = 0;
     virtual void          destroyTexture(TextureHandle h) = 0;
 
     // Shader selection (built-in shaders)
@@ -80,7 +86,7 @@ public:
     virtual void useShader(ShaderType type) = 0;
 
     // Custom shaders (for ShaderALU, StateChange tests)
-    virtual ShaderHandle createCustomShader(const char* vs, const char* fs) = 0;
+    CB_NODISCARD virtual ShaderHandle createCustomShader(const char* vs, const char* fs) = 0;
     virtual void         useCustomShader(ShaderHandle h) = 0;
     virtual void         destroyCustomShader(ShaderHandle h) = 0;
     virtual int          getCustomUniformLoc(ShaderHandle h, const char* name) = 0;
@@ -109,7 +115,7 @@ public:
     virtual void drawMesh(MeshHandle h) = 0;
 
     // Texture re-upload (for TexUpload test)
-    virtual void uploadTextureData(TextureHandle h, int w, int h_,
+    virtual void uploadTextureData(TextureHandle h, int width, int height,
                                    int channels, const unsigned char* pixels) = 0;
 
     // Color write mask (for Vertex throughput test)
@@ -140,7 +146,7 @@ public:
 
     // Render targets (FBO abstraction)
     virtual bool              supportsRenderTargets() const = 0;
-    virtual RenderTargetHandle createRenderTarget(int w, int h) = 0;
+    CB_NODISCARD virtual RenderTargetHandle createRenderTarget(int w, int h) = 0;
     virtual void              destroyRenderTarget(RenderTargetHandle rt) = 0;
     virtual void              bindRenderTarget(RenderTargetHandle rt) = 0;  // 0 = default framebuffer
     virtual void              blitToScreen(RenderTargetHandle rt,
@@ -151,7 +157,7 @@ public:
     virtual TextureHandle      getDepthTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
 
     // Render target with sampleable depth texture (for SSAO etc). Default: falls back to regular RT.
-    virtual RenderTargetHandle createRenderTargetWithDepth(int w, int h) { return createRenderTarget(w, h); }
+    CB_NODISCARD virtual RenderTargetHandle createRenderTargetWithDepth(int w, int h) { return createRenderTarget(w, h); }
     virtual TextureHandle      getRTDepthTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
     virtual TextureHandle      getRTColorTexture(RenderTargetHandle rt) { (void)rt; return INVALID_TEXTURE; }
 
@@ -181,8 +187,7 @@ public:
 
     template<typename T>
     const T* features() const {
-        return static_cast<const T*>(
-            const_cast<Renderer*>(this)->queryFeature(FeatureTag<T>::id));
+        return static_cast<const T*>(queryFeature(FeatureTag<T>::id));
     }
 
     // Per-frame renderer stats (counted where GL calls happen)
@@ -195,6 +200,10 @@ public:
     // Core profile: GLSL 1.20/1.40 unavailable, tests must use 1.50+
     virtual bool isCoreProfile() const { return false; }
 
+    // GLES detection: used by ShaderCache to select #version 100 / 300 es
+    virtual bool isGLES() const { return false; }
+    virtual bool isGLES3() const { return false; }
+
     // Info
     virtual const char* getGPUVendor() const = 0;
     virtual const char* getGPURenderer() const = 0;
@@ -202,7 +211,7 @@ public:
     virtual const char* getRendererName() const = 0;
 
 protected:
-    virtual void* queryFeature(int) { return nullptr; }
+    virtual void* queryFeature(int) const { return nullptr; }
     RendererStats renderer_stats_;
 };
 

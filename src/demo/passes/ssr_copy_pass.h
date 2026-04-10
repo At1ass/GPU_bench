@@ -1,10 +1,10 @@
 #pragma once
-#include "demo/render_pass.h"
+#include "engine/render_pass.h"
 #include "demo/demo_debug.h"
 
 struct DemoTierConfig;
 
-class SSRCopyPass : public DemoRenderPass {
+class SSRCopyPass : public RenderPassBase {
 public:
     const char* name() const override { return "ssr_copy"; }
     void init(const TierResourceView&) {}

@@ -28,20 +28,20 @@
 // Helper: create, init, push to vector.
 // Safe: vector is pre-reserved so push_back never invalidates prior elements.
 template<typename T>
-static void make(std::vector<std::unique_ptr<DemoRenderPass>>& out,
+static void make(std::vector<std::unique_ptr<RenderPassBase>>& out,
                  const TierResourceView& res) {
-    out.push_back(std::unique_ptr<DemoRenderPass>(new T()));
+    out.push_back(std::unique_ptr<RenderPassBase>(new T()));
     static_cast<T*>(out.back().get())->init(res);
 }
 
-static DemoRenderPass* findByName(const std::vector<std::unique_ptr<DemoRenderPass>>& passes,
+static RenderPassBase* findByName(const std::vector<std::unique_ptr<RenderPassBase>>& passes,
                                    const char* name) {
     for (size_t i = 0; i < passes.size(); i++)
         if (strcmp(passes[i]->name(), name) == 0) return passes[i].get();
     return nullptr;
 }
 
-void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
+void createPasses(std::vector<std::unique_ptr<RenderPassBase>>& out,
                   const TierResourceView& res,
                   const DemoTierConfig& cfg) {
     out.clear();
@@ -79,7 +79,7 @@ void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
 
     // SceneToFBOPass (needs sub-pass wiring, no init)
     {
-        out.push_back(std::unique_ptr<DemoRenderPass>(new SceneToFBOPass()));
+        out.push_back(std::unique_ptr<RenderPassBase>(new SceneToFBOPass()));
         SceneToFBOPass* fbo = static_cast<SceneToFBOPass*>(out.back().get());
         fbo->setSubPasses(
             findByName(out, "sky"),
@@ -92,7 +92,7 @@ void createPasses(std::vector<std::unique_ptr<DemoRenderPass>>& out,
 
     // TessellatedModelPass (needs init + setFurPass)
     {
-        out.push_back(std::unique_ptr<DemoRenderPass>(new TessellatedModelPass()));
+        out.push_back(std::unique_ptr<RenderPassBase>(new TessellatedModelPass()));
         TessellatedModelPass* tess = static_cast<TessellatedModelPass*>(out.back().get());
         tess->init(res);
         tess->setFurPass(findByName(out, "fur"));

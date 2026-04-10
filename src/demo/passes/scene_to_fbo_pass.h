@@ -1,10 +1,10 @@
 #pragma once
-#include "demo/render_pass.h"
+#include "engine/render_pass.h"
 #include "demo/demo_scene.h"
 
 // Renders the full scene (sky, opaque, grass, fur, particles) into the bloom scene FBO.
 // Sub-passes are invoked via stored pointers set by setSubPasses().
-class SceneToFBOPass : public DemoRenderPass {
+class SceneToFBOPass : public RenderPassBase {
 public:
     SceneToFBOPass()
         : sky_pass_(nullptr), opaque_pass_(nullptr)
@@ -13,9 +13,9 @@ public:
 
     const char* name() const override { return "scene_to_fbo"; }
 
-    void setSubPasses(DemoRenderPass* sky, DemoRenderPass* opaque,
-                      DemoRenderPass* grass, DemoRenderPass* fur,
-                      DemoRenderPass* particle, DemoRenderPass* torch = nullptr) {
+    void setSubPasses(RenderPassBase* sky, RenderPassBase* opaque,
+                      RenderPassBase* grass, RenderPassBase* fur,
+                      RenderPassBase* particle, RenderPassBase* torch = nullptr) {
         sky_pass_ = sky;
         opaque_pass_ = opaque;
         grass_pass_ = grass;
@@ -45,10 +45,10 @@ public:
     PassRole passRole() const override { return PassRole::SceneContainer; }
 
 private:
-    DemoRenderPass* sky_pass_;
-    DemoRenderPass* opaque_pass_;
-    DemoRenderPass* grass_pass_;
-    DemoRenderPass* fur_pass_;
-    DemoRenderPass* particle_pass_;
-    DemoRenderPass* torch_pass_;
+    RenderPassBase* sky_pass_;
+    RenderPassBase* opaque_pass_;
+    RenderPassBase* grass_pass_;
+    RenderPassBase* fur_pass_;
+    RenderPassBase* particle_pass_;
+    RenderPassBase* torch_pass_;
 };

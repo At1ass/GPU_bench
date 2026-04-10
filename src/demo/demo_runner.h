@@ -48,7 +48,7 @@ struct DemoResults {
 // Callback interface for demo overlay
 class DemoCallbacks {
 public:
-    virtual ~DemoCallbacks() {}
+    virtual ~DemoCallbacks() = default;
     DemoCallbacks(const DemoCallbacks&) = delete;
     DemoCallbacks& operator=(const DemoCallbacks&) = delete;
     DemoCallbacks(DemoCallbacks&&) = delete;

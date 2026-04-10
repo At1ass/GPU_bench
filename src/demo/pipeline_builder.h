@@ -6,13 +6,13 @@
 struct DemoTierConfig;
 struct DemoDebugOverrides;
 struct TierResourceView;
-class DemoRenderPass;
+class RenderPassBase;
 
 // Build render pipeline from pass vector using resource dependency
 // topological sort. Passes declare reads/writes via resourceDecls(),
 // builder determines execution order automatically.
 void buildPipeline(DemoPipeline& pipeline,
-                   const std::vector<std::unique_ptr<DemoRenderPass>>& passes,
+                   const std::vector<std::unique_ptr<RenderPassBase>>& passes,
                    const DemoTierConfig& config,
                    const DemoDebugOverrides& debug,
                    const TierResourceView& res,

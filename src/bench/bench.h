@@ -38,7 +38,7 @@ struct BenchResult {
 // Base class for benchmark tests
 class BenchTest {
 public:
-    virtual ~BenchTest() {}
+    virtual ~BenchTest() = default;
     BenchTest(const BenchTest&) = delete;
     BenchTest& operator=(const BenchTest&) = delete;
     BenchTest(BenchTest&&) = delete;

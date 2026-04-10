@@ -59,7 +59,7 @@ void BenchRunner::runSelected(Renderer* r, RenderContext* ctx,
             continue;
         }
         if (cb && !cb->onPoll()) break;
-        std::unique_ptr<BenchTest> test(g_tests[i].factory(preset));
+        auto test = g_tests[i].factory(preset);
         runTest(test.get(), r, ctx, cfg, cb);
     }
     // Clean up render target
@@ -114,8 +114,9 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
 
     // Warmup
     bool sanity_ok = true;
+    bool cancelled = false;
     status_ = std::string("Warmup: ") + test->name();
-    for (int i = 0; i < cfg.warmup_frames; i++) {
+    for (int i = 0; i < cfg.warmup_frames && !cancelled; i++) {
         if (use_fbo) r->bindRenderTarget(bench_rt_);
         r->setViewport(0, 0, cfg.render_w, cfg.render_h);
         r->clear(0.1f, 0.1f, 0.12f, 1.0f);
@@ -157,12 +158,13 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
         }
 
         progress_ = static_cast<int>(100.0 * i / cfg.warmup_frames * 0.1);
-        if (cb && !cb->onFrame(rt)) goto cleanup;
+        if (cb && !cb->onFrame(rt)) cancelled = true;
     }
-    LOG_DBG("Bench: warmup done for '%s' (%d frames)", test->name(), cfg.warmup_frames);
 
-    // Measurement
-    {
+    if (!cancelled) {
+        LOG_DBG("Bench: warmup done for '%s' (%d frames)", test->name(), cfg.warmup_frames);
+
+        // Measurement
         status_ = std::string("Measuring: ") + test->name();
         std::vector<double> times;
         std::vector<double> gpu_times;
@@ -194,34 +196,36 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
                 elapsed / cfg.min_duration_sec
             ));
 
-            if (cb && !cb->onFrame(rt)) goto cleanup;
+            if (cb && !cb->onFrame(rt)) { cancelled = true; break; }
 
             frame++;
             if (frame >= cfg.measure_frames && elapsed >= cfg.min_duration_sec)
                 break;
         }
 
-        if (use_fbo) r->bindRenderTarget(INVALID_RENDER_TARGET);
+        if (!cancelled) {
+            if (use_fbo) r->bindRenderTarget(INVALID_RENDER_TARGET);
 
-        double score = test->computeScore(times, cfg.render_w, cfg.render_h);
-        BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);
+            double score = test->computeScore(times, cfg.render_w, cfg.render_h);
+            BenchResult result = computeStats(test->name(), test->scoreUnit(), times, score);
 
-        if (!gpu_times.empty()) {
-            auto trimmed_gpu = trimmedTimes(gpu_times);
-            double gpu_sum = 0;
-            for (size_t i = 0; i < trimmed_gpu.size(); i++) gpu_sum += trimmed_gpu[i];
-            result.gpu_ms = trimmed_gpu.empty() ? 0 : gpu_sum / static_cast<double>(trimmed_gpu.size());
+            if (!gpu_times.empty()) {
+                auto trimmed_gpu = trimmedTimes(gpu_times);
+                double gpu_sum = 0;
+                for (size_t i = 0; i < trimmed_gpu.size(); i++) gpu_sum += trimmed_gpu[i];
+                result.gpu_ms = trimmed_gpu.empty() ? 0 : gpu_sum / static_cast<double>(trimmed_gpu.size());
+            }
+
+            result.sanity_ok = sanity_ok;
+            if (!sanity_ok) result.valid = false;
+
+            LOG_DBG("Bench: '%s' measured %d frames in %.1fs", test->name(),
+                     result.frames, result.avg_ms * result.frames / 1000.0);
+            results_.push_back(result);
         }
-
-        result.sanity_ok = sanity_ok;
-        if (!sanity_ok) result.valid = false;
-
-        LOG_DBG("Bench: '%s' measured %d frames in %.1fs", test->name(),
-                 result.frames, result.avg_ms * result.frames / 1000.0);
-        results_.push_back(result);
     }
 
-cleanup:
+    // Cleanup (always runs)
     if (bench_rt_ != INVALID_RENDER_TARGET)
         r->bindRenderTarget(INVALID_RENDER_TARGET);
     test->cleanup(r);

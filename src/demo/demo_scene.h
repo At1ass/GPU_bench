@@ -2,12 +2,12 @@
 #include "renderer/renderer.h"
 #include "demo/demo_camera.h"
 #include "demo/demo_debug.h"
-#include "demo/demo_frame_data.h"
+#include "engine/frame_data.h"
 #include "demo/demo_pipeline.h"
 #include "demo/pass_factory.h"
 #include "demo/pipeline_builder.h"
-#include "demo/resource_id.h"
-#include "demo/scene_data.h"
+#include "engine/resource_id.h"
+#include "engine/scene_data.h"
 #include "demo/tier_resource_view.h"
 #include <memory>
 #include <vector>
@@ -105,7 +105,7 @@ int maxSupportedTier(const Renderer& r);
 
 // Demo scene: OBJ model with fur, orbiting camera.
 // Render passes are created by pass_factory and accessed through
-// DemoRenderPass* base pointers — no concrete pass types visible here.
+// RenderPassBase* base pointers — no concrete pass types visible here.
 class DemoScene {
 public:
     DemoScene();
@@ -159,7 +159,7 @@ private:
     Mat4 model_transform_;
 
     // Render passes (owned, accessed only through pipeline)
-    std::vector<std::unique_ptr<DemoRenderPass>> passes_;
+    std::vector<std::unique_ptr<RenderPassBase>> passes_;
     DemoPipeline pipeline_;
 
     int viewport_w_, viewport_h_;

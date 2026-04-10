@@ -18,7 +18,6 @@ uniform vec3 u_cam_up;
 
 out vec2 v_quad_uv;
 out vec4 v_color;
-out float v_life_ratio;
 
 // Must match particles_t4.comp layout
 const uint FIREFLY_COUNT = 256u;
@@ -86,7 +85,6 @@ void main() {
 
     v_quad_uv = off * 0.5 + 0.5;
     v_color = p.color;
-    v_life_ratio = life_ratio;
 
     gl_Position = u_proj * u_view * vec4(world_pos, 1.0);
 }

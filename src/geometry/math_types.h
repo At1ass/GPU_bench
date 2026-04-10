@@ -1,11 +1,14 @@
 #pragma once
 #include <cmath>
 #include <cstring>
+#include <limits>
+
+static_assert(std::numeric_limits<float>::is_iec559, "IEEE 754 float required for memset initialization");
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-static const float CB_PI = static_cast<float>(M_PI);
+static constexpr float CB_PI = 3.14159265358979323846f;
 
 struct Vec2 {
     float x = 0, y = 0;
@@ -136,8 +139,9 @@ struct Mat4 {
         return Vec3(x, y, z);
     }
 
-    // Transform a normal (w=0, upper-left 3x3 only)
-    Vec3 transformNormal(const Vec3& n) const {
+    // Transform a direction vector (w=0, upper-left 3x3 only).
+    // Only correct for uniform scale. For non-uniform scale, use inverse-transpose.
+    Vec3 transformDirection(const Vec3& n) const {
         float x = m[0]*n.x + m[4]*n.y + m[8]*n.z;
         float y = m[1]*n.x + m[5]*n.y + m[9]*n.z;
         float z = m[2]*n.x + m[6]*n.y + m[10]*n.z;

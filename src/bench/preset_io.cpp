@@ -64,7 +64,7 @@ bool saveConfig(const char* path, const BenchPreset& preset) {
 
 // Parse integer with range clamping
 static int clampedInt(const char* s, int lo, int hi) {
-    return std::max(lo, std::min(hi, atoi(s)));
+    char* end = nullptr; long val = strtol(s, &end, 10); if (end == s) val = lo; return std::max(lo, std::min(hi, static_cast<int>(val)));
 }
 
 static void parseLine(const char* line, const std::string& section, BenchPreset& p) {

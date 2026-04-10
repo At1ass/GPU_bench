@@ -1,5 +1,5 @@
 #include "engine/geometry_pass.h"
-#include "demo/demo_frame_data.h"
+#include "engine/frame_data.h"
 #include "geometry/math_types.h"
 #include <cmath>
 

@@ -76,7 +76,7 @@ protected:
 public:
     bool hasCompute() const { return has_compute_; }
 
-    // SSBO usage hints (maps to GL_DYNAMIC_DRAW / GL_DYNAMIC_READ)
+    // SSBO usage hints — values MUST match GL constants (validated in gl4_renderer.cpp)
     enum class SSBOUsage : unsigned int {
         GpuReadWrite = 0x88E8,  // GL_DYNAMIC_DRAW: GPU writes, GPU reads (default)
         CpuReadBack  = 0x88E9,  // GL_DYNAMIC_READ: GPU writes, CPU reads back

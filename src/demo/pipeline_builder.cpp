@@ -1,7 +1,7 @@
 #include "demo/pipeline_builder.h"
 #include "demo/demo_scene.h"
 #include "demo/demo_utils.h"
-#include "demo/resource_id.h"
+#include "engine/resource_id.h"
 #include "platform/logger.h"
 #include <vector>
 
@@ -15,7 +15,7 @@
 // 4. Emit PipelineNodes with RT bindings/barriers
 
 void buildPipeline(DemoPipeline& pipeline,
-                   const std::vector<std::unique_ptr<DemoRenderPass>>& passes,
+                   const std::vector<std::unique_ptr<RenderPassBase>>& passes,
                    const DemoTierConfig& config,
                    const DemoDebugOverrides& debug,
                    const TierResourceView& res,
@@ -27,10 +27,10 @@ void buildPipeline(DemoPipeline& pipeline,
     // ----------------------------------------------------------
     // Step 1: collect enabled passes
     // ----------------------------------------------------------
-    std::vector<DemoRenderPass*> enabled;
+    std::vector<RenderPassBase*> enabled;
     enabled.reserve(passes.size());
     for (size_t i = 0; i < passes.size(); i++) {
-        DemoRenderPass* p = passes[i].get();
+        RenderPassBase* p = passes[i].get();
         if (static_cast<int>(p->minTier()) > tier_int) continue;
         if (!p->isEnabled(config, debug)) continue;
         enabled.push_back(p);
@@ -99,7 +99,7 @@ void buildPipeline(DemoPipeline& pipeline,
     for (size_t i = 0; i < static_cast<size_t>(n); i++)
         if (in_degree[i] == 0) queue.push_back(i);
 
-    std::vector<DemoRenderPass*> sorted;
+    std::vector<RenderPassBase*> sorted;
     sorted.reserve(static_cast<size_t>(n));
 
     while (!queue.empty()) {
@@ -177,7 +177,7 @@ void buildPipeline(DemoPipeline& pipeline,
         bool hdr_rt_unbound = false;
 
         for (size_t i = 0; i < sorted.size(); i++) {
-            DemoRenderPass* pass = sorted[i];
+            RenderPassBase* pass = sorted[i];
 
 
             bool writes_shadow = false;
@@ -269,7 +269,7 @@ void buildPipeline(DemoPipeline& pipeline,
         // T2/T3 scene FBO path
         // ============================================================
         for (size_t i = 0; i < sorted.size(); i++) {
-            DemoRenderPass* pass = sorted[i];
+            RenderPassBase* pass = sorted[i];
 
 
             bool writes_shadow = false;
@@ -304,7 +304,7 @@ void buildPipeline(DemoPipeline& pipeline,
         // ============================================================
         bool fb_cleared = false;
         for (size_t i = 0; i < sorted.size(); i++) {
-            DemoRenderPass* pass = sorted[i];
+            RenderPassBase* pass = sorted[i];
 
             bool writes_shadow = false;
             const ResourceDecl* decls = pass->resourceDecls();

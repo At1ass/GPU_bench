@@ -1,11 +1,11 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/render_pass.h"
+#include "engine/uniform_block.h"
 #include "demo/demo_scene.h"
 
 // T4 HDR composite: ACES tone mapping + bloom + AO + volumetric fog + SSR + DoF.
 // Reads from many textures and applies final post-processing.
-class HDRCompositePass : public DemoRenderPass {
+class HDRCompositePass : public RenderPassBase {
 public:
     HDRCompositePass() = default;
 

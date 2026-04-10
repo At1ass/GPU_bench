@@ -1,6 +1,7 @@
 #pragma once
 #include "renderer/renderer.h"
 #include "renderer/scoped_handle.h"
+#include <cassert>
 #include <string>
 #include <unordered_map>
 
@@ -41,11 +42,13 @@ public:
 
     // Bind this shader for rendering.
     void use() {
+        assert(renderer_ && "ShaderProgram::use() called on uninitialized program");
         renderer_->useCustomShader(shader_);
     }
 
     // Get cached uniform location.
     int loc(const char* name) {
+        assert(renderer_ && "ShaderProgram::loc() called on uninitialized program");
         std::unordered_map<std::string, int>::iterator it = cache_.find(name);
         if (it != cache_.end()) return it->second;
         int l = renderer_->getCustomUniformLoc(shader_, name);

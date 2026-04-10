@@ -45,7 +45,7 @@ public:
     void         endTransformFeedback() override;
 
 protected:
-    void* queryFeature(int id) override;
+    void* queryFeature(int id) const override;
 
 private:
     struct GLBuffer {

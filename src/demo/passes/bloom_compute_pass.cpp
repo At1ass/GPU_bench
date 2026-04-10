@@ -1,7 +1,7 @@
 #include "demo/passes/bloom_compute_pass.h"
 #include "engine/pass_context.h"
 #include "demo/demo_utils.h"
-#include "demo/uniform_id.h"
+#include "engine/uniform_id.h"
 #include "demo/tier_resource_view.h"
 #include "demo/demo_scene.h"
 #include "renderer/features.h"

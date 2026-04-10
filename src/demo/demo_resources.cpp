@@ -270,7 +270,11 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
 }
 
 bool DemoResources::compileSkyShader(Renderer* r) {
-    ShaderFeatureSet feat = r->isCoreProfile() ? SF_GLSL_150 : SF_GLSL_120;
+    ShaderFeatureSet feat;
+    if (r->isGLES())
+        feat = r->isGLES3() ? SF_GLES_300 : SF_GLES_100;
+    else
+        feat = r->isCoreProfile() ? SF_GLSL_150 : SF_GLSL_120;
     core_.sky_shader_from_cache = shader_cache_.get("sky", feat, feat);
     if (!core_.sky_shader_from_cache) {
         LOG_ERR("Resources: failed to create sky shader");
@@ -283,7 +287,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
     int idx = tier - 1;  // tier 1..4 -> index 0..3
     if (idx < 0 || idx >= CoreRes::MAX_TIERS) return false;
 
-    ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), r->isCoreProfile());
+    ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), r->isCoreProfile(), r->isGLES(), r->isGLES3());
 
     // Sky shader per-tier (domain warp T2+, physical atmosphere T3+)
     core_.sky_cache[idx] = shader_cache_.get("sky", feat, feat);
@@ -500,7 +504,7 @@ bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
     shadow_.map_size = shadow_size;
     // Shadow depth shader via cache (T2+ feature set)
     {
-        ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile());
+        ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile(), r->isGLES(), r->isGLES3());
         shadow_.cache = shader_cache_.get("shadow_depth", feat, feat);
         if (!shadow_.cache) {
             LOG_WRN("Resources: failed to compile shadow_depth shader via cache");
@@ -524,7 +528,7 @@ bool DemoResources::createShadowResources(Renderer* r, int shadow_size) {
 }
 
 bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h) {
-    ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile());
+    ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile(), r->isGLES(), r->isGLES3());
 
     // Bloom extract shader via cache
     bloom_.extract_cache = shader_cache_.get("bloom_extract", feat, feat);
@@ -622,7 +626,7 @@ bool DemoResources::createBloomResources(Renderer* r, int render_w, int render_h
 }
 
 bool DemoResources::createSSAOResources(Renderer* r, int render_w, int render_h) {
-    ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile());
+    ShaderFeatureSet feat = featuresForTier(DemoTier::Enhanced, r->isCoreProfile(), r->isGLES(), r->isGLES3());
 
     // SSAO shader via cache
     ssao_.cache = shader_cache_.get("ssao", feat, feat);

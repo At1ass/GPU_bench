@@ -1,0 +1,428 @@
+[
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/imgui_lib.dir/extern/imgui/imgui.cpp.o -c /home/at1ass/work/GPU_bechmark/extern/imgui/imgui.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/extern/imgui/imgui.cpp",
+  "output": "CMakeFiles/imgui_lib.dir/extern/imgui/imgui.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/imgui_lib.dir/extern/imgui/imgui_draw.cpp.o -c /home/at1ass/work/GPU_bechmark/extern/imgui/imgui_draw.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/extern/imgui/imgui_draw.cpp",
+  "output": "CMakeFiles/imgui_lib.dir/extern/imgui/imgui_draw.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/imgui_lib.dir/extern/imgui/imgui_tables.cpp.o -c /home/at1ass/work/GPU_bechmark/extern/imgui/imgui_tables.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/extern/imgui/imgui_tables.cpp",
+  "output": "CMakeFiles/imgui_lib.dir/extern/imgui/imgui_tables.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/imgui_lib.dir/extern/imgui/imgui_widgets.cpp.o -c /home/at1ass/work/GPU_bechmark/extern/imgui/imgui_widgets.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/extern/imgui/imgui_widgets.cpp",
+  "output": "CMakeFiles/imgui_lib.dir/extern/imgui/imgui_widgets.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/imgui_lib.dir/extern/imgui/backends/imgui_impl_sdl2.cpp.o -c /home/at1ass/work/GPU_bechmark/extern/imgui/backends/imgui_impl_sdl2.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/extern/imgui/backends/imgui_impl_sdl2.cpp",
+  "output": "CMakeFiles/imgui_lib.dir/extern/imgui/backends/imgui_impl_sdl2.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/main.cpp.o -c /home/at1ass/work/GPU_bechmark/src/main.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/main.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/app.cpp.o -c /home/at1ass/work/GPU_bechmark/src/app.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/app.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/app.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gl_funcs.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gl_funcs.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gl_funcs.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gl_funcs.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gl2_renderer.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gl2_renderer.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gl2_renderer.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gl2_renderer.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gl3_renderer.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gl3_renderer.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gl3_renderer.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gl3_renderer.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gl4_renderer.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gl4_renderer.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gl4_renderer.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gl4_renderer.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gles_renderer.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gles_renderer.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gles_renderer.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gles_renderer.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/render_context.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/render_context.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/render_context.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/render_context.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gl_render_context.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gl_render_context.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gl_render_context.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gl_render_context.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gl_loader.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gl_loader.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gl_loader.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gl_loader.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/renderer_factory.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/renderer_factory.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/renderer_factory.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/renderer_factory.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/renderer/gpu_timer.cpp.o -c /home/at1ass/work/GPU_bechmark/src/renderer/gpu_timer.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/renderer/gpu_timer.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/renderer/gpu_timer.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/geometry/mesh_gen.cpp.o -c /home/at1ass/work/GPU_bechmark/src/geometry/mesh_gen.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/geometry/mesh_gen.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/geometry/mesh_gen.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/geometry/obj_loader.cpp.o -c /home/at1ass/work/GPU_bechmark/src/geometry/obj_loader.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/geometry/obj_loader.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/geometry/obj_loader.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/bench/bench.cpp.o -c /home/at1ass/work/GPU_bechmark/src/bench/bench.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/bench/bench.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/bench/bench.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/bench/bench_runner.cpp.o -c /home/at1ass/work/GPU_bechmark/src/bench/bench_runner.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/bench/bench_runner.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/bench/bench_runner.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/bench/stress_runner.cpp.o -c /home/at1ass/work/GPU_bechmark/src/bench/stress_runner.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/bench/stress_runner.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/bench/stress_runner.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/bench/preset.cpp.o -c /home/at1ass/work/GPU_bechmark/src/bench/preset.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/bench/preset.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/bench/preset.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/bench/results.cpp.o -c /home/at1ass/work/GPU_bechmark/src/bench/results.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/bench/results.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/bench/results.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/bench/preset_io.cpp.o -c /home/at1ass/work/GPU_bechmark/src/bench/preset_io.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/bench/preset_io.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/bench/preset_io.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_registry.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_registry.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_registry.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_registry.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_fillrate.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_fillrate.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_fillrate.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_fillrate.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_geometry.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_geometry.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_geometry.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_geometry.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_texturing.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_texturing.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_texturing.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_texturing.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_scene.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_scene.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_scene.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_scene.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_drawcall.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_drawcall.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_drawcall.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_drawcall.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_drawcall_raw.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_drawcall_raw.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_drawcall_raw.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_drawcall_raw.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_overdraw.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_overdraw.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_overdraw.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_overdraw.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_texupload.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_texupload.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_texupload.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_texupload.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_statechange.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_statechange.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_statechange.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_statechange.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_vertex.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_vertex.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_vertex.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_vertex.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_shader_alu.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_shader_alu.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_shader_alu.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_shader_alu.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_shader_fma.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_shader_fma.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_shader_fma.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_shader_fma.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_instanced_draw.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_instanced_draw.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_instanced_draw.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_instanced_draw.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_fma.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_compute_fma.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_compute_fma.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_fma.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_fbo_fillrate.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_fbo_fillrate.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_fbo_fillrate.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_fbo_fillrate.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_mrt_fill.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_mrt_fill.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_mrt_fill.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_mrt_fill.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_texarray_sample.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_texarray_sample.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_texarray_sample.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_texarray_sample.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_geom_shader.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_geom_shader.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_geom_shader.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_geom_shader.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_ubo_switch.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_ubo_switch.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_ubo_switch.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_ubo_switch.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_transform_feedback.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_transform_feedback.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_transform_feedback.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_transform_feedback.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_bw.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_compute_bw.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_compute_bw.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_bw.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_indirect_draw.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_indirect_draw.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_indirect_draw.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_indirect_draw.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_smem.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_compute_smem.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_compute_smem.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_smem.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_ssbo_atomics.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_ssbo_atomics.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_ssbo_atomics.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_ssbo_atomics.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_tessellation.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_tessellation.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_tessellation.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_tessellation.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_texture_gather.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_texture_gather.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_texture_gather.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_texture_gather.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_image_load_store.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_image_load_store.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_image_load_store.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_image_load_store.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_prefix.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_compute_prefix.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_compute_prefix.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_compute_prefix.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_persistent_map.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_persistent_map.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_persistent_map.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_persistent_map.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/tests/test_bindless_tex.cpp.o -c /home/at1ass/work/GPU_bechmark/src/tests/test_bindless_tex.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/tests/test_bindless_tex.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/tests/test_bindless_tex.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_camera.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_camera.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_camera.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_camera.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/shader_loader.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/shader_loader.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/shader_loader.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/shader_loader.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_scene.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_scene.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_scene.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_scene.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_tier_config.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_tier_config.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_tier_config.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_tier_config.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_runner.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_runner.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_runner.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_runner.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_ui.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_ui.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_ui.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_ui.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_export.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_export.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_export.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_export.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/ui/bench_ui.cpp.o -c /home/at1ass/work/GPU_bechmark/src/ui/bench_ui.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/ui/bench_ui.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/ui/bench_ui.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/platform/hwinfo.cpp.o -c /home/at1ass/work/GPU_bechmark/src/platform/hwinfo.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/platform/hwinfo.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/platform/hwinfo.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/platform/gpu_select.cpp.o -c /home/at1ass/work/GPU_bechmark/src/platform/gpu_select.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/platform/gpu_select.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/platform/gpu_select.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/platform/logger.cpp.o -c /home/at1ass/work/GPU_bechmark/src/platform/logger.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/platform/logger.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/platform/logger.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/platform/data_path.cpp.o -c /home/at1ass/work/GPU_bechmark/src/platform/data_path.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/platform/data_path.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/platform/data_path.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/gpu_benchmark.dir/src/platform/stb_image_impl.cpp.o -c /home/at1ass/work/GPU_bechmark/src/platform/stb_image_impl.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/platform/stb_image_impl.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/platform/stb_image_impl.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -o CMakeFiles/gpu_benchmark.dir/src/demo/demo_resources.cpp.o -c /home/at1ass/work/GPU_bechmark/src/demo/demo_resources.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/src/demo/demo_resources.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/src/demo/demo_resources.cpp.o"
+},
+{
+  "directory": "/home/at1ass/work/GPU_bechmark/build_native",
+  "command": "/usr/bin/c++  -I/home/at1ass/work/GPU_bechmark/src -I/home/at1ass/work/GPU_bechmark/extern -I/home/at1ass/work/GPU_bechmark/extern/imgui -I/home/at1ass/work/GPU_bechmark/extern/imgui/backends -isystem /usr/include/SDL2 -O3 -DNDEBUG -march=x86-64-v2 -std=gnu++11 -flto=auto -fno-fat-lto-objects -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wdouble-promotion -Wformat=2 -Wundef -Woverloaded-virtual -Wno-unused-parameter -Wnull-dereference -Wduplicated-cond -Wduplicated-branches -w -o CMakeFiles/gpu_benchmark.dir/extern/imgui/backends/imgui_impl_opengl3.cpp.o -c /home/at1ass/work/GPU_bechmark/extern/imgui/backends/imgui_impl_opengl3.cpp",
+  "file": "/home/at1ass/work/GPU_bechmark/extern/imgui/backends/imgui_impl_opengl3.cpp",
+  "output": "CMakeFiles/gpu_benchmark.dir/extern/imgui/backends/imgui_impl_opengl3.cpp.o"
+}
+]

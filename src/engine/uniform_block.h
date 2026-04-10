@@ -1,6 +1,6 @@
 #pragma once
 
-#include "demo/uniform_id.h"
+#include "engine/uniform_id.h"
 #include "demo/shader_program.h"
 #include "geometry/math_types.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "renderer/renderer.h"
-#include "demo/material.h"
+#include "engine/material.h"
 #include "geometry/math_types.h"
 #include <vector>
 

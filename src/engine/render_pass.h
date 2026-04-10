@@ -1,7 +1,7 @@
 #pragma once
-#include "demo/demo_frame_data.h"
-#include "demo/resource_id.h"
-#include "demo/scene_data.h"
+#include "engine/frame_data.h"
+#include "engine/resource_id.h"
+#include "engine/scene_data.h"
 
 class Renderer;
 class PassContext;
@@ -30,11 +30,11 @@ enum class PassRole {
 // Passes communicate via FrameData (shared mutable state) and
 // TierResourceView (read-only GPU resources).
 
-class DemoRenderPass {
+class RenderPassBase {
 public:
-    virtual ~DemoRenderPass() {}
-    DemoRenderPass(const DemoRenderPass&) = delete;
-    DemoRenderPass& operator=(const DemoRenderPass&) = delete;
+    virtual ~RenderPassBase() = default;
+    RenderPassBase(const RenderPassBase&) = delete;
+    RenderPassBase& operator=(const RenderPassBase&) = delete;
 
     // Identity
     virtual const char* name() const = 0;
@@ -66,5 +66,5 @@ public:
     virtual PassRole passRole() const { return PassRole::Default; }
 
 protected:
-    DemoRenderPass() = default;
+    RenderPassBase() = default;
 };

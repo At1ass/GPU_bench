@@ -3,40 +3,20 @@
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
 #include "platform/logger.h"
+#include "platform/shader_compat.h"
 #include <cmath>
 #include <vector>
+#include <string>
 
-// GLSL 140 shader with a uniform block
-static const char* UBO_VS_140 = R"(
-#version 140
+// Shader bodies WITHOUT #version (injected via testShaderPreamble140)
+static const char* UBO_VS_BODY = R"(
 in vec3 a_pos;
 void main() {
     gl_Position = vec4(a_pos.xy, 0.0, 1.0);
 }
 )";
 
-static const char* UBO_FS_140 = R"(
-#version 140
-layout(std140) uniform ColorBlock {
-    vec4 u_color;
-};
-out vec4 frag_color;
-void main() {
-    frag_color = u_color;
-}
-)";
-
-// GLSL 150 core profile variants
-static const char* UBO_VS_150 = R"(
-#version 150
-in vec3 a_pos;
-void main() {
-    gl_Position = vec4(a_pos.xy, 0.0, 1.0);
-}
-)";
-
-static const char* UBO_FS_150 = R"(
-#version 150
+static const char* UBO_FS_BODY = R"(
 layout(std140) uniform ColorBlock {
     vec4 u_color;
 };
@@ -60,9 +40,9 @@ const char* UBOSwitchTest::description() const {
 void UBOSwitchTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) {
     vw_ = vw; vh_ = vh;
     quad_ = r.createMesh(MeshGen::quad());
-    const char* vs = r.isCoreProfile() ? UBO_VS_150 : UBO_VS_140;
-    const char* fs = r.isCoreProfile() ? UBO_FS_150 : UBO_FS_140;
-    shader_ = r.createCustomShader(vs, fs);
+    std::string vs = std::string(testShaderPreamble140(&r)) + UBO_VS_BODY;
+    std::string fs = std::string(testShaderPreamble140(&r)) + UBO_FS_BODY;
+    shader_ = r.createCustomShader(vs.c_str(), fs.c_str());
 
     // Create UBOs with different colors
     for (int i = 0; i < params_.ubo_count; i++) {

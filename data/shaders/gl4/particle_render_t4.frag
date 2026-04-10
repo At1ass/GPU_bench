@@ -1,7 +1,6 @@
 #version 430
 in vec2 v_quad_uv;
 in vec4 v_color;
-in float v_life_ratio;
 
 out vec4 FragColor;
 

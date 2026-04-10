@@ -1,11 +1,11 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/render_pass.h"
+#include "engine/uniform_block.h"
 #include "demo/demo_scene.h"
 
 // SSAO pass: compute ambient occlusion from scene depth + blur.
 // Combines renderSSAOPass() and renderSSAOBlur() into a single execute().
-class SSAOPass : public DemoRenderPass {
+class SSAOPass : public RenderPassBase {
 public:
     const char* name() const override { return "ssao"; }
     void init(const TierResourceView& res);

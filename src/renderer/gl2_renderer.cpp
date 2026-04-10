@@ -1,3 +1,4 @@
+#include <cstddef>
 #include "renderer/gl2_renderer.h"
 #include "renderer/gl_extensions.h"
 #include "platform/logger.h"
@@ -579,7 +580,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
     if (!free_mesh_slots_.empty()) {
         h = free_mesh_slots_.back();
         free_mesh_slots_.pop_back();
-        meshes_[h] = std::move(gm);
+        meshes_[h.id] = std::move(gm);
     } else {
         h = MeshHandle(static_cast<unsigned int>(meshes_.size()));
         meshes_.push_back(std::move(gm));
@@ -591,9 +592,9 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
 
 void GL2Renderer::destroyMesh(MeshHandle h) {
     if (!isValidMesh(h)) return;
-    glDeleteBuffers(1, &meshes_[h].vbo);
-    glDeleteBuffers(1, &meshes_[h].ibo);
-    meshes_[h].valid = false;
+    glDeleteBuffers(1, &meshes_[h.id].vbo);
+    glDeleteBuffers(1, &meshes_[h.id].ibo);
+    meshes_[h.id].valid = false;
     free_mesh_slots_.push_back(h);
 }
 
@@ -653,7 +654,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));
@@ -664,10 +665,10 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
 
 void GL2Renderer::destroyTexture(TextureHandle h) {
     if (!isValidTexture(h)) return;
-    if (!textures_[h].rt_owned)
-        glDeleteTextures(1, &textures_[h].id);
-    textures_[h].valid = false;
-    textures_[h].rt_owned = false;
+    if (!textures_[h.id].rt_owned)
+        glDeleteTextures(1, &textures_[h.id].id);
+    textures_[h.id].valid = false;
+    textures_[h.id].rt_owned = false;
     free_tex_slots_.push_back(h);
 }
 
@@ -698,7 +699,7 @@ ShaderHandle GL2Renderer::createCustomShader(const char* vs_src, const char* fs_
     if (!free_custom_slots_.empty()) {
         h = free_custom_slots_.back();
         free_custom_slots_.pop_back();
-        custom_shaders_[h] = prog;
+        custom_shaders_[h.id] = prog;
     } else {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
@@ -710,20 +711,20 @@ void GL2Renderer::useCustomShader(ShaderHandle h) {
     if (!isValidShader(h)) return;
     current_shader_ = nullptr; // no built-in shader active
     last_drawn_mesh_ = INVALID_MESH; // shader change invalidates attrib state
-    glUseProgram(custom_shaders_[h]);
+    glUseProgram(custom_shaders_[h.id]);
     renderer_stats_.shader_switches++;
 }
 
 void GL2Renderer::destroyCustomShader(ShaderHandle h) {
     if (!isValidShader(h)) return;
-    glDeleteProgram(custom_shaders_[h]);
-    custom_shaders_[h] = 0;
+    glDeleteProgram(custom_shaders_[h.id]);
+    custom_shaders_[h.id] = 0;
     free_custom_slots_.push_back(h);
 }
 
 int GL2Renderer::getCustomUniformLoc(ShaderHandle h, const char* name) {
     if (!isValidShader(h)) return -1;
-    return glGetUniformLocation(custom_shaders_[h], name);
+    return glGetUniformLocation(custom_shaders_[h.id], name);
 }
 
 void GL2Renderer::setUniform1i(int loc, int v) {
@@ -791,7 +792,7 @@ void GL2Renderer::bindTexture(TextureHandle h) {
         return;
     }
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textures_[h].id);
+    glBindTexture(GL_TEXTURE_2D, textures_[h.id].id);
     if (current_shader_ && current_shader_->u_tex >= 0)
         glUniform1i(current_shader_->u_tex, 0);
 }
@@ -799,7 +800,7 @@ void GL2Renderer::bindTexture(TextureHandle h) {
 void GL2Renderer::bindTextureUnit(int unit, TextureHandle h) {
     glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit));
     if (isValidTexture(h))
-        glBindTexture(GL_TEXTURE_2D, textures_[h].id);
+        glBindTexture(GL_TEXTURE_2D, textures_[h.id].id);
     else
         glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
@@ -813,7 +814,7 @@ void GL2Renderer::setUseTexture(bool use) {
 
 void GL2Renderer::drawMesh(MeshHandle h) {
     if (!isValidMesh(h)) return;
-    const GLMesh& gm = meshes_[h];
+    const GLMesh& gm = meshes_[h.id];
 
     // Skip redundant vertex attrib setup when drawing the same mesh repeatedly
     if (h != last_drawn_mesh_) {
@@ -836,11 +837,11 @@ void GL2Renderer::drawMesh(MeshHandle h) {
         }
         if (loc_normal >= 0) {
             glEnableVertexAttribArray(static_cast<GLuint>(loc_normal));
-            glVertexAttribPointer(static_cast<GLuint>(loc_normal), 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
+            glVertexAttribPointer(static_cast<GLuint>(loc_normal), 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(offsetof(Vertex, normal)));
         }
         if (loc_uv >= 0) {
             glEnableVertexAttribArray(static_cast<GLuint>(loc_uv));
-            glVertexAttribPointer(static_cast<GLuint>(loc_uv), 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
+            glVertexAttribPointer(static_cast<GLuint>(loc_uv), 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(offsetof(Vertex, uv)));
         }
 
         last_drawn_mesh_ = h;
@@ -850,11 +851,11 @@ void GL2Renderer::drawMesh(MeshHandle h) {
     renderer_stats_.draw_calls++;
 }
 
-void GL2Renderer::uploadTextureData(TextureHandle h, int w, int h_, int channels, const unsigned char* pixels) {
+void GL2Renderer::uploadTextureData(TextureHandle h, int width, int height, int channels, const unsigned char* pixels) {
     if (!isValidTexture(h)) return;
-    glBindTexture(GL_TEXTURE_2D, textures_[h].id);
+    glBindTexture(GL_TEXTURE_2D, textures_[h.id].id);
     GLenum fmt = (channels == 4) ? GL_RGBA : (channels == 3) ? GL_RGB : GL_LUMINANCE;
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h_, fmt, GL_UNSIGNED_BYTE, pixels);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, fmt, GL_UNSIGNED_BYTE, pixels);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -968,7 +969,7 @@ void GL2Renderer::readPixels(int x, int y, int w, int h, unsigned char* rgba_out
 
 void GL2Renderer::copyFramebufferToTexture(TextureHandle tex, int w, int h) {
     if (!isValidTexture(tex)) return;
-    glBindTexture(GL_TEXTURE_2D, textures_[tex].id);
+    glBindTexture(GL_TEXTURE_2D, textures_[tex.id].id);
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -1018,7 +1019,7 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = std::move(rt);
+        render_targets_[handle.id] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(std::move(rt));
@@ -1030,7 +1031,7 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
 void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return;
     LOG_DBG("GL2: destroyRenderTarget handle %u", (unsigned)rt);
-    GLFBO& fbo = render_targets_[rt];
+    GLFBO& fbo = render_targets_[rt.id];
     if (fbo.fbo)       glDeleteFramebuffers(1, &fbo.fbo);
     if (fbo.color_tex) glDeleteTextures(1, &fbo.color_tex);
     for (int i = 0; i < fbo.num_extra_color; i++)
@@ -1043,26 +1044,26 @@ void GL2Renderer::destroyRenderTarget(RenderTargetHandle rt) {
 
 void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
     renderer_stats_.rt_switches++;
-    if (rt == 0) {
+    if (rt == INVALID_RENDER_TARGET) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
     }
-    if (static_cast<size_t>(rt) < render_targets_.size() && render_targets_[rt].valid) {
-        glBindFramebuffer(GL_FRAMEBUFFER, render_targets_[rt].fbo);
+    if (rt.id < render_targets_.size() && render_targets_[rt.id].valid) {
+        glBindFramebuffer(GL_FRAMEBUFFER, render_targets_[rt.id].fbo);
     }
 }
 
 void GL2Renderer::bindRenderTargetTexture(RenderTargetHandle rt, int unit) {
     if (!isValidRenderTarget(rt)) return;
     glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit));
-    glBindTexture(GL_TEXTURE_2D, render_targets_[rt].color_tex);
+    glBindTexture(GL_TEXTURE_2D, render_targets_[rt.id].color_tex);
     glActiveTexture(GL_TEXTURE0);
 }
 
 void GL2Renderer::blitToScreen(RenderTargetHandle rt,
                                 int dst_x, int dst_y, int dst_w, int dst_h) {
     if (!isValidRenderTarget(rt)) return;
-    const GLFBO& fbo = render_targets_[rt];
+    const GLFBO& fbo = render_targets_[rt.id];
 
     if (has_blit_framebuffer_) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo.fbo);

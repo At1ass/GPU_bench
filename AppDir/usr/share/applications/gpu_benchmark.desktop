@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=GPU Benchmark
+Exec=gpu_benchmark
+Icon=gpu_benchmark
+Categories=Utility;

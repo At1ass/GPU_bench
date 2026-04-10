@@ -13,6 +13,8 @@ public:
     void drawMesh(MeshHandle h) override;
     void unbindState() override;
     const char* getRendererName() const override;
+    bool isGLES() const override { return true; }
+    bool isGLES3() const override { return gles3_; }
 
 private:
     bool gles3_; // true if GLES 3.0+

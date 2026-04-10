@@ -1,10 +1,10 @@
 #pragma once
-#include "demo/render_pass.h"
-#include "demo/uniform_block.h"
+#include "engine/render_pass.h"
+#include "engine/uniform_block.h"
 #include "demo/demo_scene.h"
 
 // Fragment bloom pass: extract bright pixels + horizontal blur + vertical blur (ping-pong).
-class BloomPass : public DemoRenderPass {
+class BloomPass : public RenderPassBase {
 public:
     const char* name() const override { return "bloom"; }
     void init(const TierResourceView& res);

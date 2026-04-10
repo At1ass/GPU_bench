@@ -3,10 +3,11 @@
 #include "renderer/renderer.h"
 #include "geometry/mesh_gen.h"
 #include "platform/logger.h"
+#include "platform/shader_compat.h"
+#include <string>
 
-// GLSL 140 shader sampling from a 2D texture array
-static const char* TEXARRAY_VS_140 = R"(
-#version 140
+// Shader bodies WITHOUT #version (injected via testShaderPreamble140)
+static const char* TEXARRAY_VS_BODY = R"(
 in vec3 a_pos;
 in vec2 a_uv;
 out vec2 v_uv;
@@ -16,31 +17,7 @@ void main() {
 }
 )";
 
-static const char* TEXARRAY_FS_140 = R"(
-#version 140
-in vec2 v_uv;
-uniform sampler2DArray u_tex_array;
-uniform float u_layer;
-out vec4 frag_color;
-void main() {
-    frag_color = texture(u_tex_array, vec3(v_uv, u_layer));
-}
-)";
-
-// GLSL 150 core profile variants
-static const char* TEXARRAY_VS_150 = R"(
-#version 150
-in vec3 a_pos;
-in vec2 a_uv;
-out vec2 v_uv;
-void main() {
-    v_uv = a_uv;
-    gl_Position = vec4(a_pos.xy, 0.0, 1.0);
-}
-)";
-
-static const char* TEXARRAY_FS_150 = R"(
-#version 150
+static const char* TEXARRAY_FS_BODY = R"(
 in vec2 v_uv;
 uniform sampler2DArray u_tex_array;
 uniform float u_layer;
@@ -68,9 +45,9 @@ void TexArraySampleTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh)
     actual_tex_size_ = clampTexSize(params_.tex_size, r.getCaps().max_texture_size);
 
     quad_ = r.createMesh(MeshGen::quad());
-    const char* vs = r.isCoreProfile() ? TEXARRAY_VS_150 : TEXARRAY_VS_140;
-    const char* fs = r.isCoreProfile() ? TEXARRAY_FS_150 : TEXARRAY_FS_140;
-    shader_ = r.createCustomShader(vs, fs);
+    std::string vs = std::string(testShaderPreamble140(&r)) + TEXARRAY_VS_BODY;
+    std::string fs = std::string(testShaderPreamble140(&r)) + TEXARRAY_FS_BODY;
+    shader_ = r.createCustomShader(vs.c_str(), fs.c_str());
     if (shader_ != INVALID_SHADER) {
         u_layer_loc_ = r.getCustomUniformLoc(shader_, "u_layer");
     }

@@ -27,10 +27,11 @@ template<typename Tag>
 struct Handle {
     unsigned int id = 0;
 
-    Handle() = default;
-    explicit Handle(unsigned int v) : id(v) {}
+    constexpr Handle() = default;
+    explicit constexpr Handle(unsigned int v) : id(v) {}
 
-    operator unsigned int() const { return id; }
+    explicit operator unsigned int() const { return id; }
+    explicit operator bool() const { return id != 0; }
 
     bool operator==(Handle o) const { return id == o.id; }
     bool operator!=(Handle o) const { return id != o.id; }
@@ -42,5 +43,5 @@ struct TextureTag {};
 using MeshHandle    = Handle<MeshTag>;
 using TextureHandle = Handle<TextureTag>;
 
-static const MeshHandle    INVALID_MESH;
-static const TextureHandle INVALID_TEXTURE;
+static constexpr MeshHandle    INVALID_MESH{};
+static constexpr TextureHandle INVALID_TEXTURE{};

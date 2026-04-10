@@ -14,7 +14,7 @@
 namespace U {
     enum Id {
         #define U(id, name, type) id,
-        #include "demo/uniform_registry.def"
+        #include "engine/uniform_registry.def"
         #undef U
         COUNT
     };
@@ -24,7 +24,7 @@ namespace U {
 inline const char* uniformName(U::Id id) {
     static const char* names[] = {
         #define U(id, name, type) name,
-        #include "demo/uniform_registry.def"
+        #include "engine/uniform_registry.def"
         #undef U
     };
     return names[id];

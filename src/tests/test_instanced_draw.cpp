@@ -2,12 +2,13 @@
 #include "renderer/features.h"
 #include "geometry/mesh_gen.h"
 #include "platform/logger.h"
+#include "platform/shader_compat.h"
 #include <cmath>
+#include <string>
 
-// GLSL 1.40 vertex shader using gl_InstanceID for per-instance positioning.
-// Instances are spread in a grid pattern with small scale.
-static const char* INSTANCED_VS_140 = R"(
-#version 140
+// Shader bodies WITHOUT #version (injected via testShaderPreamble140)
+// Uses gl_InstanceID for per-instance positioning in a grid pattern.
+static const char* INSTANCED_VS_BODY = R"(
 in vec3 a_pos;
 in vec3 a_normal;
 in vec2 a_uv;
@@ -25,38 +26,7 @@ void main() {
 }
 )";
 
-static const char* INSTANCED_FS_140 = R"(
-#version 140
-in vec3 v_normal;
-void main() {
-    vec3 light = normalize(vec3(0.5, 0.8, 0.3));
-    float d = max(dot(normalize(v_normal), light), 0.2);
-    gl_FragColor = vec4(vec3(0.6, 0.7, 0.8) * d, 1.0);
-}
-)";
-
-// GLSL 1.50 core profile variants
-static const char* INSTANCED_VS_150 = R"(
-#version 150
-in vec3 a_pos;
-in vec3 a_normal;
-in vec2 a_uv;
-uniform mat4 u_proj;
-uniform mat4 u_view;
-uniform int u_instance_count;
-out vec3 v_normal;
-void main() {
-    int cols = int(sqrt(float(u_instance_count))) + 1;
-    float x = float(gl_InstanceID % cols) * 2.5 - float(cols) * 1.25;
-    float z = float(gl_InstanceID / cols) * 2.5 - float(cols) * 1.25;
-    vec3 world_pos = a_pos * 0.5 + vec3(x, 0.0, z);
-    v_normal = a_normal;
-    gl_Position = u_proj * u_view * vec4(world_pos, 1.0);
-}
-)";
-
-static const char* INSTANCED_FS_150 = R"(
-#version 150
+static const char* INSTANCED_FS_BODY = R"(
 in vec3 v_normal;
 out vec4 fragColor;
 void main() {
@@ -88,9 +58,9 @@ void InstancedDrawTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) 
     tri_count_ = static_cast<int>(mesh.indices.size()) / 3;
     mesh_ = r.createMesh(mesh);
 
-    const char* vs = r.isCoreProfile() ? INSTANCED_VS_150 : INSTANCED_VS_140;
-    const char* fs = r.isCoreProfile() ? INSTANCED_FS_150 : INSTANCED_FS_140;
-    shader_ = r.createCustomShader(vs, fs);
+    std::string vs = std::string(testShaderPreamble140(&r)) + INSTANCED_VS_BODY;
+    std::string fs = std::string(testShaderPreamble140(&r)) + INSTANCED_FS_BODY;
+    shader_ = r.createCustomShader(vs.c_str(), fs.c_str());
     if (shader_ != INVALID_SHADER) {
         u_proj_loc_ = r.getCustomUniformLoc(shader_, "u_proj");
         u_view_loc_ = r.getCustomUniformLoc(shader_, "u_view");

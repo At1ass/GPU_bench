@@ -230,7 +230,7 @@ TextureHandle GLESRenderer::createTexture(int w, int h, int channels, const unsi
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));
@@ -240,7 +240,7 @@ TextureHandle GLESRenderer::createTexture(int w, int h, int channels, const unsi
 
 void GLESRenderer::drawMesh(MeshHandle h) {
     if (!isValidMesh(h)) return;
-    const GLMesh& gm = meshes_[h];
+    const GLMesh& gm = meshes_[h.id];
 
     if (gles3_ && gm.vao) {
         // GLES 3.0 VAO fast path

@@ -1231,7 +1231,7 @@ void MeshGen::appendMesh(MeshData& dst, const MeshData& src, const Mat4& transfo
     for (size_t i = 0; i < src.vertices.size(); i++) {
         Vertex v;
         v.pos = transform.transformPoint(src.vertices[i].pos);
-        v.normal = transform.transformNormal(src.vertices[i].normal).normalized();
+        v.normal = transform.transformDirection(src.vertices[i].normal).normalized();
         v.uv = src.vertices[i].uv;
         dst.vertices.push_back(v);
     }

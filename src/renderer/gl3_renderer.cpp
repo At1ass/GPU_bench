@@ -1,3 +1,4 @@
+#include <cstddef>
 #include "renderer/gl3_renderer.h"
 #include "renderer/gl_profile.h"
 #include "renderer/gl_extensions.h"
@@ -102,9 +103,9 @@ bool GL3Renderer::init(int w, int h) {
     return true;
 }
 
-void* GL3Renderer::queryFeature(int id) {
+void* GL3Renderer::queryFeature(int id) const {
     if (id == FeatureTag<GL3Features>::id)
-        return static_cast<GL3Features*>(this);
+        return const_cast<GL3Renderer*>(this);
     return GL2Renderer::queryFeature(id);
 }
 
@@ -143,7 +144,7 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     MeshHandle h = GL2Renderer::createMesh(data);
     if (h == INVALID_MESH || !has_vao_) return h;
 
-    GLMesh& gm = meshes_[h];
+    GLMesh& gm = meshes_[h.id];
 
     // Create VAO to capture vertex state
     glGenVertexArrays(1, &gm.vao);
@@ -159,9 +160,9 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, nullptr);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(offsetof(Vertex, normal)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(6 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(offsetof(Vertex, uv)));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -172,9 +173,9 @@ MeshHandle GL3Renderer::createMesh(const MeshData& data) {
 }
 
 void GL3Renderer::destroyMesh(MeshHandle h) {
-    if (isValidMesh(h) && meshes_[h].vao) {
-        glDeleteVertexArrays(1, &meshes_[h].vao);
-        meshes_[h].vao = 0;
+    if (isValidMesh(h) && meshes_[h.id].vao) {
+        glDeleteVertexArrays(1, &meshes_[h.id].vao);
+        meshes_[h.id].vao = 0;
     }
     GL2Renderer::destroyMesh(h);
 }
@@ -214,7 +215,7 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));
@@ -224,7 +225,7 @@ TextureHandle GL3Renderer::createTexture(int w, int h, int channels, const unsig
 
 void GL3Renderer::drawMesh(MeshHandle h) {
     if (!isValidMesh(h)) return;
-    const GLMesh& gm = meshes_[h];
+    const GLMesh& gm = meshes_[h.id];
 
     if (gm.vao) {
         // Fast path: VAO has all state
@@ -240,7 +241,7 @@ void GL3Renderer::drawMesh(MeshHandle h) {
 
 void GL3Renderer::drawMeshInstanced(MeshHandle h, int instance_count) {
     if (!isValidMesh(h)) return;
-    const GLMesh& gm = meshes_[h];
+    const GLMesh& gm = meshes_[h.id];
 
     if (gm.vao && has_instancing_) {
         glBindVertexArray(gm.vao);
@@ -325,7 +326,7 @@ RenderTargetHandle GL3Renderer::createMRTRenderTarget(int w, int h, int num_atta
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = std::move(rt);
+        render_targets_[handle.id] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(std::move(rt));
@@ -359,7 +360,7 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));
@@ -372,7 +373,7 @@ TextureHandle GL3Renderer::createTextureArray(int w, int h, int layers, int chan
 void GL3Renderer::bindTextureArray(TextureHandle h) {
     if (!isValidTexture(h)) return;
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, textures_[h].id);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, textures_[h.id].id);
 }
 
 // --- Geometry shader ---
@@ -413,7 +414,7 @@ ShaderHandle GL3Renderer::createShaderVGF(const char* vs_src, const char* gs_src
     if (!free_custom_slots_.empty()) {
         h = free_custom_slots_.back();
         free_custom_slots_.pop_back();
-        custom_shaders_[h] = prog;
+        custom_shaders_[h.id] = prog;
     } else {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
@@ -440,7 +441,7 @@ BufferHandle GL3Renderer::createUBO(int size_bytes) {
     if (!free_ubo_slots_.empty()) {
         h = free_ubo_slots_.back();
         free_ubo_slots_.pop_back();
-        ubos_[h] = buf;
+        ubos_[h.id] = buf;
     } else {
         h = BufferHandle(static_cast<unsigned int>(ubos_.size()));
         ubos_.push_back(buf);
@@ -449,21 +450,21 @@ BufferHandle GL3Renderer::createUBO(int size_bytes) {
 }
 
 void GL3Renderer::updateUBO(BufferHandle h, const void* data, int size) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ubos_.size() || !ubos_[h].valid) return;
-    glBindBuffer(GL_UNIFORM_BUFFER, ubos_[h].id);
+    if (h == INVALID_BUFFER || h.id >= ubos_.size() || !ubos_[h.id].valid) return;
+    glBindBuffer(GL_UNIFORM_BUFFER, ubos_[h.id].id);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, size, data);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void GL3Renderer::bindUBO(BufferHandle h, int binding) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ubos_.size() || !ubos_[h].valid) return;
-    glBindBufferBase(GL_UNIFORM_BUFFER, static_cast<GLuint>(binding), ubos_[h].id);
+    if (h == INVALID_BUFFER || h.id >= ubos_.size() || !ubos_[h.id].valid) return;
+    glBindBufferBase(GL_UNIFORM_BUFFER, static_cast<GLuint>(binding), ubos_[h.id].id);
 }
 
 void GL3Renderer::destroyUBO(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= ubos_.size() || !ubos_[h].valid) return;
-    glDeleteBuffers(1, &ubos_[h].id);
-    ubos_[h].valid = false;
+    if (h == INVALID_BUFFER || h.id >= ubos_.size() || !ubos_[h.id].valid) return;
+    glDeleteBuffers(1, &ubos_[h.id].id);
+    ubos_[h.id].valid = false;
     free_ubo_slots_.push_back(h);
 }
 
@@ -495,7 +496,7 @@ BufferHandle GL3Renderer::createTransformFeedbackBuffer(int size_bytes) {
     if (!free_tf_slots_.empty()) {
         h = free_tf_slots_.back();
         free_tf_slots_.pop_back();
-        tf_buffers_[h] = buf;
+        tf_buffers_[h.id] = buf;
     } else {
         h = BufferHandle(static_cast<unsigned int>(tf_buffers_.size()));
         tf_buffers_.push_back(buf);
@@ -504,9 +505,9 @@ BufferHandle GL3Renderer::createTransformFeedbackBuffer(int size_bytes) {
 }
 
 void GL3Renderer::destroyTransformFeedbackBuffer(BufferHandle h) {
-    if (h == INVALID_BUFFER || static_cast<size_t>(h) >= tf_buffers_.size() || !tf_buffers_[h].valid) return;
-    glDeleteBuffers(1, &tf_buffers_[h].id);
-    tf_buffers_[h].valid = false;
+    if (h == INVALID_BUFFER || h.id >= tf_buffers_.size() || !tf_buffers_[h.id].valid) return;
+    glDeleteBuffers(1, &tf_buffers_[h.id].id);
+    tf_buffers_[h.id].valid = false;
     free_tf_slots_.push_back(h);
 }
 
@@ -549,7 +550,7 @@ ShaderHandle GL3Renderer::createTransformFeedbackShader(const char* vs_src, cons
     if (!free_custom_slots_.empty()) {
         h = free_custom_slots_.back();
         free_custom_slots_.pop_back();
-        custom_shaders_[h] = prog;
+        custom_shaders_[h.id] = prog;
     } else {
         h = ShaderHandle(static_cast<unsigned int>(custom_shaders_.size()));
         custom_shaders_.push_back(prog);
@@ -559,11 +560,11 @@ ShaderHandle GL3Renderer::createTransformFeedbackShader(const char* vs_src, cons
 
 void GL3Renderer::beginTransformFeedback(BufferHandle tf_buf) {
     if (!has_transform_feedback_) return;
-    if (tf_buf == INVALID_BUFFER || static_cast<size_t>(tf_buf) >= tf_buffers_.size() || !tf_buffers_[tf_buf].valid) return;
+    if (tf_buf == INVALID_BUFFER || tf_buf.id >= tf_buffers_.size() || !tf_buffers_[tf_buf.id].valid) return;
 
     if (tf_active_) { LOG_ERR("Nested beginTransformFeedback"); return; }
     tf_active_ = true;
-    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_buffers_[tf_buf].id);
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_buffers_[tf_buf.id].id);
     glBeginTransformFeedback(GL_TRIANGLES);
 }
 
@@ -624,7 +625,7 @@ RenderTargetHandle GL3Renderer::createDepthRenderTarget(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = std::move(rt);
+        render_targets_[handle.id] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(std::move(rt));
@@ -686,7 +687,7 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
     if (!free_rt_slots_.empty()) {
         handle = free_rt_slots_.back();
         free_rt_slots_.pop_back();
-        render_targets_[handle] = std::move(rt);
+        render_targets_[handle.id] = std::move(rt);
     } else {
         handle = RenderTargetHandle(static_cast<unsigned int>(render_targets_.size()));
         render_targets_.push_back(std::move(rt));
@@ -696,10 +697,10 @@ RenderTargetHandle GL3Renderer::createRenderTargetWithDepth(int w, int h) {
 
 TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
-    if (render_targets_[rt].cached_depth_th != INVALID_TEXTURE)
-        return render_targets_[rt].cached_depth_th;
+    if (render_targets_[rt.id].cached_depth_th != INVALID_TEXTURE)
+        return render_targets_[rt.id].cached_depth_th;
 
-    GLuint tex_id = render_targets_[rt].depth_tex;
+    GLuint tex_id = render_targets_[rt.id].depth_tex;
     if (!tex_id) return INVALID_TEXTURE;
 
     // Wrap raw GL texture in a TextureHandle (non-owning view)
@@ -712,21 +713,21 @@ TextureHandle GL3Renderer::getRTDepthTexture(RenderTargetHandle rt) {
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));
     }
-    render_targets_[rt].cached_depth_th = th;
+    render_targets_[rt.id].cached_depth_th = th;
     return th;
 }
 
 TextureHandle GL3Renderer::getRTColorTexture(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
-    if (render_targets_[rt].cached_color_th != INVALID_TEXTURE)
-        return render_targets_[rt].cached_color_th;
+    if (render_targets_[rt.id].cached_color_th != INVALID_TEXTURE)
+        return render_targets_[rt.id].cached_color_th;
 
-    GLuint tex_id = render_targets_[rt].color_tex;
+    GLuint tex_id = render_targets_[rt.id].color_tex;
     if (!tex_id) return INVALID_TEXTURE;
 
     // Wrap raw GL texture in a TextureHandle (non-owning view)
@@ -739,19 +740,19 @@ TextureHandle GL3Renderer::getRTColorTexture(RenderTargetHandle rt) {
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));
     }
-    render_targets_[rt].cached_color_th = th;
+    render_targets_[rt.id].cached_color_th = th;
     return th;
 }
 
 TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
     if (!isValidRenderTarget(rt)) return INVALID_TEXTURE;
     // For depth-only FBOs, we stored the depth texture in color_tex
-    GLuint tex_id = render_targets_[rt].color_tex;
+    GLuint tex_id = render_targets_[rt.id].color_tex;
     if (!tex_id) return INVALID_TEXTURE;
 
     // Wrap the raw GL texture in a TextureHandle
@@ -763,7 +764,7 @@ TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
     if (!free_tex_slots_.empty()) {
         th = free_tex_slots_.back();
         free_tex_slots_.pop_back();
-        textures_[th] = std::move(gt);
+        textures_[th.id] = std::move(gt);
     } else {
         th = TextureHandle(static_cast<unsigned int>(textures_.size()));
         textures_.push_back(std::move(gt));

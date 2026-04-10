@@ -1,7 +1,7 @@
 #pragma once
-#include "demo/render_pass.h"
+#include "engine/render_pass.h"
 #include "engine/pass_context.h"
-#include "demo/uniform_block.h"
+#include "engine/uniform_block.h"
 
 // Template for "fullscreen quad" passes: input textures -> shader -> output RT.
 // Automatically handles: RT binding, viewport, fullscreen state, draw quad.
@@ -27,7 +27,7 @@
 //       }
 //   };
 
-class FullscreenPass : public DemoRenderPass {
+class FullscreenPass : public RenderPassBase {
 public:
     // Author implements:
     virtual void setup(const TierResourceView& res) = 0;
@@ -38,7 +38,7 @@ public:
                           const FrameData& fd,
                           const DemoTierConfig& cfg) {}
 
-    // DemoRenderPass::execute — final implementation
+    // RenderPassBase::execute — final implementation
     void execute(PassContext& ctx, FrameData& fd,
                  const TierResourceView& res,
                  const DemoTierConfig& cfg,

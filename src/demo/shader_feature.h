@@ -1,5 +1,5 @@
 #pragma once
-#include "demo/resource_id.h"
+#include "engine/resource_id.h"
 #include <cstdint>
 
 // Shader feature flags — bitfield encoding of active features.
@@ -15,6 +15,8 @@ enum ShaderFeature : uint32_t {
     SF_GLSL_140       = 1u << 2,   // GLSL 1.40 (GL 3.1, supports gl_InstanceID)
     SF_GLSL_330       = 1u << 3,   // GLSL 3.30
     SF_GLSL_430       = 1u << 4,   // GLSL 4.30
+    SF_GLES_100       = 1u << 20,  // GLES 2.0 (#version 100)
+    SF_GLES_300       = 1u << 21,  // GLES 3.0+ (#version 300 es)
 
     // Rendering features (combinable)
     SF_SHADOWS        = 1u << 5,   // Shadow mapping (T2+)
@@ -38,8 +40,9 @@ using ShaderFeatureSet = uint32_t;
 
 // Version flag mask (exactly one must be set)
 static const ShaderFeatureSet SF_VERSION_MASK =
-    SF_GLSL_120 | SF_GLSL_150 | SF_GLSL_140 | SF_GLSL_330 | SF_GLSL_430;
+    SF_GLSL_120 | SF_GLSL_150 | SF_GLSL_140 | SF_GLSL_330 | SF_GLSL_430 |
+    SF_GLES_100 | SF_GLES_300;
 
 // Convert tier + renderer profile to shader feature set.
 // Encapsulates all tier→feature mapping in one place.
-ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile);
+ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles = false, bool gles3 = false);
