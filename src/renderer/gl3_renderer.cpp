@@ -103,6 +103,11 @@ bool GL3Renderer::init(int w, int h) {
     return true;
 }
 
+// IMPORTANT: cast to feature interface type, NOT to renderer type.
+// Multiple inheritance requires pointer adjustment; void* erases it.
+// Wrong:  return this;                          — no MI adjustment
+// Wrong:  return const_cast<GL3Renderer*>(this); — no MI adjustment
+// Right:  return static_cast<GL3Features*>(this); — compiler adjusts pointer
 void* GL3Renderer::queryFeature(int id) {
     if (id == FeatureTag<GL3Features>::id)
         return static_cast<GL3Features*>(this);

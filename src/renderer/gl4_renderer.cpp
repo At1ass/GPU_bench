@@ -111,6 +111,7 @@ bool GL4Renderer::init(int w, int h) {
     return true;
 }
 
+// See GL3Renderer::queryFeature comment — cast to interface type, not renderer type.
 void* GL4Renderer::queryFeature(int id) {
     if (id == FeatureTag<GL4Features>::id)
         return static_cast<GL4Features*>(this);
