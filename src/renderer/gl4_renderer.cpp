@@ -113,9 +113,9 @@ bool GL4Renderer::init(int w, int h) {
 
 void* GL4Renderer::queryFeature(int id) const {
     if (id == FeatureTag<GL4Features>::id)
-        return const_cast<GL4Renderer*>(this);
+        return const_cast<GL4Features*>(static_cast<const GL4Features*>(this));
     if (id == FeatureTag<ComputeFeatures>::id)
-        return const_cast<GL4Renderer*>(this);
+        return const_cast<ComputeFeatures*>(static_cast<const ComputeFeatures*>(this));
     return GL3Renderer::queryFeature(id);
 }
 
