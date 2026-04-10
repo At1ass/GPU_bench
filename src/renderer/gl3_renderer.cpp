@@ -103,9 +103,9 @@ bool GL3Renderer::init(int w, int h) {
     return true;
 }
 
-void* GL3Renderer::queryFeature(int id) const {
+void* GL3Renderer::queryFeature(int id) {
     if (id == FeatureTag<GL3Features>::id)
-        return const_cast<GL3Features*>(static_cast<const GL3Features*>(this));
+        return static_cast<GL3Features*>(this);
     return GL2Renderer::queryFeature(id);
 }
 

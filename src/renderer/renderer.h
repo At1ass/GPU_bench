@@ -187,7 +187,8 @@ public:
 
     template<typename T>
     const T* features() const {
-        return static_cast<const T*>(queryFeature(FeatureTag<T>::id));
+        return static_cast<const T*>(
+            const_cast<Renderer*>(this)->queryFeature(FeatureTag<T>::id));
     }
 
     // Per-frame renderer stats (counted where GL calls happen)
@@ -211,7 +212,7 @@ public:
     virtual const char* getRendererName() const = 0;
 
 protected:
-    virtual void* queryFeature(int) const { return nullptr; }
+    virtual void* queryFeature(int) { return nullptr; }
     RendererStats renderer_stats_;
 };
 
