@@ -101,8 +101,10 @@ static std::string getAndroidProp(const char* name) {
 HWInfo HWInfo::detect() {
     HWInfo info;
 
-    // CPU: try system property first, then /proc/cpuinfo
-    info.cpu_name = getAndroidProp("ro.hardware.chipname");
+    // CPU: try marketing name first, then chipname, then generic hardware
+    info.cpu_name = getAndroidProp("ro.soc.model");
+    if (info.cpu_name.empty())
+        info.cpu_name = getAndroidProp("ro.hardware.chipname");
     if (info.cpu_name.empty())
         info.cpu_name = getAndroidProp("ro.hardware");
     if (info.cpu_name.empty()) {
