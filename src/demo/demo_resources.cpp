@@ -255,14 +255,19 @@ bool DemoResources::loadSharedTextures(Renderer* r) {
     {
         std::string mask_path = getDataPath("models/fur.png");
         if (!mask_path.empty()) {
-            int mw = 0, mh = 0, mc = 0;
-            stbi_set_flip_vertically_on_load(1);
-            unsigned char* pixels = stbi_load(mask_path.c_str(), &mw, &mh, &mc, 4);
-            if (pixels && mw > 0 && mh > 0) {
-                core_.fur_mask_tex.assign(r, r->createTexture(mw, mh, 4, pixels));
-                LOG_INF("Resources: loaded fur mask %dx%d from %s", mw, mh, mask_path.c_str());
+            std::string img_data = readTextFile(mask_path.c_str());
+            if (!img_data.empty()) {
+                int mw = 0, mh = 0, mc = 0;
+                stbi_set_flip_vertically_on_load(1);
+                unsigned char* pixels = stbi_load_from_memory(
+                    reinterpret_cast<const unsigned char*>(img_data.data()),
+                    static_cast<int>(img_data.size()), &mw, &mh, &mc, 4);
+                if (pixels && mw > 0 && mh > 0) {
+                    core_.fur_mask_tex.assign(r, r->createTexture(mw, mh, 4, pixels));
+                    LOG_INF("Resources: loaded fur mask %dx%d from %s", mw, mh, mask_path.c_str());
+                }
+                if (pixels) stbi_image_free(pixels);
             }
-            if (pixels) stbi_image_free(pixels);
         }
     }
 

@@ -1,6 +1,6 @@
 #include "geometry/obj_loader.h"
 #include "geometry/mesh_gen.h"
-#include "platform/compat.h"
+#include "platform/data_path.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstdlib>
@@ -9,29 +9,54 @@
 #include <vector>
 #include <unordered_map>
 
-MeshData ObjLoader::load(const char* filepath) {
-    MeshData result;
+// Extract next line from buffer. Returns pointer past the newline, or end.
+static const char* nextLine(const char* cur, const char* end, const char*& line_start, size_t& line_len) {
+    line_start = cur;
+    const char* eol = cur;
+    while (eol < end && *eol != '\n' && *eol != '\r') eol++;
+    line_len = static_cast<size_t>(eol - cur);
+    // Skip \r\n or \n
+    if (eol < end && *eol == '\r') eol++;
+    if (eol < end && *eol == '\n') eol++;
+    return eol;
+}
 
-    FileGuard f(fopen(filepath, "r"));
-    if (!f) {
+MeshData ObjLoader::load(const char* filepath) {
+    std::string content = readTextFile(filepath);
+    if (content.empty()) {
         LOG_DBG("OBJ: cannot open '%s'", filepath);
-        return result;
+        return MeshData();
     }
+    return loadFromMemory(content.data(), content.size(), filepath);
+}
+
+MeshData ObjLoader::loadFromMemory(const char* data, size_t len, const char* debug_name) {
+    MeshData result;
+    if (!data || len == 0) return result;
 
     std::vector<Vec3> positions;
     std::vector<Vec3> normals;
     std::vector<Vec2> texcoords;
 
-    // Temp storage for face indices
     struct FaceVert { int vi, ti, ni; };
-
-    // Vertex deduplication map: pack (vi, ti, ni) into uint64_t key
     std::unordered_map<uint64_t, unsigned int> vert_map;
 
-    char line[4096];
-    while (fgets(line, sizeof(line), f.get())) {
-        // Skip comments and empty lines
-        if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
+    const char* cur = data;
+    const char* end = data + len;
+
+    while (cur < end) {
+        const char* line_start;
+        size_t line_len;
+        cur = nextLine(cur, end, line_start, line_len);
+        if (line_len == 0) continue;
+
+        // Null-terminate into stack buffer for sscanf
+        char line[4096];
+        size_t copy_len = (line_len < sizeof(line) - 1) ? line_len : sizeof(line) - 1;
+        memcpy(line, line_start, copy_len);
+        line[copy_len] = '\0';
+
+        if (line[0] == '#') continue;
 
         if (line[0] == 'v' && line[1] == ' ') {
             Vec3 v;
@@ -49,31 +74,25 @@ MeshData ObjLoader::load(const char* filepath) {
                 texcoords.push_back(t);
         }
         else if (line[0] == 'f' && line[1] == ' ') {
-            // Parse face vertices (triangles and quads)
             FaceVert verts[4];
             int vert_count = 0;
             const char* p = line + 2;
 
             while (*p && vert_count < 4) {
-                // Skip whitespace
                 while (*p == ' ' || *p == '\t') p++;
                 if (*p == '\0' || *p == '\n' || *p == '\r') break;
 
                 FaceVert fv = { 0, 0, 0 };
                 int consumed = 0;
-                // Try v/t/n
                 if (sscanf(p, "%d/%d/%d%n", &fv.vi, &fv.ti, &fv.ni, &consumed) >= 3 && consumed > 0) {
                     p += consumed;
                 }
-                // Try v//n
                 else if (consumed = 0, sscanf(p, "%d//%d%n", &fv.vi, &fv.ni, &consumed) >= 2 && consumed > 0) {
                     p += consumed;
                 }
-                // Try v/t
                 else if (consumed = 0, sscanf(p, "%d/%d%n", &fv.vi, &fv.ti, &consumed) >= 2 && consumed > 0) {
                     p += consumed;
                 }
-                // Just v
                 else if (consumed = 0, sscanf(p, "%d%n", &fv.vi, &consumed) >= 1 && consumed > 0) {
                     p += consumed;
                 }
@@ -81,7 +100,6 @@ MeshData ObjLoader::load(const char* filepath) {
                     break;
                 }
 
-                // Handle negative (relative) indices
                 if (fv.vi < 0) fv.vi = static_cast<int>(positions.size()) + fv.vi + 1;
                 if (fv.ti < 0) fv.ti = static_cast<int>(texcoords.size()) + fv.ti + 1;
                 if (fv.ni < 0) fv.ni = static_cast<int>(normals.size()) + fv.ni + 1;
@@ -89,13 +107,11 @@ MeshData ObjLoader::load(const char* filepath) {
                 verts[vert_count++] = fv;
             }
 
-            // Emit triangles (with vertex deduplication)
             for (int i = 1; i + 1 < vert_count; i++) {
                 int tri[3] = { 0, i, i + 1 };
                 for (int j = 0; j < 3; j++) {
                     const FaceVert& fv = verts[tri[j]];
 
-                    // Pack (vi, ti, ni) into a single uint64_t key
                     uint64_t key = (static_cast<uint64_t>(static_cast<unsigned int>(fv.vi)) << 40)
                                  | (static_cast<uint64_t>(static_cast<unsigned int>(fv.ti) & 0xFFFFFu) << 20)
                                  | static_cast<uint64_t>(static_cast<unsigned int>(fv.ni) & 0xFFFFFu);
@@ -120,16 +136,12 @@ MeshData ObjLoader::load(const char* filepath) {
                 }
             }
         }
-        // Skip: mtllib, usemtl, o, g, s, etc.
     }
-
-    // f closed automatically by FileGuard RAII
 
     LOG_DBG("OBJ: loaded %d verts, %d tris from '%s'",
              static_cast<int>(result.vertices.size()),
-             static_cast<int>(result.indices.size() / 3), filepath);
+             static_cast<int>(result.indices.size() / 3), debug_name);
 
-    // Recompute normals if none were provided
     if (normals.empty() && !result.vertices.empty()) {
         MeshGen::recomputeNormals(result);
     }

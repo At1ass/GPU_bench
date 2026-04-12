@@ -1,6 +1,7 @@
 #include "platform/data_path.h"
 #include "platform/compat.h"
 #include "platform/logger.h"
+#include <SDL.h>
 #include <cstdio>
 #include <cstring>
 #include <sys/stat.h>
@@ -17,7 +18,11 @@
 // Try to get the executable directory from /proc/self/exe (Linux),
 // or fall back to empty string.
 std::string getExeDir() {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__ANDROID__)
+    const char* path = SDL_AndroidGetInternalStoragePath();
+    if (path) return std::string(path) + "/";
+    return std::string();
+#elif defined(__linux__) || defined(__FreeBSD__)
     char buf[1024];
 #if defined(__linux__)
     const char* link = "/proc/self/exe";
@@ -68,6 +73,10 @@ static bool hasPathTraversal(const char* p) {
 
 std::string getDataPath(const char* relative_path) {
     if (!relative_path || hasPathTraversal(relative_path)) return std::string();
+#ifdef __ANDROID__
+    // On Android, SDL_RWFromFile auto-resolves paths from APK assets/
+    return std::string(relative_path);
+#endif
     // 1. ./data/
     {
         std::string p = std::string("data/") + relative_path;
@@ -99,18 +108,16 @@ std::string getDataPath(const char* relative_path) {
 }
 
 std::string readTextFile(const char* path) {
-    FileGuard f(fopen(path, "rb"));
-    if (!f) return std::string();
+    SDL_RWops* rw = SDL_RWFromFile(path, "rb");
+    if (!rw) return std::string();
 
-    fseek(f.get(), 0, SEEK_END);
-    long size = ftell(f.get());
-    fseek(f.get(), 0, SEEK_SET);
-
-    if (size <= 0) return std::string();
+    Sint64 size = SDL_RWsize(rw);
+    if (size <= 0) { SDL_RWclose(rw); return std::string(); }
 
     std::string content;
     content.resize(static_cast<size_t>(size));
-    size_t read = fread(&content[0], 1, static_cast<size_t>(size), f.get());
+    size_t read = SDL_RWread(rw, &content[0], 1, static_cast<size_t>(size));
     content.resize(read);
+    SDL_RWclose(rw);
     return content;
 }
