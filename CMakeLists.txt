@@ -199,29 +199,29 @@ set(CORE_LIB_SOURCES
 # Platform-specific source files (per-platform implementations)
 if(ANDROID)
     list(APPEND CORE_LIB_SOURCES
-        src/platform/data_path_android.cpp
-        src/platform/hwinfo_android.cpp
+        src/platform/android/data_path_android.cpp
+        src/platform/android/hwinfo_android.cpp
         src/platform/gpu_select_stub.cpp)
 elseif(WIN32)
     list(APPEND CORE_LIB_SOURCES
-        src/platform/data_path_win32.cpp
-        src/platform/hwinfo_win32.cpp
-        src/platform/gpu_select_win32.cpp)
+        src/platform/win32/data_path_win32.cpp
+        src/platform/win32/hwinfo_win32.cpp
+        src/platform/win32/gpu_select_win32.cpp)
 elseif(APPLE)
     list(APPEND CORE_LIB_SOURCES
-        src/platform/data_path_darwin.cpp
-        src/platform/hwinfo_unix.cpp
+        src/platform/darwin/data_path_darwin.cpp
+        src/platform/posix/hwinfo_unix.cpp
         src/platform/gpu_select_stub.cpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     list(APPEND CORE_LIB_SOURCES
-        src/platform/data_path_posix.cpp
-        src/platform/hwinfo_unix.cpp
+        src/platform/posix/data_path_posix.cpp
+        src/platform/posix/hwinfo_unix.cpp
         src/platform/gpu_select_stub.cpp)
 else() # Linux
     list(APPEND CORE_LIB_SOURCES
-        src/platform/data_path_posix.cpp
-        src/platform/hwinfo_unix.cpp
-        src/platform/gpu_select_linux.cpp)
+        src/platform/posix/data_path_posix.cpp
+        src/platform/posix/hwinfo_unix.cpp
+        src/platform/posix/gpu_select_linux.cpp)
 endif()
 
 # Suppress warnings for third-party source files
@@ -391,16 +391,16 @@ set(_launcher_platform_sources
     src/platform/data_path.cpp)
 if(WIN32)
     list(APPEND _launcher_platform_sources
-        src/platform/data_path_win32.cpp src/platform/hwinfo_win32.cpp src/platform/gpu_select_win32.cpp)
+        src/platform/win32/data_path_win32.cpp src/platform/win32/hwinfo_win32.cpp src/platform/win32/gpu_select_win32.cpp)
 elseif(APPLE)
     list(APPEND _launcher_platform_sources
-        src/platform/data_path_darwin.cpp src/platform/hwinfo_unix.cpp src/platform/gpu_select_stub.cpp)
+        src/platform/darwin/data_path_darwin.cpp src/platform/posix/hwinfo_unix.cpp src/platform/gpu_select_stub.cpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     list(APPEND _launcher_platform_sources
-        src/platform/data_path_posix.cpp src/platform/hwinfo_unix.cpp src/platform/gpu_select_stub.cpp)
+        src/platform/posix/data_path_posix.cpp src/platform/posix/hwinfo_unix.cpp src/platform/gpu_select_stub.cpp)
 else()
     list(APPEND _launcher_platform_sources
-        src/platform/data_path_posix.cpp src/platform/hwinfo_unix.cpp src/platform/gpu_select_linux.cpp)
+        src/platform/posix/data_path_posix.cpp src/platform/posix/hwinfo_unix.cpp src/platform/posix/gpu_select_linux.cpp)
 endif()
 target_sources(gpu_launcher PRIVATE ${_launcher_platform_sources})
 endif() # NOT ANDROID (launcher)
