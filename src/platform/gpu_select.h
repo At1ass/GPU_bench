@@ -26,3 +26,6 @@ bool selectGPU(int index);
 // before library loading). Call from main() before any SDL/GL calls.
 // If re-exec happens, does not return. argv[0] must be valid.
 void selectGPUAndReexec(int index, int argc, char* argv[]);
+
+// Shared utility for platform gpu_select implementations
+const char* pciVendorName(unsigned int vendor_id);

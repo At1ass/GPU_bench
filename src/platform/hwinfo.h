@@ -14,3 +14,6 @@ struct HWInfo {
 
     static HWInfo detect();
 };
+
+// Shared utility for platform hwinfo implementations
+std::string trimHWInfoWhitespace(const std::string& s);

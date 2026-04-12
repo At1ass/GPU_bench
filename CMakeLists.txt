@@ -191,6 +191,34 @@ set(CORE_LIB_SOURCES
     src/platform/stb_image_impl.cpp
 )
 
+# Platform-specific source files (per-platform implementations)
+if(ANDROID)
+    list(APPEND CORE_LIB_SOURCES
+        src/platform/data_path_android.cpp
+        src/platform/hwinfo_android.cpp
+        src/platform/gpu_select_stub.cpp)
+elseif(WIN32)
+    list(APPEND CORE_LIB_SOURCES
+        src/platform/data_path_win32.cpp
+        src/platform/hwinfo_win32.cpp
+        src/platform/gpu_select_win32.cpp)
+elseif(APPLE)
+    list(APPEND CORE_LIB_SOURCES
+        src/platform/data_path_darwin.cpp
+        src/platform/hwinfo_unix.cpp
+        src/platform/gpu_select_stub.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    list(APPEND CORE_LIB_SOURCES
+        src/platform/data_path_posix.cpp
+        src/platform/hwinfo_unix.cpp
+        src/platform/gpu_select_stub.cpp)
+else() # Linux
+    list(APPEND CORE_LIB_SOURCES
+        src/platform/data_path_posix.cpp
+        src/platform/hwinfo_unix.cpp
+        src/platform/gpu_select_linux.cpp)
+endif()
+
 # Suppress warnings for third-party source files
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set_source_files_properties(
@@ -347,12 +375,25 @@ else()
     target_link_libraries(gpu_launcher PRIVATE ${OPENGL_LIBRARIES})
 endif()
 # Platform sources (hwinfo, gpu_select, logger, data_path) — no renderer dependency
-target_sources(gpu_launcher PRIVATE
+set(_launcher_platform_sources
     src/platform/hwinfo.cpp
     src/platform/gpu_select.cpp
     src/platform/logger.cpp
-    src/platform/data_path.cpp
-)
+    src/platform/data_path.cpp)
+if(WIN32)
+    list(APPEND _launcher_platform_sources
+        src/platform/data_path_win32.cpp src/platform/hwinfo_win32.cpp src/platform/gpu_select_win32.cpp)
+elseif(APPLE)
+    list(APPEND _launcher_platform_sources
+        src/platform/data_path_darwin.cpp src/platform/hwinfo_unix.cpp src/platform/gpu_select_stub.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    list(APPEND _launcher_platform_sources
+        src/platform/data_path_posix.cpp src/platform/hwinfo_unix.cpp src/platform/gpu_select_stub.cpp)
+else()
+    list(APPEND _launcher_platform_sources
+        src/platform/data_path_posix.cpp src/platform/hwinfo_unix.cpp src/platform/gpu_select_linux.cpp)
+endif()
+target_sources(gpu_launcher PRIVATE ${_launcher_platform_sources})
 endif() # NOT ANDROID (launcher)
 
 # --- Platform link flags ---

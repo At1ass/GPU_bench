@@ -1,58 +1,10 @@
+// Cross-platform data path resolution and file reading.
+// getExeDir() is implemented per-platform in data_path_*.cpp files.
 #include "platform/data_path.h"
-#include "platform/compat.h"
 #include "platform/logger.h"
 #include <SDL.h>
-#include <cstdio>
 #include <cstring>
 #include <sys/stat.h>
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
-#include <unistd.h>
-#endif
-#if defined(__APPLE__)
-#include <mach-o/dyld.h>
-#endif
-#if defined(_WIN32)
-#include <windows.h>
-#endif
-
-// Try to get the executable directory from /proc/self/exe (Linux),
-// or fall back to empty string.
-std::string getExeDir() {
-#if defined(__ANDROID__)
-    const char* path = SDL_AndroidGetInternalStoragePath();
-    if (path) return std::string(path) + "/";
-    return std::string();
-#elif defined(__linux__) || defined(__FreeBSD__)
-    char buf[1024];
-#if defined(__linux__)
-    const char* link = "/proc/self/exe";
-#else
-    const char* link = "/proc/curproc/file";
-#endif
-    ssize_t len = readlink(link, buf, sizeof(buf) - 1);
-    if (len > 0) {
-        buf[len] = '\0';
-        // Strip filename to get directory
-        char* slash = strrchr(buf, '/');
-        if (slash) { *(slash + 1) = '\0'; return std::string(buf); }
-    }
-#elif defined(__APPLE__)
-    char buf[1024];
-    uint32_t size = sizeof(buf);
-    if (_NSGetExecutablePath(buf, &size) == 0) {
-        char* slash = strrchr(buf, '/');
-        if (slash) { *(slash + 1) = '\0'; return std::string(buf); }
-    }
-#elif defined(_WIN32)
-    char buf[1024];
-    DWORD len = GetModuleFileNameA(NULL, buf, sizeof(buf));
-    if (len > 0 && len < sizeof(buf)) {
-        char* slash = strrchr(buf, '\\');
-        if (slash) { *(slash + 1) = '\0'; return std::string(buf); }
-    }
-#endif
-    return std::string();
-}
 
 static bool fileExists(const std::string& path) {
     struct stat st;
@@ -61,7 +13,6 @@ static bool fileExists(const std::string& path) {
 
 static bool hasPathTraversal(const char* p) {
     if (!p) return true;
-    // Reject ".." components: standalone, leading, trailing, or embedded
     for (const char* s = p; *s; ) {
         if (s[0] == '.' && s[1] == '.' && (s[2] == '/' || s[2] == '\\' || s[2] == '\0'))
             return true;
@@ -76,7 +27,7 @@ std::string getDataPath(const char* relative_path) {
 #ifdef __ANDROID__
     // On Android, SDL_RWFromFile auto-resolves paths from APK assets/
     return std::string(relative_path);
-#endif
+#else
     // 1. ./data/
     {
         std::string p = std::string("data/") + relative_path;
@@ -105,6 +56,7 @@ std::string getDataPath(const char* relative_path) {
 
     LOG_DBG("DataPath: '%s' not found", relative_path);
     return std::string();
+#endif
 }
 
 std::string readTextFile(const char* path) {
