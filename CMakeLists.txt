@@ -181,6 +181,7 @@ set(CORE_LIB_SOURCES
     src/renderer/gpu_timer.cpp
     src/renderer/gl_extensions.cpp
     src/renderer/gl_debug.cpp
+    src/core/app_config.cpp
     src/engine/state_cache.cpp
     src/geometry/mesh_gen.cpp
     src/geometry/obj_loader.cpp

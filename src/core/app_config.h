@@ -25,6 +25,7 @@ struct AppConfig {
     TimingMode timing_mode = TimingMode::Sync;
     std::string output_file;
     int gpu_index = -1;         // -1 = default, >=0 = select GPU
+    bool fullscreen = false;    // fullscreen window (forced on Android)
     bool debug = false;         // --debug: enable debug logging (Debug level)
     bool verbose = false;       // --debug=verbose: enable trace logging (Trace level, GL debug groups)
 
@@ -40,6 +41,9 @@ struct AppConfig {
     int demo_duration = 15;
 
     AppConfig() = default;
+
+    // Apply platform-specific defaults (GLES on Android, fullscreen, etc.)
+    void applyPlatformDefaults();
     AppConfig(const AppConfig&) = default;
     AppConfig& operator=(const AppConfig&) = default;
     AppConfig(AppConfig&&) noexcept = default;
