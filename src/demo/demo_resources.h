@@ -1,7 +1,7 @@
 #pragma once
 #include "renderer/renderer.h"
 #include "renderer/scoped_handle.h"
-#include "demo/shader_program.h"
+#include "engine/shader_program.h"
 #include "demo/shader_cache.h"
 #include "demo/mesh_pool.h"
 #include "demo/scoped_ssbo.h"

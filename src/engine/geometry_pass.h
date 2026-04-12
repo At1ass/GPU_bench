@@ -5,7 +5,7 @@
 #include "engine/draw_list.h"
 #include "engine/uniform_block.h"
 #include "engine/scene_data.h"
-#include "demo/demo_utils.h"
+#include "engine/frustum.h"
 
 // Template for "geometry draw" passes: camera + objects -> shader -> RT.
 // Automatically handles: RT binding, state, object iteration, frustum culling,

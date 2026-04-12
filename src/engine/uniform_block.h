@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/uniform_id.h"
-#include "demo/shader_program.h"
+#include "engine/shader_program.h"
 #include "geometry/math_types.h"
 
 // Per-shader cached uniform location block.

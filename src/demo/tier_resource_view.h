@@ -1,6 +1,6 @@
 #pragma once
 #include "renderer/renderer.h"
-#include "demo/shader_program.h"
+#include "engine/shader_program.h"
 #include "geometry/mesh.h"
 
 struct TierResourceView {
