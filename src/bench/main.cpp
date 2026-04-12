@@ -225,6 +225,7 @@ struct BenchApp {
     BenchUI bench_ui;
     BenchCB callbacks;
     bool running;
+    bool paused;
     int window_w, window_h;
     int render_w, render_h;
     int selected_resolution;
@@ -248,7 +249,7 @@ struct BenchApp {
     PendingAction pending_action;
 
     BenchApp()
-        : running(true), window_w(800), window_h(600)
+        : running(true), paused(false), window_w(800), window_h(600)
         , render_w(800), render_h(600), selected_resolution(RES_NATIVE)
         , selected_preset_index(static_cast<int>(PresetIndex::Medium))
         , suggested_preset(static_cast<int>(PresetIndex::Medium))
@@ -354,6 +355,10 @@ struct BenchApp {
                 SDL_GL_GetDrawableSize(ctx->window(), &window_w, &window_h);
                 if (selected_resolution == RES_NATIVE) { render_w = window_w; render_h = window_h; }
             }
+#ifdef __ANDROID__
+            if (e.type == SDL_APP_WILLENTERBACKGROUND) paused = true;
+            if (e.type == SDL_APP_DIDENTERFOREGROUND) paused = false;
+#endif
         }
     }
 

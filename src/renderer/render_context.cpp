@@ -9,7 +9,7 @@ RenderContext::~RenderContext() {}
 bool RenderContext::initSDL(const AppConfig& cfg) {
     headless_ = cfg.headless;
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__ANDROID__)
     if (headless_ && !getenv("SDL_VIDEODRIVER")) {
         SDL_setenv("SDL_VIDEODRIVER", "offscreen", 1);
     }
@@ -20,7 +20,12 @@ bool RenderContext::initSDL(const AppConfig& cfg) {
         return false;
     }
 
-    Uint32 win_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+    Uint32 win_flags = SDL_WINDOW_OPENGL;
+#ifdef __ANDROID__
+    win_flags |= SDL_WINDOW_FULLSCREEN;
+#else
+    win_flags |= SDL_WINDOW_RESIZABLE;
+#endif
     if (headless_) {
         win_flags |= SDL_WINDOW_HIDDEN;
     }

@@ -160,10 +160,11 @@ struct DemoApp {
     DemoUI demo_ui;
     DemoResults results;
     bool running;
+    bool paused;
     int window_w, window_h;
     int render_w, render_h;
 
-    DemoApp() : running(true), window_w(800), window_h(600), render_w(800), render_h(600) {}
+    DemoApp() : running(true), paused(false), window_w(800), window_h(600), render_w(800), render_h(600) {}
 
     bool init(const AppConfig& cfg) {
         config = cfg;
@@ -211,6 +212,10 @@ struct DemoApp {
             if (e.type == SDL_QUIT) running = false;
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED)
                 SDL_GL_GetDrawableSize(ctx->window(), &window_w, &window_h);
+#ifdef __ANDROID__
+            if (e.type == SDL_APP_WILLENTERBACKGROUND) paused = true;
+            if (e.type == SDL_APP_DIDENTERFOREGROUND) paused = false;
+#endif
         }
     }
 
