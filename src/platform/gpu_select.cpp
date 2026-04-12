@@ -134,7 +134,7 @@ static unsigned int parseHex(const std::string& s) {
     return val;
 }
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 
 std::vector<GPUDevice> enumerateGPUs() {
     std::vector<GPUDevice> gpus;
@@ -237,9 +237,9 @@ std::vector<GPUDevice> enumerateGPUs() {
     return std::vector<GPUDevice>();
 }
 
-#endif // __linux__
+#endif // __linux__ && !__ANDROID__
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 
 bool selectGPU(int index) {
     // Enumerate to find vendor info for the target GPU
@@ -328,9 +328,20 @@ bool selectGPU(int index) {
     return true;
 }
 
-#endif // __linux__ / __FreeBSD__
+#elif defined(__ANDROID__)
 
-#endif // !__APPLE__ (Linux / FreeBSD)
+std::vector<GPUDevice> enumerateGPUs() {
+    return std::vector<GPUDevice>();
+}
+
+bool selectGPU(int index) {
+    (void)index;
+    return false;
+}
+
+#endif // __linux__ / __FreeBSD__ / __ANDROID__
+
+#endif // !__APPLE__ (Linux / FreeBSD / Android)
 
 #else // Windows
 
@@ -541,11 +552,11 @@ bool selectGPU(int index) {
 #endif
 
 void selectGPUAndReexec(int index, int argc, char* argv[]) {
-#if defined(__APPLE__)
-    // macOS: GPU selection not supported, no re-exec needed
+#if defined(__APPLE__) || defined(__ANDROID__)
+    // macOS/Android: GPU selection not supported, no re-exec needed
     (void)argc; (void)argv;
     (void)index;
-    LOG_WRN("GPU selection is not supported on macOS");
+    LOG_WRN("GPU selection is not supported on this platform");
 #elif !defined(_WIN32)
     (void)argc;
     // Check if we've already re-exec'd (avoid infinite loop)

@@ -301,6 +301,16 @@ int main(int argc, char* argv[]) {
     int rc = parseArgs(argc, argv, cfg);
     if (rc != 0) { Log::shutdown(); return (rc < 0) ? 0 : rc; }
 
+#ifdef __ANDROID__
+    cfg.backend = RendererBackend::GLES;
+    cfg.headless = false;
+    SDL_DisplayMode dm;
+    if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
+        cfg.width = dm.w;
+        cfg.height = dm.h;
+    }
+#endif
+
     if (cfg.gpu_index >= 0)
         selectGPUAndReexec(cfg.gpu_index, argc, argv);
 

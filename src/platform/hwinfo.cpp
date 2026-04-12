@@ -88,7 +88,51 @@ HWInfo HWInfo::detect() {
     return info;
 }
 
-#else // Linux / POSIX
+#elif defined(__ANDROID__)
+
+#include <sys/system_properties.h>
+
+static std::string getAndroidProp(const char* name) {
+    char value[PROP_VALUE_MAX] = {};
+    __system_property_get(name, value);
+    return std::string(value);
+}
+
+HWInfo HWInfo::detect() {
+    HWInfo info;
+
+    // CPU: read /proc/cpuinfo directly (no popen/shell)
+    info.cpu_name = "Unknown CPU";
+    {
+        FileGuard f(fopen("/proc/cpuinfo", "r"));
+        if (f) {
+            char line[256];
+            while (fgets(line, sizeof(line), f.get())) {
+                if (strncmp(line, "Hardware", 8) == 0 || strncmp(line, "model name", 10) == 0) {
+                    const char* colon = strchr(line, ':');
+                    if (colon) {
+                        info.cpu_name = trimWhitespace(std::string(colon + 1));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // OS: Android system properties
+    std::string release = getAndroidProp("ro.build.version.release");
+    std::string sdk = getAndroidProp("ro.build.version.sdk");
+    std::string device = getAndroidProp("ro.product.model");
+    info.os_name = "Android";
+    info.os_version = release + " (API " + sdk + ")";
+    if (!device.empty()) info.os_version += " " + device;
+
+    LOG_DBG("HWInfo: CPU '%s'", info.cpu_name.c_str());
+    LOG_DBG("HWInfo: OS '%s %s'", info.os_name.c_str(), info.os_version.c_str());
+    return info;
+}
+
+#else // Linux / macOS / FreeBSD
 
 static std::string readFirstLine(const char* cmd) {
     PipeGuard fp(popen(cmd, "r"));

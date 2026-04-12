@@ -348,7 +348,7 @@ void GL2Renderer::detectCaps() {
     }
 #endif // !_WIN32
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
     // Method 4: Linux sysfs — scan /sys/class/drm/card*/device/mem_info_vram_total (AMD)
     if (caps_.estimated_vram_mb == 0) {
         LOG_DBG("VRAM method 4 (sysfs): scanning /sys/class/drm/");
@@ -377,7 +377,7 @@ void GL2Renderer::detectCaps() {
             closedir(drm_dir);
         }
     }
-#endif // __linux__
+#endif // __linux__ && !__ANDROID__
 #endif // !__APPLE__
 
     LOG_INF("GL Caps: GL %d.%d, max_tex=%d, max_attribs=%d, vram=%dMB, "
