@@ -1,4 +1,4 @@
-#include "demo/demo_camera.h"
+#include "demo/scene/demo_camera.h"
 #include <cmath>
 
 Vec3 CameraPath::catmullRom(const Vec3& p0, const Vec3& p1,

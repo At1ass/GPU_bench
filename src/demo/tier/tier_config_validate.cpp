@@ -1,5 +1,5 @@
-#include "demo/tier_config_validate.h"
-#include "demo/demo_scene.h"
+#include "demo/tier/tier_config_validate.h"
+#include "demo/scene/demo_scene.h"
 #include "platform/logger.h"
 
 // Helper: true if v is a power of two

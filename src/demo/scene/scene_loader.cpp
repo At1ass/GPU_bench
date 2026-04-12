@@ -1,4 +1,4 @@
-#include "demo/scene_loader.h"
+#include "demo/scene/scene_loader.h"
 #include "platform/data_path.h"
 #include "platform/logger.h"
 #include <cstdio>

@@ -1,7 +1,7 @@
 #include "demo/passes/ssr_copy_pass.h"
 #include "engine/pass_context.h"
-#include "demo/demo_scene.h"
-#include "demo/tier_resource_view.h"
+#include "demo/scene/demo_scene.h"
+#include "demo/tier/tier_resource_view.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 

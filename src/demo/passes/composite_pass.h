@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/fullscreen_pass.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 
 // T2/T3 final composite: scene + bloom + SSAO + vignette + color grading.
 class CompositePass : public FullscreenPass {

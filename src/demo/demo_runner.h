@@ -1,6 +1,6 @@
 #pragma once
-#include "demo/demo_scene.h"
-#include "demo/demo_resources.h"
+#include "demo/scene/demo_scene.h"
+#include "demo/scene/demo_resources.h"
 #include <vector>
 #include <string>
 

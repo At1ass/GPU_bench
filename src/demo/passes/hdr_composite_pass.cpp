@@ -2,8 +2,8 @@
 #include "engine/pass_context.h"
 #include "demo/demo_utils.h"
 #include "engine/uniform_id.h"
-#include "demo/tier_resource_view.h"
-#include "demo/demo_scene.h"
+#include "demo/tier/tier_resource_view.h"
+#include "demo/scene/demo_scene.h"
 #include "renderer/features.h"
 
 void HDRCompositePass::init(const TierResourceView& res) {

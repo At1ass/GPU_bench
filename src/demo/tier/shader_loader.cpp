@@ -1,4 +1,4 @@
-#include "demo/shader_loader.h"
+#include "demo/tier/shader_loader.h"
 #include "platform/data_path.h"
 #include "platform/logger.h"
 #include <cstring>

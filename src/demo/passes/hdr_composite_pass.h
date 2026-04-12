@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/render_pass.h"
 #include "engine/uniform_block.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 
 // T4 HDR composite: ACES tone mapping + bloom + AO + volumetric fog + SSR + DoF.
 // Reads from many textures and applies final post-processing.

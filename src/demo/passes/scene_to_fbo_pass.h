@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/render_pass.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 
 // Renders the full scene (sky, opaque, grass, fur, particles) into the bloom scene FBO.
 // Sub-passes are invoked via stored pointers set by setSubPasses().

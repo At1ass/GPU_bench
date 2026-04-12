@@ -1,5 +1,5 @@
 #pragma once
-#include "demo/shader_feature.h"
+#include "demo/tier/shader_feature.h"
 #include "engine/shader_program.h"
 #include "renderer/renderer.h"
 #include <string>

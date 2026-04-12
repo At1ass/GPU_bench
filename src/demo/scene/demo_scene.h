@@ -1,14 +1,14 @@
 #pragma once
 #include "renderer/renderer.h"
-#include "demo/demo_camera.h"
+#include "demo/scene/demo_camera.h"
 #include "demo/demo_debug.h"
 #include "engine/frame_data.h"
-#include "demo/demo_pipeline.h"
-#include "demo/pass_factory.h"
-#include "demo/pipeline_builder.h"
+#include "demo/pipeline/demo_pipeline.h"
+#include "demo/pipeline/pass_factory.h"
+#include "demo/pipeline/pipeline_builder.h"
 #include "engine/resource_id.h"
 #include "engine/scene_data.h"
-#include "demo/tier_resource_view.h"
+#include "demo/tier/tier_resource_view.h"
 #include <memory>
 #include <vector>
 

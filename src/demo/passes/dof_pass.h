@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/compute_pass.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 #include "demo/demo_debug.h"
 
 class DoFPass : public ComputePassBase {

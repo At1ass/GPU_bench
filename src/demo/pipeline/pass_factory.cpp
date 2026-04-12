@@ -1,5 +1,5 @@
-#include "demo/pass_factory.h"
-#include "demo/demo_scene.h"
+#include "demo/pipeline/pass_factory.h"
+#include "demo/scene/demo_scene.h"
 #include "demo/passes/sky_pass.h"
 #include "demo/passes/shadow_pass.h"
 #include "demo/passes/opaque_pass.h"

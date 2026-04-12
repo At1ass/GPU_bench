@@ -1,7 +1,7 @@
 #include "demo/passes/scene_to_fbo_pass.h"
 #include "engine/pass_context.h"
-#include "demo/tier_resource_view.h"
-#include "demo/demo_scene.h"
+#include "demo/tier/tier_resource_view.h"
+#include "demo/scene/demo_scene.h"
 #include "demo/demo_utils.h"
 
 void SceneToFBOPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,

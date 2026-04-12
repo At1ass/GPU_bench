@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/geometry_pass.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 
 class ShadowPass : public GeometryPass {
 public:

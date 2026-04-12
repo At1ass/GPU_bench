@@ -1,5 +1,5 @@
-#include "demo/shader_cache.h"
-#include "demo/shader_loader.h"
+#include "demo/tier/shader_cache.h"
+#include "demo/tier/shader_loader.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 #include <cstring>

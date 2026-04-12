@@ -1,4 +1,4 @@
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 #include "renderer/features.h"
 
 // ============================================================

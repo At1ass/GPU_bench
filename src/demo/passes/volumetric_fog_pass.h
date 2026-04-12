@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/fullscreen_pass.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 #include "demo/demo_debug.h"
 
 class VolumetricFogPass : public FullscreenPass {

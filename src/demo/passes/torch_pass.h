@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/render_pass.h"
 #include "engine/uniform_block.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 
 class TorchPass : public RenderPassBase {
 public:

@@ -1,5 +1,5 @@
 #include "demo/demo_ui.h"
-#include "demo/demo_scene.h"
+#include "demo/scene/demo_scene.h"
 #include "renderer/render_context.h"
 #include <imgui.h>
 #include <cstdio>

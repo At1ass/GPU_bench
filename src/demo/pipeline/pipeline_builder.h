@@ -1,5 +1,5 @@
 #pragma once
-#include "demo/demo_pipeline.h"
+#include "demo/pipeline/demo_pipeline.h"
 #include <memory>
 #include <vector>
 

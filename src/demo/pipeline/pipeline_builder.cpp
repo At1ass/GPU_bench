@@ -1,5 +1,5 @@
-#include "demo/pipeline_builder.h"
-#include "demo/demo_scene.h"
+#include "demo/pipeline/pipeline_builder.h"
+#include "demo/scene/demo_scene.h"
 #include "demo/demo_utils.h"
 #include "engine/resource_id.h"
 #include "platform/logger.h"

@@ -314,21 +314,25 @@ target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
 # --- Demo executable ---
 set(DEMO_SOURCES
+    # Root
     src/demo/main.cpp
-    src/demo/demo_camera.cpp
-    src/demo/shader_loader.cpp
-    src/demo/demo_scene.cpp
-    src/demo/scene_loader.cpp
-    src/demo/materials.cpp
-    src/demo/demo_tier_config.cpp
-    src/demo/tier_config_validate.cpp
     src/demo/demo_runner.cpp
     src/demo/demo_ui.cpp
     src/demo/demo_export.cpp
-    src/demo/demo_resources.cpp
-    src/demo/pass_factory.cpp
-    src/demo/pipeline_builder.cpp
-    src/demo/shader_cache.cpp
+    # Scene
+    src/demo/scene/demo_scene.cpp
+    src/demo/scene/demo_camera.cpp
+    src/demo/scene/demo_resources.cpp
+    src/demo/scene/scene_loader.cpp
+    src/demo/scene/materials.cpp
+    # Tier (shader config + compilation)
+    src/demo/tier/shader_loader.cpp
+    src/demo/tier/shader_cache.cpp
+    src/demo/tier/demo_tier_config.cpp
+    src/demo/tier/tier_config_validate.cpp
+    # Pipeline
+    src/demo/pipeline/pass_factory.cpp
+    src/demo/pipeline/pipeline_builder.cpp
     src/demo/passes/sky_pass.cpp
     src/demo/passes/shadow_pass.cpp
     src/demo/passes/particle_pass.cpp

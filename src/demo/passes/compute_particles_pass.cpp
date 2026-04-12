@@ -1,6 +1,6 @@
 #include "demo/passes/compute_particles_pass.h"
 #include "engine/uniform_id.h"
-#include "demo/tier_resource_view.h"
+#include "demo/tier/tier_resource_view.h"
 #include "demo/demo_utils.h"
 
 // Same as TorchPass: on top of column stumps C, D

@@ -2,10 +2,10 @@
 #include "renderer/renderer.h"
 #include "renderer/scoped_handle.h"
 #include "engine/shader_program.h"
-#include "demo/shader_cache.h"
-#include "demo/mesh_pool.h"
-#include "demo/scoped_ssbo.h"
-#include "demo/tier_resource_view.h"
+#include "demo/tier/shader_cache.h"
+#include "demo/scene/mesh_pool.h"
+#include "demo/scene/scoped_ssbo.h"
+#include "demo/tier/tier_resource_view.h"
 #include "geometry/mesh.h"
 
 enum class DemoTier;
