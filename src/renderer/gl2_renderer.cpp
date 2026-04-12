@@ -406,10 +406,7 @@ bool GL2Renderer::init(int w, int h) {
     detectCaps();
     LOG_DBG("GL2Renderer::init: detectCaps done");
 
-#ifndef CB_GLES_NATIVE
-    // Init GPU timer if available
     gpu_timer_.init();
-#endif
 
     // Check if glBlitFramebuffer is available
 #ifdef CB_NEED_GL_LOAD
@@ -1100,33 +1097,10 @@ void GL2Renderer::blitToScreen(RenderTargetHandle rt,
 }
 
 // --- GPU timer ---
-bool GL2Renderer::hasTimerQueries() const {
-#ifdef CB_GLES_NATIVE
-    return false;
-#else
-    return gpu_timer_.available();
-#endif
-}
-
-void GL2Renderer::timerBegin() {
-#ifndef CB_GLES_NATIVE
-    gpu_timer_.begin();
-#endif
-}
-
-void GL2Renderer::timerEnd() {
-#ifndef CB_GLES_NATIVE
-    gpu_timer_.end();
-#endif
-}
-
-double GL2Renderer::timerElapsedMs() {
-#ifdef CB_GLES_NATIVE
-    return 0.0;
-#else
-    return gpu_timer_.elapsed_ms();
-#endif
-}
+bool GL2Renderer::hasTimerQueries() const { return gpu_timer_.available(); }
+void GL2Renderer::timerBegin() { gpu_timer_.begin(); }
+void GL2Renderer::timerEnd() { gpu_timer_.end(); }
+double GL2Renderer::timerElapsedMs() { return gpu_timer_.elapsed_ms(); }
 
 const RenderCaps& GL2Renderer::getCaps() const { return caps_; }
 bool GL2Renderer::isCoreProfile() const { return core_profile_; }

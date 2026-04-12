@@ -1,4 +1,17 @@
 #pragma once
+
+#ifdef CB_GLES_NATIVE
+// GLES stub — GPU timer queries not available on GLES 2.0/3.0
+class GPUTimer {
+public:
+    void init() {}
+    bool available() const { return false; }
+    void begin() {}
+    void end() {}
+    double elapsed_ms() { return 0.0; }
+};
+#else
+
 #include "renderer/gl_funcs.h"
 
 // GPU Timer using GL_TIME_ELAPSED queries.
@@ -31,7 +44,6 @@ private:
     bool initialized_;
     unsigned int query_;
 
-    // Function pointers for query functions
     using PFN_glGenQueries            = void (APIENTRY *)(GLsizei, GLuint*);
     using PFN_glDeleteQueries         = void (APIENTRY *)(GLsizei, const GLuint*);
     using PFN_glBeginQuery            = void (APIENTRY *)(GLenum, GLuint);
@@ -46,3 +58,5 @@ private:
     PFN_glGetQueryObjectui64v get_query_ui64v_;
     PFN_glGetQueryObjectiv get_query_iv_;
 };
+
+#endif // CB_GLES_NATIVE

@@ -135,10 +135,7 @@ bool GLESRenderer::init(int w, int h) {
         caps_.has_generate_mipmap_func = true;
     }
 
-#ifndef CB_GLES_NATIVE
-    // Init GPU timer if available
     gpu_timer_.init();
-#endif
 
     // Check if glBlitFramebuffer is available
 #ifdef CB_NEED_GL_LOAD

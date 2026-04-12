@@ -184,23 +184,15 @@ public:
                 LOG_TRC("Pipeline: execute pass '%s' (node %d/%d, rt_action=%d)",
                         n.pass->name(), static_cast<int>(i + 1),
                         static_cast<int>(nodes_.size()), static_cast<int>(n.rt_action));
-#ifndef CB_GLES_NATIVE
                 GLDebug::pushGroup(n.pass->name());
-#endif
                 n.pass->execute(ctx, fd, res, cfg, scene);
-#ifndef CB_GLES_NATIVE
                 GLDebug::popGroup();
-#endif
             } else if (n.command) {
                 LOG_TRC("Pipeline: execute command (node %d/%d)",
                         static_cast<int>(i + 1), static_cast<int>(nodes_.size()));
-#ifndef CB_GLES_NATIVE
                 GLDebug::pushGroup("pipeline_command");
-#endif
                 n.command(ctx, fd, res, cfg, scene);
-#ifndef CB_GLES_NATIVE
                 GLDebug::popGroup();
-#endif
             }
 
             // Post-execute: compute sync

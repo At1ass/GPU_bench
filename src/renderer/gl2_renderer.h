@@ -196,10 +196,7 @@ protected:
     bool blit_quad_ready_ = false;
     bool has_blit_framebuffer_ = false;
 
-#ifndef CB_GLES_NATIVE
-    // GPU timer (desktop GL only)
     GPUTimer gpu_timer_;
-#endif
 
     // GL state shadow cache (eliminates redundant glEnable/glDisable calls)
     StateCache state_cache_;
