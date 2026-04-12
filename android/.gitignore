@@ -1,6 +1,7 @@
 local.properties
 .gradle/
-app/build/
 build/
+app/.cxx/
+app/build/
 *.iml
 .idea/

@@ -138,8 +138,10 @@ bool GLRenderContext::init(const AppConfig& cfg) {
         return false;
     }
 
+#ifndef CB_GLES_NATIVE
     // Initialize GL debug output (noop if KHR_debug not available)
     if (cfg.debug) GLDebug::init();
+#endif
 
     if (!headless_) {
         if (!initImGui()) {

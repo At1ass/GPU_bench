@@ -1,4 +1,5 @@
 #include "renderer/gpu_timer.h"
+#ifndef CB_GLES_NATIVE
 #include "renderer/gl_extensions.h"
 #include "platform/logger.h"
 #include <SDL.h>
@@ -104,3 +105,4 @@ double GPUTimer::elapsed_ms() {
     get_query_ui64v_(query_, GL_QUERY_RESULT, &ns);
     return static_cast<double>(ns) / 1000000.0;
 }
+#endif // CB_GLES_NATIVE

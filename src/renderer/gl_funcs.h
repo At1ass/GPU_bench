@@ -17,7 +17,13 @@
 
 #include <SDL.h>
 
-#if defined(_WIN32) || defined(__APPLE__) || defined(CB_STATIC_GL)
+#if defined(CB_GLES_NATIVE)
+  // Android / native GLES: functions resolved at link time via GLES headers
+  #include <GLES2/gl2.h>
+  #include <GLES2/gl2ext.h>
+  #include <GLES3/gl3.h>
+  #include <GLES3/gl3ext.h>
+#elif defined(_WIN32) || defined(__APPLE__) || defined(CB_STATIC_GL)
   #define CB_NEED_GL_LOAD
 
   // imgl3w provides: GL types, constants, ~50 GL functions (as macros),
@@ -707,12 +713,12 @@
   #define glObjectLabel                   cb_glObjectLabel
 
 
-#else
-  // Linux: all GL functions resolved at link time
+#elif !defined(CB_GLES_NATIVE)
+  // Linux desktop: all GL functions resolved at link time
   #define GL_GLEXT_PROTOTYPES
   #include <GL/gl.h>
   #include <GL/glext.h>
-#endif // CB_NEED_GL_LOAD
+#endif // CB_NEED_GL_LOAD / CB_GLES_NATIVE
 
 // =========================================================================
 // Extension-only functions — never core, always loaded via function pointers

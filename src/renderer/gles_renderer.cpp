@@ -5,6 +5,12 @@
 #include <cstring>
 #include <utility>
 
+// GL_GENERATE_MIPMAP is a deprecated GL 1.4 constant, not in GLES headers.
+// Fallback path uses it for ancient drivers; define if missing.
+#ifndef GL_GENERATE_MIPMAP
+#define GL_GENERATE_MIPMAP 0x8191
+#endif
+
 // ---- GLES-compatible shaders ----
 // GLES 2.0: #version 100, precision required in fragment shaders.
 // attribute/varying/texture2D syntax is the same as GLSL 1.20.
@@ -129,8 +135,10 @@ bool GLESRenderer::init(int w, int h) {
         caps_.has_generate_mipmap_func = true;
     }
 
+#ifndef CB_GLES_NATIVE
     // Init GPU timer if available
     gpu_timer_.init();
+#endif
 
     // Check if glBlitFramebuffer is available
 #ifdef CB_NEED_GL_LOAD

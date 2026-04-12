@@ -1,4 +1,5 @@
 #include "renderer/gl4_renderer.h"
+#ifndef CB_GLES_NATIVE
 #include "renderer/gl_profile.h"
 #include "renderer/gl_extensions.h"
 #include "platform/logger.h"
@@ -784,3 +785,4 @@ void GL4Renderer::setUniformHandle(int loc, uint64_t handle) {
     if (cb_glUniformHandleui64ARB)
         cb_glUniformHandleui64ARB(loc, handle);
 }
+#endif // CB_GLES_NATIVE

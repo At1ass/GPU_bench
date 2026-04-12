@@ -1,5 +1,6 @@
 #include <cstddef>
 #include "renderer/gl3_renderer.h"
+#ifndef CB_GLES_NATIVE
 #include "renderer/gl_profile.h"
 #include "renderer/gl_extensions.h"
 #include "platform/logger.h"
@@ -776,3 +777,4 @@ TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
     }
     return th;
 }
+#endif // CB_GLES_NATIVE

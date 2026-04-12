@@ -1,0 +1,6 @@
+[INF   +0.045s] [renderer ] gl_render_context.cpp:48  Created GL 4.6 compatibility context
+[INF   +0.045s] [renderer ] renderer_factory.cpp:61  Auto-detected GL 4.6, using GL4 renderer
+[INF   +0.045s] [renderer ] gl2_renderer.cpp:383  GL Caps: GL 4.6, max_tex=32768, max_attribs=16, vram=12282MB, fbo=yes, timer_q=yes
+[INF   +0.045s] [renderer ] gpu_timer.cpp:79  GPUTimer: GL_TIME_ELAPSED available
+[INF   +0.086s] [bench    ] bench_runner.cpp:325  Quick probe: fill=148547.0 Mpix/s, geom=3838.2 Mtris/s -> tier=ultra
+[LOG] Messages: 0 trc, 0 dbg, 5 info, 0 warn, 0 err

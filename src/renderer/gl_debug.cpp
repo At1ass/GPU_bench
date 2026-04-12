@@ -1,4 +1,5 @@
 #include "renderer/gl_debug.h"
+#ifndef CB_GLES_NATIVE
 #include "renderer/gl_funcs.h"
 #include "renderer/gl_extensions.h"
 #include "renderer/gl_loader.h"
@@ -154,3 +155,4 @@ void GLDebug::labelFramebuffer(unsigned int fbo, const char* name) {
 #endif
     glObjectLabel(GL_FRAMEBUFFER, fbo, static_cast<GLsizei>(strlen(name)), name);
 }
+#endif // CB_GLES_NATIVE

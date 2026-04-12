@@ -1,12 +1,15 @@
 #include "renderer/renderer_factory.h"
 #include "renderer/gl2_renderer.h"
+#ifndef CB_GLES_NATIVE
 #include "renderer/gl3_renderer.h"
 #include "renderer/gl4_renderer.h"
+#endif
 #include "renderer/gles_renderer.h"
 #include "renderer/gl_loader.h"
 #include "platform/logger.h"
 #include <cstdio>
 
+#ifndef CB_GLES_NATIVE
 // Try GL4 -> GL3 -> GL2 cascade, starting from requested level.
 static std::unique_ptr<Renderer> createWithFallback(RendererBackend requested) {
     bool want_gl4 = (requested == RendererBackend::GL4);
@@ -39,6 +42,7 @@ static std::unique_ptr<Renderer> createWithFallback(RendererBackend requested) {
              GLLoader::glMajor(), GLLoader::glMinor());
     return std::unique_ptr<Renderer>(new GL2Renderer());
 }
+#endif // CB_GLES_NATIVE
 
 std::unique_ptr<Renderer> createRenderer(RendererBackend backend) {
     if (backend == RendererBackend::GLES ||
@@ -47,6 +51,11 @@ std::unique_ptr<Renderer> createRenderer(RendererBackend backend) {
         return std::unique_ptr<Renderer>(new GLESRenderer());
     }
 
+#ifdef CB_GLES_NATIVE
+    // On Android GLES-only: always use GLESRenderer
+    LOG_DBG("RendererFactory: GLES-only platform, using GLES renderer");
+    return std::unique_ptr<Renderer>(new GLESRenderer());
+#else
     if (backend == RendererBackend::GL2) {
         LOG_DBG("RendererFactory: selected GL2 (explicitly requested)");
         return std::unique_ptr<Renderer>(new GL2Renderer());
@@ -61,4 +70,5 @@ std::unique_ptr<Renderer> createRenderer(RendererBackend backend) {
     LOG_INF("Auto-detected GL %d.%d, using %s renderer",
             GLLoader::glMajor(), GLLoader::glMinor(), r->getRendererName());
     return r;
+#endif
 }
