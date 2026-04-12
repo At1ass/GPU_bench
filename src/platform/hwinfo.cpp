@@ -101,9 +101,11 @@ static std::string getAndroidProp(const char* name) {
 HWInfo HWInfo::detect() {
     HWInfo info;
 
-    // CPU: read /proc/cpuinfo directly (no popen/shell)
-    info.cpu_name = "Unknown CPU";
-    {
+    // CPU: try system property first, then /proc/cpuinfo
+    info.cpu_name = getAndroidProp("ro.hardware.chipname");
+    if (info.cpu_name.empty())
+        info.cpu_name = getAndroidProp("ro.hardware");
+    if (info.cpu_name.empty()) {
         FileGuard f(fopen("/proc/cpuinfo", "r"));
         if (f) {
             char line[256];
@@ -118,6 +120,7 @@ HWInfo HWInfo::detect() {
             }
         }
     }
+    if (info.cpu_name.empty()) info.cpu_name = "Unknown CPU";
 
     // OS: Android system properties
     std::string release = getAndroidProp("ro.build.version.release");
