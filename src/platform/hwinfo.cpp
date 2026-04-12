@@ -159,9 +159,28 @@ HWInfo HWInfo::detect() {
 #elif defined(__FreeBSD__)
     info.cpu_name = readFirstLine("sysctl -n hw.model");
 #else
+    // x86: "model name" in /proc/cpuinfo
     info.cpu_name = readFirstLine(
         "grep 'model name' /proc/cpuinfo | head -n1 | cut -d: -f2"
     );
+    // ARM Linux: try lscpu, /sys/firmware/devicetree, or Hardware field
+    if (info.cpu_name.empty())
+        info.cpu_name = readFirstLine(
+            "lscpu 2>/dev/null | grep 'Model name' | head -n1 | cut -d: -f2"
+        );
+    if (info.cpu_name.empty()) {
+        // Device tree model (Asahi Linux on Apple Silicon, Raspberry Pi, etc.)
+        FileGuard f(fopen("/sys/firmware/devicetree/base/model", "r"));
+        if (f) {
+            char buf[256];
+            if (fgets(buf, sizeof(buf), f.get()))
+                info.cpu_name = buf;
+        }
+    }
+    if (info.cpu_name.empty())
+        info.cpu_name = readFirstLine(
+            "grep 'Hardware' /proc/cpuinfo | head -n1 | cut -d: -f2"
+        );
 #endif
     info.cpu_name = trimWhitespace(info.cpu_name);
     if (info.cpu_name.empty()) info.cpu_name = "Unknown CPU";
