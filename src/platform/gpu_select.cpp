@@ -231,13 +231,13 @@ std::vector<GPUDevice> enumerateGPUs() {
     return gpus;
 }
 
-#else // FreeBSD — no sysfs, GPU enumeration not yet implemented
+#elif defined(__FreeBSD__)
 
 std::vector<GPUDevice> enumerateGPUs() {
     return std::vector<GPUDevice>();
 }
 
-#endif // __linux__ && !__ANDROID__
+#endif // __linux__ && !__ANDROID__ / __FreeBSD__
 
 #if defined(__linux__) && !defined(__ANDROID__)
 
