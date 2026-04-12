@@ -137,6 +137,48 @@ jobs:
             build/Release/gpu_benchmark.exe
             build/Release/gpu_demo.exe
 
+  android:
+    name: Android
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Verify APK contents
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          echo "=== APK size ==="
+          ls -lh "$APK"
+          echo "=== Native libraries ==="
+          unzip -l "$APK" | grep "\.so$"
+          echo "=== Assets ==="
+          unzip -l "$APK" | grep "assets/" | head -10
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
   freebsd:
     name: FreeBSD
     runs-on: ubuntu-22.04

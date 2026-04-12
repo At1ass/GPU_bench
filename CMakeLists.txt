@@ -29,7 +29,8 @@ elseif(MSVC)
 endif()
 
 # --- Stack protection and fortification ---
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+# MinGW lacks __stack_chk_fail in its runtime — skip stack protector for cross-compilation
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MINGW)
     add_compile_options(-fstack-protector-strong)
 endif()
 
