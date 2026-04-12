@@ -1,7 +1,7 @@
 #include "bench/stress_runner.h"
 #include "core/poll_callback.h"
 #include "renderer/renderer.h"
-#include "renderer/render_context.h"
+#include "renderer/context/render_context.h"
 #include "geometry/mesh_gen.h"
 #include "tests/tests.h"          // for genColorNoise
 #include "platform/logger.h"

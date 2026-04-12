@@ -2,9 +2,9 @@
 #include "tests/tests.h"
 #include "renderer/renderer.h"
 #include "renderer/features.h"
-#include "renderer/gl2_renderer.h"
-#include "renderer/gl3_renderer.h"
-#include "renderer/gl4_renderer.h"
+#include "renderer/backend/gl2_renderer.h"
+#include "renderer/backend/gl3_renderer.h"
+#include "renderer/backend/gl4_renderer.h"
 #include <type_traits>
 
 const TestInfo g_tests[NUM_TESTS] = {

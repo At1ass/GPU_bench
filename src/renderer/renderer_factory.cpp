@@ -1,11 +1,11 @@
 #include "renderer/renderer_factory.h"
-#include "renderer/gl2_renderer.h"
+#include "renderer/backend/gl2_renderer.h"
 #ifndef CB_GLES_NATIVE
-#include "renderer/gl3_renderer.h"
-#include "renderer/gl4_renderer.h"
+#include "renderer/backend/gl3_renderer.h"
+#include "renderer/backend/gl4_renderer.h"
 #endif
-#include "renderer/gles_renderer.h"
-#include "renderer/gl_loader.h"
+#include "renderer/backend/gles_renderer.h"
+#include "renderer/backend/gl/gl_loader.h"
 #include "platform/logger.h"
 #include <cstdio>
 

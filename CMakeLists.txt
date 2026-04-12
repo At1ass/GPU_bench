@@ -169,18 +169,22 @@ endif()
 
 # --- Core library (renderer, platform, geometry) ---
 set(CORE_LIB_SOURCES
-    src/renderer/gl_funcs.cpp
-    src/renderer/gl2_renderer.cpp
-    src/renderer/gl3_renderer.cpp
-    src/renderer/gl4_renderer.cpp
-    src/renderer/gles_renderer.cpp
-    src/renderer/render_context.cpp
-    src/renderer/gl_render_context.cpp
-    src/renderer/gl_loader.cpp
+    # Renderer factory
     src/renderer/renderer_factory.cpp
-    src/renderer/gpu_timer.cpp
-    src/renderer/gl_extensions.cpp
-    src/renderer/gl_debug.cpp
+    # Renderer backends
+    src/renderer/backend/gl2_renderer.cpp
+    src/renderer/backend/gl3_renderer.cpp
+    src/renderer/backend/gl4_renderer.cpp
+    src/renderer/backend/gles_renderer.cpp
+    # GL infrastructure (internal to backends)
+    src/renderer/backend/gl/gl_funcs.cpp
+    src/renderer/backend/gl/gl_loader.cpp
+    src/renderer/backend/gl/gl_extensions.cpp
+    src/renderer/backend/gl/gl_debug.cpp
+    src/renderer/backend/gl/gpu_timer.cpp
+    # Context (SDL window + GL context)
+    src/renderer/context/render_context.cpp
+    src/renderer/context/gl_render_context.cpp
     src/core/app_config.cpp
     src/engine/state_cache.cpp
     src/geometry/mesh_gen.cpp

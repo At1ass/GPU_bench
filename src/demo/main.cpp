@@ -1,6 +1,6 @@
 // gpu_demo — visual demo benchmark (3DMark-style), separate from gpu_benchmark
 #include "core/app_config.h"
-#include "renderer/render_context.h"
+#include "renderer/context/render_context.h"
 #include "renderer/renderer_factory.h"
 #include "demo/demo_runner.h"
 #include "demo/demo_ui.h"

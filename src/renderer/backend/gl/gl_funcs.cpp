@@ -1,4 +1,4 @@
-#include "renderer/gl_funcs.h"
+#include "renderer/backend/gl/gl_funcs.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>

@@ -12,7 +12,7 @@ public:
 };
 #else
 
-#include "renderer/gl_funcs.h"
+#include "renderer/backend/gl/gl_funcs.h"
 
 // GPU Timer using GL_TIME_ELAPSED queries.
 // Requires GL 3.3 or GL_ARB_timer_query extension.

@@ -1,5 +1,5 @@
 #pragma once
-#include "renderer/gl2_renderer.h"
+#include "renderer/backend/gl2_renderer.h"
 #include "renderer/features.h"
 
 class GL3Renderer : public GL2Renderer, public GL3Features {

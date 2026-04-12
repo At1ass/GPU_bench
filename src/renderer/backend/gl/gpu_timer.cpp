@@ -1,6 +1,6 @@
-#include "renderer/gpu_timer.h"
+#include "renderer/backend/gl/gpu_timer.h"
 #ifndef CB_GLES_NATIVE
-#include "renderer/gl_extensions.h"
+#include "renderer/backend/gl/gl_extensions.h"
 #include "platform/logger.h"
 #include <SDL.h>
 #include <cstdio>

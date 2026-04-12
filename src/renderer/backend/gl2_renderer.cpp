@@ -1,6 +1,6 @@
 #include <cstddef>
-#include "renderer/gl2_renderer.h"
-#include "renderer/gl_extensions.h"
+#include "renderer/backend/gl2_renderer.h"
+#include "renderer/backend/gl/gl_extensions.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>

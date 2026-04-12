@@ -1,7 +1,7 @@
-#include "renderer/gl_render_context.h"
+#include "renderer/context/gl_render_context.h"
 #include "core/app_config.h"
-#include "renderer/gl_loader.h"
-#include "renderer/gl_debug.h"
+#include "renderer/backend/gl/gl_loader.h"
+#include "renderer/backend/gl/gl_debug.h"
 #include "platform/logger.h"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>

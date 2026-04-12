@@ -1,5 +1,5 @@
 #pragma once
-#include "renderer/render_context.h"
+#include "renderer/context/render_context.h"
 #include "renderer/renderer_backend.h"
 
 // GL/GLES render context — creates desktop GL or GLES context,

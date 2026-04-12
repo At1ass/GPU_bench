@@ -1,8 +1,8 @@
 #include <cstddef>
-#include "renderer/gl3_renderer.h"
+#include "renderer/backend/gl3_renderer.h"
 #ifndef CB_GLES_NATIVE
-#include "renderer/gl_profile.h"
-#include "renderer/gl_extensions.h"
+#include "renderer/backend/gl/gl_profile.h"
+#include "renderer/backend/gl/gl_extensions.h"
 #include "platform/logger.h"
 #include <cassert>
 #include <cstdio>

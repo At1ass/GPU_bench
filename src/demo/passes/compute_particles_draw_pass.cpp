@@ -5,7 +5,7 @@
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
 #include "renderer/features.h"
-#include "renderer/gl_funcs.h"
+#include "renderer/backend/gl/gl_funcs.h"
 #include "platform/logger.h"
 
 void ComputeParticlesDrawPass::init(const TierResourceView& res) {

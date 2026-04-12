@@ -1,6 +1,6 @@
-#include "renderer/gl_extensions.h"
-#include "renderer/gl_funcs.h"
-#include "renderer/gl_loader.h"
+#include "renderer/backend/gl/gl_extensions.h"
+#include "renderer/backend/gl/gl_funcs.h"
+#include "renderer/backend/gl/gl_loader.h"
 #include "platform/logger.h"
 #include <algorithm>
 #include <vector>

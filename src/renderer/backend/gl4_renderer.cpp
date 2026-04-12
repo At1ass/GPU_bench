@@ -1,7 +1,7 @@
-#include "renderer/gl4_renderer.h"
+#include "renderer/backend/gl4_renderer.h"
 #ifndef CB_GLES_NATIVE
-#include "renderer/gl_profile.h"
-#include "renderer/gl_extensions.h"
+#include "renderer/backend/gl/gl_profile.h"
+#include "renderer/backend/gl/gl_extensions.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>

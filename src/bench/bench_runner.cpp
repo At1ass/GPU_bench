@@ -3,7 +3,7 @@
 #include "tests/test_registry.h"
 #include "renderer/renderer.h"
 #include "renderer/features.h"
-#include "renderer/render_context.h"
+#include "renderer/context/render_context.h"
 #include "platform/logger.h"
 #include <cmath>
 #include <algorithm>

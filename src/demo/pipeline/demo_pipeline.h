@@ -2,7 +2,7 @@
 #include "engine/render_pass.h"
 #include "engine/pass_context.h"
 #include "renderer/features.h"
-#include "renderer/gl_debug.h"
+#include "renderer/backend/gl/gl_debug.h"
 #include "platform/logger.h"
 #include <vector>
 #include <cstring>

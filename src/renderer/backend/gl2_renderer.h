@@ -1,7 +1,7 @@
 #pragma once
 #include "renderer/renderer.h"
-#include "renderer/gl_funcs.h"
-#include "renderer/gpu_timer.h"
+#include "renderer/backend/gl/gl_funcs.h"
+#include "renderer/backend/gl/gpu_timer.h"
 #include "engine/state_cache.h"
 #include <vector>
 #include <string>

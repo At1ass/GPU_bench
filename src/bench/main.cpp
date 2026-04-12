@@ -1,6 +1,6 @@
 // gpu_benchmark — GPU benchmark test suite, separate from gpu_demo
 #include "core/app_config.h"
-#include "renderer/render_context.h"
+#include "renderer/context/render_context.h"
 #include "renderer/renderer_factory.h"
 #include "bench/bench.h"
 #include "bench/bench_runner.h"

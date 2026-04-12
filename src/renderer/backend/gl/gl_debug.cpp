@@ -1,8 +1,8 @@
-#include "renderer/gl_debug.h"
+#include "renderer/backend/gl/gl_debug.h"
 #ifndef CB_GLES_NATIVE
-#include "renderer/gl_funcs.h"
-#include "renderer/gl_extensions.h"
-#include "renderer/gl_loader.h"
+#include "renderer/backend/gl/gl_funcs.h"
+#include "renderer/backend/gl/gl_extensions.h"
+#include "renderer/backend/gl/gl_loader.h"
 #include "platform/logger.h"
 #include <cstring>
 #include <unordered_map>

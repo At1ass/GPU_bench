@@ -1,6 +1,6 @@
 #include "demo/demo_runner.h"
 #include "renderer/renderer.h"
-#include "renderer/render_context.h"
+#include "renderer/context/render_context.h"
 #include "core/poll_callback.h"
 #include "platform/logger.h"
 #include "platform/timer.h"

@@ -1,5 +1,5 @@
 #pragma once
-#include "renderer/gl2_renderer.h"
+#include "renderer/backend/gl2_renderer.h"
 
 // OpenGL ES renderer. Inherits GL2Renderer with GLES-specific shader
 // syntax (precision qualifiers), format handling, and capability limits.
