@@ -65,7 +65,30 @@ if(ENABLE_SANITIZERS)
 endif()
 
 # --- Dependencies ---
-if(PORTABLE_BUILD AND NOT WIN32)
+if(ANDROID)
+    # Android: build SDL2 from source as shared library
+    include(FetchContent)
+    set(SDL_SHARED ON CACHE BOOL "" FORCE)
+    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+    set(SDL_TEST OFF CACHE BOOL "" FORCE)
+    set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+    set(SDL_POWER OFF CACHE BOOL "" FORCE)
+    set(SDL_LOCALE OFF CACHE BOOL "" FORCE)
+    set(SDL_DIRECTFB OFF CACHE BOOL "" FORCE)
+    set(SDL_VIVANTE OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(sdl2
+        URL https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
+        URL_HASH SHA256=ac356ea55e8b9dd0b2d1fa27da40ef7e238267ccf9324704850d5d47375b48ea
+    )
+    FetchContent_MakeAvailable(sdl2)
+    # Android uses EGL + GLESv2 instead of desktop OpenGL
+    find_library(EGL_LIBRARY EGL)
+    find_library(GLESV2_LIBRARY GLESv2)
+    find_library(LOG_LIBRARY log)
+    find_library(ANDROID_LIBRARY android)
+elseif(PORTABLE_BUILD AND NOT WIN32)
     # Build SDL2 from source as static library
     include(FetchContent)
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -95,7 +118,9 @@ if(PORTABLE_BUILD AND NOT WIN32)
 else()
     find_package(SDL2 REQUIRED)
 endif()
-find_package(OpenGL REQUIRED)
+if(NOT ANDROID)
+    find_package(OpenGL REQUIRED)
+endif()
 
 # ImGui from submodule
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/extern/imgui)
@@ -112,9 +137,13 @@ target_include_directories(imgui_lib PUBLIC
     ${IMGUI_DIR}/backends
 )
 
-# Handle SDL2 linking: portable (static from source) vs system (shared)
-if(PORTABLE_BUILD AND TARGET SDL2-static)
-    target_link_libraries(imgui_lib PUBLIC SDL2-static)
+# Handle SDL2 linking: Android (shared from source) / portable (static) / system
+if(ANDROID OR (PORTABLE_BUILD AND TARGET SDL2-static))
+    if(ANDROID)
+        target_link_libraries(imgui_lib PUBLIC SDL2)
+    else()
+        target_link_libraries(imgui_lib PUBLIC SDL2-static)
+    endif()
 elseif(TARGET SDL2::SDL2)
     target_link_libraries(imgui_lib PUBLIC SDL2::SDL2)
 else()
@@ -122,7 +151,9 @@ else()
     target_link_libraries(imgui_lib PUBLIC ${SDL2_LIBRARIES})
 endif()
 
-if(TARGET OpenGL::GL)
+if(ANDROID)
+    target_link_libraries(imgui_lib PUBLIC ${GLESV2_LIBRARY})
+elseif(TARGET OpenGL::GL)
     target_link_libraries(imgui_lib PUBLIC OpenGL::GL)
 else()
     target_include_directories(imgui_lib PUBLIC ${OPENGL_INCLUDE_DIR})
@@ -169,7 +200,11 @@ endif()
 add_library(gpubench_core STATIC ${CORE_LIB_SOURCES})
 target_include_directories(gpubench_core PUBLIC src extern)
 target_link_libraries(gpubench_core PUBLIC imgui_lib)
-if(TARGET OpenGL::GL)
+if(ANDROID)
+    target_link_libraries(gpubench_core PUBLIC ${EGL_LIBRARY} ${GLESV2_LIBRARY}
+                          ${LOG_LIBRARY} ${ANDROID_LIBRARY})
+    target_compile_definitions(gpubench_core PUBLIC CB_STATIC_GL)
+elseif(TARGET OpenGL::GL)
     target_link_libraries(gpubench_core PUBLIC OpenGL::GL)
 else()
     target_link_libraries(gpubench_core PUBLIC ${OPENGL_LIBRARIES})
@@ -239,7 +274,11 @@ set(BENCH_LIB_SOURCES
     src/bench/bench_ui.cpp
 )
 
-add_executable(gpu_benchmark src/bench/main.cpp ${BENCH_LIB_SOURCES})
+if(ANDROID)
+    add_library(gpu_benchmark SHARED src/bench/main.cpp ${BENCH_LIB_SOURCES})
+else()
+    add_executable(gpu_benchmark src/bench/main.cpp ${BENCH_LIB_SOURCES})
+endif()
 target_link_libraries(gpu_benchmark PRIVATE gpubench_core)
 
 # --- Demo executable ---
@@ -284,10 +323,15 @@ set(DEMO_SOURCES
     src/demo/passes/dof_pass.cpp
 )
 
-add_executable(gpu_demo ${DEMO_SOURCES})
+if(ANDROID)
+    add_library(gpu_demo SHARED ${DEMO_SOURCES})
+else()
+    add_executable(gpu_demo ${DEMO_SOURCES})
+endif()
 target_link_libraries(gpu_demo PRIVATE gpubench_engine)
 
-# --- Launcher executable (no OpenGL) ---
+# --- Launcher executable (desktop only, no OpenGL) ---
+if(NOT ANDROID)
 add_executable(gpu_launcher
     src/launcher/main.cpp
     src/launcher/launcher_ui.cpp
@@ -307,13 +351,23 @@ target_sources(gpu_launcher PRIVATE
     src/platform/logger.cpp
     src/platform/data_path.cpp
 )
+endif() # NOT ANDROID (launcher)
 
-# --- Platform link flags (all executables) ---
-foreach(target gpu_benchmark gpu_demo gpu_launcher)
+# --- Platform link flags ---
+if(ANDROID)
+    set(_targets gpu_benchmark gpu_demo)
+else()
+    set(_targets gpu_benchmark gpu_demo gpu_launcher)
+endif()
+foreach(target ${_targets})
     if(TARGET SDL2::SDL2main)
         target_link_libraries(${target} PRIVATE SDL2::SDL2main)
+    elseif(TARGET SDL2main)
+        target_link_libraries(${target} PRIVATE SDL2main)
     endif()
-    if(APPLE)
+    if(ANDROID)
+        target_link_libraries(${target} PRIVATE SDL2 ${LOG_LIBRARY})
+    elseif(APPLE)
         target_link_libraries(${target} PRIVATE pthread)
     elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
         target_link_libraries(${target} PRIVATE pthread)
@@ -348,7 +402,8 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h" AND NOT CMAKE_CROSSCOMP
     endif()
 endif()
 
-# --- Install ---
+# --- Install (desktop only) ---
+if(NOT ANDROID)
 install(TARGETS gpu_benchmark gpu_demo gpu_launcher RUNTIME DESTINATION bin)
 install(DIRECTORY data/ DESTINATION share/gpu_benchmark/data
         FILES_MATCHING
@@ -359,3 +414,4 @@ install(DIRECTORY data/ DESTINATION share/gpu_benchmark/data
         PATTERN "*.tesc"
         PATTERN "*.tese"
         PATTERN "*.obj")
+endif() # NOT ANDROID (install)

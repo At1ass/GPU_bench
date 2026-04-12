@@ -16,6 +16,7 @@ usage() {
     echo "  mingw64         Cross-compile for Windows 64-bit (MinGW-w64)"
     echo "  mingw32         Cross-compile for Windows 32-bit (MinGW-w64, Win XP)"
     echo "  portable        Portable static build (SDL2 built-in, no runtime deps)"
+    echo "  android         Build Android APK (requires Android SDK, see android/local.properties.template)"
     echo "  sanitize        Debug build with ASan + UBSan (address/undefined sanitizers)"
     echo "  clean           Remove all build directories"
     echo ""
@@ -173,12 +174,26 @@ build_all() {
     echo "  Win32:   $PROJECT_DIR/build_mingw32/gpu_benchmark.exe + gpu_demo.exe + gpu_launcher.exe"
 }
 
+build_android() {
+    local android_dir="$PROJECT_DIR/android"
+    if [ ! -f "$android_dir/local.properties" ]; then
+        echo "Error: android/local.properties not found."
+        echo "Copy android/local.properties.template and set sdk.dir=<path>"
+        exit 1
+    fi
+    echo "=== Building Android APK ==="
+    cd "$android_dir"
+    ./gradlew assembleDebug
+    echo "Done: $android_dir/app/build/outputs/apk/debug/app-debug.apk"
+}
+
 case "${1:-}" in
     all)                        build_all ;;
     native|linux|macos|freebsd) build_native ;;
     portable)                   build_portable ;;
     mingw64)                    build_mingw64 ;;
     mingw32)                    build_mingw32 ;;
+    android)                    build_android ;;
     sanitize)                   build_sanitize ;;
     clean)                      clean ;;
     *)                          usage ;;

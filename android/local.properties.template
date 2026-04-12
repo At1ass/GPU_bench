@@ -1,0 +1,7 @@
+# Copy this file to local.properties and set your Android SDK path:
+# sdk.dir=/path/to/Android/Sdk
+#
+# On Linux, typically:
+# sdk.dir=/home/<user>/Android/Sdk
+#
+# NDK is auto-downloaded by Gradle if not present.
