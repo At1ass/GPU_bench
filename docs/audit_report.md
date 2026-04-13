@@ -558,10 +558,10 @@ implementing the testing plan — ready for release.
 
 ### Recommended Fix Order
 
-1. ~~**Testing plan Priority 1**: 9 test files, 87 TEST_CASEs~~ **DONE**
-2. **P0 fixes** (4 issues, ~1 hour): blitToScreen, BindlessTex caps, viewport restore, cleanup mismatch
-3. **P1 fixes** (6 issues, ~4 hours): glGetError macro, division guards, sqrtf opt, uniform loc validation, feature failure logging, error handling unification
-4. ~~**P2 #20**: ENGINE <-> DEMO circular dependency~~ **FIXED**
+1. ~~**Testing plan Priority 1**: 9 test files, 87 TEST_CASEs in 16 suites~~ **DONE**
+2. ~~**P0 fixes** (4 issues): blitToScreen, BindlessTex caps, viewport restore, cleanup mismatch~~ **DONE**
+3. ~~**P1 fixes** (5 issues): glGetError macro, sqrtf opt, uniform loc validation, feature failure handling, error handling~~ **DONE** (P1 #6 division-by-zero was already guarded)
+4. ~~**P2 #20**: ENGINE <-> DEMO circular dependency~~ **DONE**
 5. **P2 fixes** (9 remaining + new #28 GLES3 gap)
 6. **Testing plan Priority 2-3** (~12 hours): NullRenderer + lifecycle + integration tests
 7. **P3 fixes** (7 issues, ~2 hours): code quality improvements
