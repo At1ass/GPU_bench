@@ -161,22 +161,28 @@ struct Core {
 };
 ```
 
-**b) Compile the shader in DemoResources** (`src/demo/scene/demo_resources.cpp`):
+**b) Compile the shader in DemoResources::compileTierShaders()** (`src/demo/scene/demo_resources.cpp`):
 
-Find the tier-appropriate section in `DemoResources::prepare()` and add:
+`prepare()` calls `compileTierShaders()` for each tier. Find the section for
+your pass's minimum tier and add:
 
 ```cpp
-// ShaderCache compiles from data/shaders/uber/<name>.vert + .frag
-// with feature flags for the current tier (precision, version, defines)
-ShaderFeatureSet feat = featuresForTier(tier, core_profile, is_gles, gles3);
-vignette_.cache = shader_cache_.get("vignette", feat, feat);
+bool DemoResources::compileTierShaders(Renderer* r, int tier) {
+    // ... existing code ...
+    ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), ...);
+
+    // Add your shader (e.g., for a pass that starts at tier 2+):
+    if (tier >= 2) {
+        vignette_.cache = shader_cache_.get("vignette", feat, feat);
+    }
+}
 ```
 
-The `ShaderCache` automatically:
+`shader_cache_.get("vignette", feat, feat)` automatically:
 - Loads `data/shaders/uber/vignette.vert` and `data/shaders/uber/vignette.frag`
 - Prepends the correct `#version` and `#define` preamble for the current tier
 - Processes `#pragma include` directives
-- Compiles and caches — subsequent calls return the cached program
+- Compiles and caches — subsequent calls for the same tier return the cached program
 
 **c) Wire into TierResourceView** (in `DemoResources::buildView()`):
 
