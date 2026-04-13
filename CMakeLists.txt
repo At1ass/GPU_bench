@@ -446,6 +446,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h" AND NOT CMAKE_CROSSCOMP
         tests/test_main.cpp
         tests/test_bench_stats.cpp
         tests/test_bench_scoring.cpp
+        tests/test_math.cpp
         ${BENCH_LIB_SOURCES}
     )
     target_include_directories(gpubench_tests PRIVATE src extern/doctest)
