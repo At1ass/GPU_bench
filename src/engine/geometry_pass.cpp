@@ -30,8 +30,10 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
             float dx = obj.bounds_center.x - fd.cam_pos.x;
             float dy = obj.bounds_center.y - fd.cam_pos.y;
             float dz = obj.bounds_center.z - fd.cam_pos.z;
-            float dist = sqrtf(dx * dx + dy * dy + dz * dz);
-            float depth = dist / kDemoFar;
+            // Squared distance preserves sort order (sqrt is monotonic)
+            float dist_sq = dx * dx + dy * dy + dz * dz;
+            float depth = dist_sq / (kDemoFar * kDemoFar);
+            if (depth > 1.0f) depth = 1.0f;
             dl.push(obj, shaderIdFor(obj), materialIdFor(obj), depth);
         }
         dl.sort();
