@@ -52,9 +52,13 @@ void ImageLoadStoreTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, i
     if (shader_ == INVALID_SHADER) return;
 
     int sz = params_.image_size;
-    // Create RGBA32F texture for image load
-    std::vector<unsigned char> pixels(static_cast<size_t>(sz) * static_cast<size_t>(sz) * 4, 128);
-    image_tex_ = r.createTexture(sz, sz, 4, pixels.data());
+    // Create RGBA32F texture for image load/store (must match layout(rgba32f) in shader)
+    image_tex_ = r.createFloatTexture(sz, sz);
+
+    // Fill with non-zero data so imageLoad returns non-zero and sanity check passes.
+    // Upload RGBA8 pattern via uploadTextureData — driver converts to RGBA32F internally.
+    std::vector<unsigned char> init_pixels(static_cast<size_t>(sz) * static_cast<size_t>(sz) * 4, 128);
+    r.uploadTextureData(image_tex_, sz, sz, 4, init_pixels.data());
 
     // Output SSBO: one vec4 per pixel
     int ssbo_size = sz * sz * 16; // vec4 = 16 bytes

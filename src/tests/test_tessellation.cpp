@@ -89,7 +89,7 @@ void TessellationTPTest::renderGL4(Renderer& r, GL4Features& gl4) {
     gl4.setPatchVertices(3);
 
     for (int pass = 0; pass < TESS_PASSES; pass++) {
-        r.drawMesh(mesh_);
+        gl4.drawMeshAsPatches(mesh_);
     }
 
     r.setColorMask(true, true, true, true);

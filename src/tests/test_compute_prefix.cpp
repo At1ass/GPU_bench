@@ -65,7 +65,10 @@ void ComputePrefixTest::setupCompute(Renderer& r, ComputeFeatures& comp, int, in
 
     int ssbo_size = params_.element_count * 4; // uint = 4 bytes
     ssbo_in_ = comp.createSSBO(ssbo_size);
-    // ssbo_out_ unused in this scan variant but kept for API consistency
+
+    // Fill with non-zero data so sanity check can verify output
+    std::vector<unsigned int> init_data(static_cast<size_t>(params_.element_count), 1u);
+    comp.updateSSBO(ssbo_in_, init_data.data(), ssbo_size);
     LOG_DBG("Test '%s': setup complete (%d elements, %d workgroups)", name(), params_.element_count, params_.work_groups);
 }
 
