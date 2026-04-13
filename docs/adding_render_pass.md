@@ -87,8 +87,8 @@ void VignettePass::init(const TierResourceView& res) {
     ub().init(res.core.vignette_shader);
     setShader(res.core.vignette_shader);
     setQuad(res.bloom.fullscreen_quad);
-    // Output to bloom RT (or any available post-process RT)
-    setOutputRT(res.bloom.result_rt, res.bloom.width, res.bloom.height);
+    // Let pipeline manage the output RT (most common pattern)
+    setPipelineManagedRT();
 }
 
 void VignettePass::setup(const TierResourceView& res) {
