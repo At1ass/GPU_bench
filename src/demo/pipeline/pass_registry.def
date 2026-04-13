@@ -1,0 +1,31 @@
+// Canonical render pass registry — single source of truth.
+// Format: X(ClassName)
+//
+// Adding a new pass: add one line here + create the .h/.cpp files.
+// The factory auto-creates and init()s all passes listed below.
+//
+// Special passes that need sub-pass wiring (SceneToFBOPass,
+// TessellatedModelPass) are NOT listed here — they are handled
+// manually in pass_factory.cpp after the registry expansion.
+
+X(SkyPass)
+X(ShadowPass)
+X(OpaquePass)
+X(GrassInstancedPass)
+X(FurPass)
+X(ParticlePass)
+X(TorchPass)
+X(SSAOPass)
+X(BloomPass)
+X(CompositePass)
+X(HDRCompositePass)
+X(ComputeParticlesPass)
+X(ComputeParticlesDrawPass)
+X(GTAOPass)
+X(BloomComputePass)
+X(AutoExposurePass)
+X(VolumetricFogPass)
+X(WaterPass)
+X(SSRPass)
+X(SSRCopyPass)
+X(DoFPass)

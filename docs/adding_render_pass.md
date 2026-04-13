@@ -147,16 +147,24 @@ void main() {
 }
 ```
 
-### 4. Register in pass factory
+### 4. Register in pass registry
 
-`src/demo/pipeline/pass_factory.cpp` — add to `createPasses()`:
+`src/demo/pipeline/pass_registry.def` — add one line:
+
+```cpp
+X(VignettePass)
+```
+
+And add the include to `src/demo/passes/all_passes.h`:
 
 ```cpp
 #include "demo/passes/vignette_pass.h"
-
-// Inside createPasses():
-make<VignettePass>(out, res);
 ```
+
+That's it — the factory auto-creates and `init()`s all passes from the registry.
+
+> **Note:** Passes that need special sub-pass wiring (like SceneToFBOPass) are
+> not in the registry — they are handled manually in pass_factory.cpp.
 
 ### 5. Add to CMakeLists.txt
 
@@ -326,7 +334,8 @@ When adding a new pass, verify:
 - [ ] Header in `src/demo/passes/` with class declaration
 - [ ] Implementation in `src/demo/passes/` with `init()` + template methods
 - [ ] GLSL shader(s) in `data/shaders/`
-- [ ] Registered in `src/demo/pipeline/pass_factory.cpp`
+- [ ] One line in `src/demo/pipeline/pass_registry.def`: `X(MyPassName)`
+- [ ] Include added to `src/demo/passes/all_passes.h`
 - [ ] Added to `DEMO_SOURCES` in `CMakeLists.txt`
 - [ ] `resourceDecls()` correctly declares Read/Write dependencies
 - [ ] `minTier()` matches required GL features
@@ -348,4 +357,6 @@ When adding a new pass, verify:
 | `src/engine/uniform_id.h` | Uniform name registry |
 | `src/engine/uniform_block.h` | Type-safe uniform setter with caching |
 | `src/engine/resource_id.h` | ResourceId enum + ResourceDecl for dependencies |
-| `src/demo/pipeline/pass_factory.cpp` | Pass registration |
+| `src/demo/pipeline/pass_registry.def` | X-macro registry — one line per pass |
+| `src/demo/passes/all_passes.h` | Aggregated includes for all pass headers |
+| `src/demo/pipeline/pass_factory.cpp` | Pass creation (registry expansion + special wiring) |
