@@ -154,10 +154,13 @@ of all compiled shaders and GPU resources for the current tier. You need to:
 
 **a) Add a field to TierResourceView** (`src/demo/tier/tier_resource_view.h`):
 
+Add a pointer in the appropriate sub-struct (`Core` for always-present,
+`Shadow` for shadow-related, etc.):
+
 ```cpp
 struct Core {
     // ... existing fields ...
-    ShaderProgram* vignette_shader;   // ← add
+    ShaderProgram* vignette_shader = nullptr;   // ← add
 };
 ```
 
@@ -173,9 +176,20 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
     // Add your shader (e.g., for a pass that starts at tier 2+):
     if (tier >= 2) {
-        vignette_.cache = shader_cache_.get("vignette", feat, feat);
+        core_.vignette_cache = shader_cache_.get("vignette", feat, feat);
     }
 }
+```
+
+Shaders are stored in nested structs inside DemoResources: `core_` for always-present
+shaders, `shadow_` for shadow mapping, `bloom_` for bloom, etc. Add a `ShaderProgram*`
+field to the appropriate struct in `demo_resources.h`:
+
+```cpp
+struct CoreRes {
+    // ... existing fields ...
+    ShaderProgram* vignette_cache = nullptr;   // ← add
+} core_;
 ```
 
 `shader_cache_.get("vignette", feat, feat)` automatically:
@@ -190,12 +204,12 @@ The view uses a fallback pattern: prefer cached shader, fall back to legacy or n
 
 ```cpp
 // In viewForTier(), after existing shader wiring:
-if (vignette_.cache) {
-    view.postfx.vignette_shader = vignette_.cache;
+if (core_.vignette_cache) {
+    view.core.vignette_shader = core_.vignette_cache;
 }
 ```
 
-For tier-indexed shaders (one variant per tier), the pattern is:
+For tier-indexed shaders (one variant per tier), the fallback pattern is:
 ```cpp
 if (core_.my_cache[idx])
     view.core.my_shader = core_.my_cache[idx];
@@ -203,7 +217,7 @@ else if (core_.my_cache[0])
     view.core.my_shader = core_.my_cache[0];  // fallback to tier 1
 ```
 
-Now your pass receives the shader via `res.postfx.vignette_shader` in `init()`.
+Now your pass receives the shader via `res.core.vignette_shader` in `init()`.
 If the shader is nullptr (e.g., tier too low), the pass should check and return early.
 
 > **Naming convention:** Shader files use the pass name without suffix:
