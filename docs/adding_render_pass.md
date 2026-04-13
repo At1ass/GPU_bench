@@ -86,7 +86,7 @@ void VignettePass::init(const TierResourceView& res) {
     // Get shader and quad from shared resources
     ub().init(res.core.vignette_shader);
     setShader(res.core.vignette_shader);
-    setQuad(res.core.fullscreen_quad);
+    setQuad(res.bloom.fullscreen_quad);
     // Output to bloom RT (or any available post-process RT)
     setOutputRT(res.bloom.result_rt, res.bloom.width, res.bloom.height);
 }
