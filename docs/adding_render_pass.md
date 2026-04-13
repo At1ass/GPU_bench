@@ -152,7 +152,7 @@ void main() {
 `src/demo/pipeline/pass_registry.def` — add one line:
 
 ```cpp
-X(VignettePass)
+PASS(VignettePass)
 ```
 
 And add the include to `src/demo/passes/all_passes.h`:

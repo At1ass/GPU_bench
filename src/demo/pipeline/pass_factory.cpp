@@ -29,9 +29,9 @@ void createPasses(std::vector<std::unique_ptr<RenderPassBase>>& out,
     (void)cfg;
 
     // --- All standard passes from registry ---
-    #define X(Class) make<Class>(out, res);
+    #define PASS(Class) make<Class>(out, res);
     #include "demo/pipeline/pass_registry.def"
-    #undef X
+    #undef PASS
 
     // --- Special passes (need sub-pass wiring) ---
     {
