@@ -164,26 +164,10 @@ struct Core {
 };
 ```
 
-**b) Compile the shader in DemoResources::compileTierShaders()** (`src/demo/scene/demo_resources.cpp`):
+**b) Add a shader field to DemoResources** (`src/demo/scene/demo_resources.h`):
 
-`prepare()` calls `compileTierShaders()` for each tier. Find the section for
-your pass's minimum tier and add:
-
-```cpp
-bool DemoResources::compileTierShaders(Renderer* r, int tier) {
-    // ... existing code ...
-    ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), ...);
-
-    // Add your shader (e.g., for a pass that starts at tier 2+):
-    if (tier >= 2) {
-        core_.vignette_cache = shader_cache_.get("vignette", feat, feat);
-    }
-}
-```
-
-Shaders are stored in nested structs inside DemoResources: `core_` for always-present
-shaders, `shadow_` for shadow mapping, `bloom_` for bloom, etc. Add a `ShaderProgram*`
-field to the appropriate struct in `demo_resources.h`:
+Shaders are stored in nested structs: `core_` for always-present, `shadow_` for
+shadow mapping, `bloom_` for bloom, `t4_` for Ultra-only, etc. Add a field:
 
 ```cpp
 struct CoreRes {
@@ -192,33 +176,78 @@ struct CoreRes {
 } core_;
 ```
 
-`shader_cache_.get("vignette", feat, feat)` automatically:
-- Loads `data/shaders/uber/vignette.vert` and `data/shaders/uber/vignette.frag`
-- Prepends the correct `#version` and `#define` preamble for the current tier
-- Processes `#pragma include` directives
-- Compiles and caches — subsequent calls for the same tier return the cached program
+**c) Compile the shader** (`src/demo/scene/demo_resources.cpp`):
 
-**c) Wire into TierResourceView** (in `DemoResources::viewForTier()`):
+There are two patterns depending on shader type:
 
-The view uses a fallback pattern: prefer cached shader, fall back to legacy or nullptr:
+**Vertex + Fragment shaders** — use `ShaderCache` in `compileTierShaders()`:
 
 ```cpp
-// In viewForTier(), after existing shader wiring:
-if (core_.vignette_cache) {
-    view.core.vignette_shader = core_.vignette_cache;
+bool DemoResources::compileTierShaders(Renderer* r, int tier) {
+    ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), ...);
+    // ...
+    if (tier >= 2) {
+        core_.vignette_cache = shader_cache_.get("vignette", feat, feat);
+    }
 }
 ```
 
-For tier-indexed shaders (one variant per tier), the fallback pattern is:
+`shader_cache_.get("vignette", feat, feat)` loads `data/shaders/uber/vignette.vert`
++ `.frag`, prepends tier-appropriate `#version` / `#define` preamble, processes
+`#pragma include`, compiles and caches.
+
+**Compute shaders** — load manually via `ShaderLoader` + `ComputeFeatures`:
+
 ```cpp
+// In compileTierShaders() tier 4 section, or createT4Resources():
+ComputeFeatures* cf = r->features<ComputeFeatures>();
+if (cf && cf->hasCompute()) {
+    std::string cs = ShaderLoader::load("gl4/my_effect.comp");
+    ShaderHandle sh = cf->createComputeShader(cs.c_str());
+    if (sh != INVALID_SHADER) {
+        t4_.my_compute_shader.adopt(r, sh);
+    }
+}
+```
+
+Compute shaders live in `data/shaders/gl4/` (not `uber/`) and use `ShaderProgram::adopt()`
+instead of the cache — they are always tier 4 only.
+
+> **Note:** Post-process passes (SSAO, bloom) compile shaders in dedicated
+> `createSSAOResources()` / `createBloomResources()` methods called from `prepare()`,
+> not directly in `compileTierShaders()`. Follow the existing pattern for your pass type.
+
+**d) Wire into TierResourceView** (in `DemoResources::viewForTier()`):
+
+The wiring pattern depends on complexity:
+
+**Simple (single shader, null if tier too low):**
+```cpp
+// TorchPass pattern — shader is null on tiers below minimum
+view.core.vignette_shader = core_.vignette_cache;
+```
+
+**With fallback chain (per-tier variants):**
+```cpp
+// Island/Fur pattern — try tier-specific, fall back to tier 1
 if (core_.my_cache[idx])
     view.core.my_shader = core_.my_cache[idx];
 else if (core_.my_cache[0])
-    view.core.my_shader = core_.my_cache[0];  // fallback to tier 1
+    view.core.my_shader = core_.my_cache[0];
 ```
 
-Now your pass receives the shader via `res.core.vignette_shader` in `init()`.
-If the shader is nullptr (e.g., tier too low), the pass should check and return early.
+**Post-process with validation (multiple resources):**
+```cpp
+// SSAO pattern — only wire if ALL required resources exist
+ShaderProgram* prog = my_.cache ? my_.cache : nullptr;
+if (idx >= 1 && prog && my_.rt) {
+    view.my_effect.shader = prog;
+    view.my_effect.rt = my_.rt.get();
+}
+```
+
+Your pass's `init()` should null-check the shader pointer — it will be nullptr
+if the tier is too low or shader compilation failed.
 
 > **Naming convention:** Shader files use the pass name without suffix:
 > `sky` → `sky.vert` + `sky.frag`, `bloom_extract` → `bloom_extract.vert` + `bloom_extract.frag`.
