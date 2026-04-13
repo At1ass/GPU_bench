@@ -184,7 +184,7 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 - Processes `#pragma include` directives
 - Compiles and caches — subsequent calls for the same tier return the cached program
 
-**c) Wire into TierResourceView** (in `DemoResources::buildView()`):
+**c) Wire into TierResourceView** (in `DemoResources::viewForTier()`):
 
 ```cpp
 view.core.vignette_shader = vignette_.cache;
@@ -387,7 +387,7 @@ When adding a new pass, verify:
 - [ ] GLSL shader(s) in `data/shaders/uber/`
 - [ ] Shader field added to `TierResourceView` struct
 - [ ] Shader compiled via `shader_cache_.get()` in `DemoResources::prepare()`
-- [ ] Shader wired into `TierResourceView` in `DemoResources::buildView()`
+- [ ] Shader wired into `TierResourceView` in `DemoResources::viewForTier()`
 - [ ] One line in `src/demo/pipeline/pass_registry.def`: `PASS(MyPassName)`
 - [ ] Include added to `src/demo/passes/all_passes.h`
 - [ ] Added to `DEMO_SOURCES` in `CMakeLists.txt`
