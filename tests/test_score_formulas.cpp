@@ -6,6 +6,8 @@
 
 // ---- avgFrameMs ----
 
+TEST_SUITE("avgFrameMs") {
+
 TEST_CASE("avgFrameMs: empty vector") {
     std::vector<double> v;
     CHECK(avgFrameMs(v) == 0.0);
@@ -26,7 +28,11 @@ TEST_CASE("avgFrameMs: all identical") {
     CHECK(avgFrameMs(v) == doctest::Approx(4.0));
 }
 
+} // TEST_SUITE("avgFrameMs")
+
 // ---- FillrateTest score formula ----
+
+TEST_SUITE("ScoreFormulas") {
 // score = (vw * vh * layers) / (avg_ms / 1000) / 1e6
 
 TEST_CASE("FillrateTest score: known values") {
@@ -83,3 +89,5 @@ TEST_CASE("Score: empty times → avg=0 → score=0") {
     double score = (avg_ms <= 0.0) ? 0.0 : (1000.0 / avg_ms);
     CHECK(score == 0.0);
 }
+
+} // TEST_SUITE("ScoreFormulas")

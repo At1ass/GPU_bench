@@ -5,6 +5,8 @@
 
 // ---- hasPathTraversal ----
 
+TEST_SUITE("PathTraversal") {
+
 TEST_CASE("hasPathTraversal: parent directory") {
     CHECK(hasPathTraversal("../etc/passwd") == true);
 }
@@ -31,7 +33,11 @@ TEST_CASE("hasPathTraversal: trailing dotdot") {
     CHECK(hasPathTraversal("foo/..") == true);
 }
 
+} // TEST_SUITE("PathTraversal")
+
 // ---- Logger: extractSubsystem ----
+
+TEST_SUITE("Logger::extractSubsystem") {
 
 TEST_CASE("extractSubsystem: renderer") {
     auto tag = Log::extractSubsystem("src/renderer/gl2.cpp");
@@ -51,7 +57,11 @@ TEST_CASE("extractSubsystem: default (no src/ prefix)") {
     CHECK(tag.len == 3);
 }
 
+} // TEST_SUITE("Logger::extractSubsystem")
+
 // ---- Logger: extractFilename ----
+
+TEST_SUITE("Logger::extractFilename") {
 
 TEST_CASE("extractFilename: absolute path") {
     CHECK(strcmp(Log::extractFilename("/home/user/src/foo.cpp"), "foo.cpp") == 0);
@@ -64,3 +74,5 @@ TEST_CASE("extractFilename: relative path") {
 TEST_CASE("extractFilename: bare filename") {
     CHECK(strcmp(Log::extractFilename("main.cpp"), "main.cpp") == 0);
 }
+
+} // TEST_SUITE("Logger::extractFilename")

@@ -15,6 +15,8 @@ static const char* tmpPath() {
     return buf;
 }
 
+TEST_SUITE("PresetIO") {
+
 TEST_CASE("Preset I/O: roundtrip save/load") {
     BenchPreset orig = getPreset(static_cast<int>(PresetIndex::Medium));
     const char* path = tmpPath();
@@ -73,3 +75,5 @@ TEST_CASE("Preset I/O: unknown sections ignored") {
 
     remove(path);
 }
+
+} // TEST_SUITE("PresetIO")

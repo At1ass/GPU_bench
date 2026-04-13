@@ -4,6 +4,8 @@
 #include <vector>
 #include <cmath>
 
+TEST_SUITE("BenchStats") {
+
 TEST_CASE("computeStats — constant values") {
     std::vector<double> times(100, 5.0);
     BenchResult r = computeStats("Test", "FPS", times, 200.0);
@@ -113,3 +115,5 @@ TEST_CASE("computeStats — score is passed through") {
 
     CHECK(r.score == doctest::Approx(12345.678));
 }
+
+} // TEST_SUITE("BenchStats")

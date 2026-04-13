@@ -19,6 +19,8 @@ static BenchResult makeResult(const char* name, double score) {
     return r;
 }
 
+TEST_SUITE("CompositeScores") {
+
 TEST_CASE("compositeScores — empty results") {
     std::vector<BenchResult> results;
     CompositeScore cs = computeCompositeScores(results);
@@ -86,6 +88,10 @@ TEST_CASE("compositeScores — zero score ignored in geomean") {
     CHECK(cs.fill == doctest::Approx(100.0));
 }
 
+} // TEST_SUITE("CompositeScores")
+
+TEST_SUITE("Bottleneck") {
+
 TEST_CASE("detectBottleneck — incomplete data") {
     std::vector<BenchResult> results;
     results.push_back(makeResult("Fillrate", 100000.0));
@@ -132,3 +138,5 @@ TEST_CASE("detectBottleneck — no data") {
 
     CHECK(info.detail.find("No test data") != std::string::npos);
 }
+
+} // TEST_SUITE("Bottleneck")

@@ -14,6 +14,8 @@ static int countBits(uint32_t v) {
     return c;
 }
 
+TEST_SUITE("ShaderFeatures") {
+
 TEST_CASE("ShaderFeatures: each tier has exactly one version flag") {
     for (int t = 1; t <= 4; t++) {
         ShaderFeatureSet f = featuresForTier(static_cast<DemoTier>(t), false, false, false);
@@ -62,3 +64,5 @@ TEST_CASE("ShaderFeatures: GLES 3.0 version flag") {
     ShaderFeatureSet f = featuresForTier(DemoTier::Basic, false, true, true);
     CHECK((f & SF_GLES_300) != 0);
 }
+
+} // TEST_SUITE("ShaderFeatures")

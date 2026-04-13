@@ -9,6 +9,8 @@ static SceneObject dummyObj() {
     return obj;
 }
 
+TEST_SUITE("DrawList") {
+
 TEST_CASE("DrawList: sort key encoding") {
     DrawList dl;
     SceneObject obj = dummyObj();
@@ -64,3 +66,5 @@ TEST_CASE("DrawList: depth clamping") {
     CHECK(d_neg == 0x0000);
     CHECK(d_over == 0xFFFF);
 }
+
+} // TEST_SUITE("DrawList")

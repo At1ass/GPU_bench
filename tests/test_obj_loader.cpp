@@ -5,6 +5,8 @@
 
 static const float EPS = 1e-4f;
 
+TEST_SUITE("ObjLoader") {
+
 TEST_CASE("OBJ: empty input") {
     MeshData m = ObjLoader::loadFromMemory("", 0);
     CHECK(m.vertices.empty());
@@ -114,3 +116,5 @@ TEST_CASE("OBJ: normalize centers and scales") {
         CHECK(v.pos.y <= 1.0f + EPS);
     }
 }
+
+} // TEST_SUITE("ObjLoader")

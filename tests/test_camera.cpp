@@ -2,6 +2,8 @@
 #include "demo/scene/demo_camera.h"
 #include <cmath>
 
+TEST_SUITE("CameraPath") {
+
 TEST_CASE("CameraPath: t=0 returns first keypoint position") {
     CameraPath path;
     Vec3 p = path.getPosition(0.0f);
@@ -46,3 +48,5 @@ TEST_CASE("CameraPath: evaluate returns valid lookAt matrix") {
     }
     CHECK(has_nonzero);
 }
+
+} // TEST_SUITE("CameraPath")

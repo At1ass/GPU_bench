@@ -6,6 +6,8 @@ static const float EPS = 1e-5f;
 
 // ---- Vec3 ----
 
+TEST_SUITE("Vec3") {
+
 TEST_CASE("Vec3::length") {
     CHECK(Vec3(1, 0, 0).length() == doctest::Approx(1.0f));
     CHECK(Vec3(0, 1, 0).length() == doctest::Approx(1.0f));
@@ -65,7 +67,11 @@ TEST_CASE("Vec3::dot") {
     CHECK(Vec3::dot(v, v) == doctest::Approx(25.0f));
 }
 
+} // TEST_SUITE("Vec3")
+
 // ---- Mat4 ----
+
+TEST_SUITE("Mat4") {
 
 TEST_CASE("Mat4 identity") {
     Mat4 I;
@@ -165,3 +171,5 @@ TEST_CASE("Mat4::lookAt basic") {
     CHECK(fabsf(p.x) < EPS);
     CHECK(fabsf(p.y) < EPS);
 }
+
+} // TEST_SUITE("Mat4")

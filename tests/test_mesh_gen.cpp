@@ -2,6 +2,8 @@
 #include "geometry/mesh_gen.h"
 #include <cmath>
 
+TEST_SUITE("MeshGen") {
+
 TEST_CASE("MeshGen::quad") {
     MeshData m = MeshGen::quad();
     CHECK(m.vertices.size() == 4);
@@ -64,3 +66,5 @@ TEST_CASE("MeshGen::optimizeVertexCache preserves mesh") {
     CHECK(m.vertices.size() == orig_verts);
     CHECK(m.indices.size() == orig_indices);
 }
+
+} // TEST_SUITE("MeshGen")
