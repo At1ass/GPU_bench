@@ -186,11 +186,25 @@ bool DemoResources::compileTierShaders(Renderer* r, int tier) {
 
 **c) Wire into TierResourceView** (in `DemoResources::viewForTier()`):
 
+The view uses a fallback pattern: prefer cached shader, fall back to legacy or nullptr:
+
 ```cpp
-view.core.vignette_shader = vignette_.cache;
+// In viewForTier(), after existing shader wiring:
+if (vignette_.cache) {
+    view.postfx.vignette_shader = vignette_.cache;
+}
 ```
 
-Now your pass receives the shader via `res.core.vignette_shader` in `init()`.
+For tier-indexed shaders (one variant per tier), the pattern is:
+```cpp
+if (core_.my_cache[idx])
+    view.core.my_shader = core_.my_cache[idx];
+else if (core_.my_cache[0])
+    view.core.my_shader = core_.my_cache[0];  // fallback to tier 1
+```
+
+Now your pass receives the shader via `res.postfx.vignette_shader` in `init()`.
+If the shader is nullptr (e.g., tier too low), the pass should check and return early.
 
 > **Naming convention:** Shader files use the pass name without suffix:
 > `sky` → `sky.vert` + `sky.frag`, `bloom_extract` → `bloom_extract.vert` + `bloom_extract.frag`.
