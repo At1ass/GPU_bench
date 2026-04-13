@@ -68,6 +68,12 @@ public:
 
     // For SanityType::ComputeBuffer: return the output SSBO handle to validate.
     virtual BufferHandle getOutputBuffer() const { return BufferHandle(); }
+
+    // Returns false if setup() failed (missing features, resource creation error).
+    bool setupSucceeded() const { return setup_ok_; }
+
+protected:
+    bool setup_ok_ = true;
 };
 
 struct GL3Features;

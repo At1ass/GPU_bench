@@ -77,8 +77,8 @@ void ImageLoadStoreTest::renderCompute(Renderer& r, ComputeFeatures& comp) {
 
     int loc_size = r.getCustomUniformLoc(shader_, "u_image_size");
     int loc_iter = r.getCustomUniformLoc(shader_, "u_iterations");
-    r.setUniform1i(loc_size, params_.image_size);
-    r.setUniform1i(loc_iter, params_.iterations);
+    if (loc_size >= 0) r.setUniform1i(loc_size, params_.image_size);
+    if (loc_iter >= 0) r.setUniform1i(loc_iter, params_.iterations);
 
     int groups = (params_.image_size + IMAGE_LS_LOCAL - 1) / IMAGE_LS_LOCAL;
     comp.dispatchCompute(groups, groups, 1);

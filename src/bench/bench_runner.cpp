@@ -109,6 +109,18 @@ void BenchRunner::runTest(BenchTest* test, Renderer* r, RenderContext* ctx,
     LOG_DBG("Bench: setting up '%s'", test->name());
     test->setup(r, cfg.render_w, cfg.render_h);
 
+    if (!test->setupSucceeded()) {
+        LOG_WRN("Bench: '%s' setup failed (missing features) — skipping", test->name());
+        test->cleanup(r);
+        BenchResult skip_result;
+        skip_result.name = test->name();
+        skip_result.unit = test->scoreUnit();
+        skip_result.valid = false;
+        skip_result.score = 0;
+        results_.push_back(skip_result);
+        return;
+    }
+
     bool use_gpu_timer = (cfg.timing_mode == TimingMode::GPU) && r->hasTimerQueries();
     RenderTargetHandle rt = use_fbo ? bench_rt_ : INVALID_RENDER_TARGET;
 

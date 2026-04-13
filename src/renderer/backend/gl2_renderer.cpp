@@ -1054,6 +1054,9 @@ void GL2Renderer::bindRenderTarget(RenderTargetHandle rt) {
     }
     if (rt.id < render_targets_.size() && render_targets_[rt.id].valid) {
         glBindFramebuffer(GL_FRAMEBUFFER, render_targets_[rt.id].fbo);
+    } else {
+        LOG_WRN("GL2: bindRenderTarget with invalid handle %u", static_cast<unsigned>(rt.id));
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 }
 
