@@ -499,18 +499,30 @@ No issues.
 
 ### MEDIUM (P2) — fix before release
 
-| # | Issue | File | Type |
-|---|-------|------|------|
-| 11 | SceneLoader: sscanf no check, no NaN guard | scene_loader.cpp | Input validation |
-| 12 | `avgFrameMs()` arithmetic mean vs median | tests.h:8-13 | Methodology |
-| 13 | `vector::erase(begin())` in frame history | demo_runner.cpp:142 | Performance |
-| 14 | MRT: no `w/h > max_texture_size` check | gl3_renderer.cpp:273 | Bounds check |
-| 15 | Depth quantization truncation vs rounding | draw_list.cpp:11 | Correctness |
-| 16 | Integer overflow in stress_runner | stress_runner.cpp:157 | Arithmetic |
-| 17 | CSV export missing fields | results.cpp:73-98 | Completeness |
-| 18 | `FrameData::tier_int` instead of enum | frame_data.h:31 | Type safety |
-| 19 | Tier config validation NaN not caught | tier_config_validate.cpp | Input validation |
-| 20 | ENGINE <-> DEMO circular dependency | uniform_block.h -> shader_program.h | Architecture |
+| # | Issue | File | Type | Status |
+|---|-------|------|------|--------|
+| 11 | SceneLoader: sscanf no check, no NaN guard | scene_loader.cpp | Input validation | |
+| 12 | `avgFrameMs()` arithmetic mean vs median | tests.h:8-13 | Methodology | |
+| 13 | `vector::erase(begin())` in frame history | demo_runner.cpp:142 | Performance | |
+| 14 | MRT: no `w/h > max_texture_size` check | gl3_renderer.cpp:273 | Bounds check | |
+| 15 | Depth quantization truncation vs rounding | draw_list.cpp:11 | Correctness | |
+| 16 | Integer overflow in stress_runner | stress_runner.cpp:157 | Arithmetic | |
+| 17 | CSV export missing fields | results.cpp:73-98 | Completeness | |
+| 18 | `FrameData::tier_int` instead of enum | frame_data.h:31 | Type safety | |
+| 19 | Tier config validation NaN not caught | tier_config_validate.cpp | Input validation | |
+| 20 | ENGINE <-> DEMO circular dependency | uniform_block.h -> shader_program.h | Architecture | **FIXED** |
+| 28 | GLESRenderer is GLES 2.0 only | gles_renderer.cpp | Feature gap | |
+
+Issue 20 fixed: shader_program.h moved to engine/, frustum math extracted to engine/frustum.h.
+
+**Issue 28 (NEW): GLESRenderer lacks GLES 3.0 features.** GLESRenderer is written as a
+GLES 2.0 renderer with minimal GLES 3.0 additions (VAO, FBO, 32-bit indices). Missing
+GLES 3.0 core features that are available on all modern Android devices (2013+):
+instancing (`glDrawElementsInstanced`), MRT, transform feedback, UBO,
+`glBlitFramebuffer`. This means ~7 bench tests (InstancedDraw, FBOFillrate, MRTFill,
+TexArraySample, UBOSwitch, TransformFeedback, GeomShader) are skipped on Android
+despite hardware support. Fix: extend GLESRenderer or create GLES3Renderer with
+GL3Features interface support for GLES 3.0+ devices.
 
 ### LOW (P3) — code quality
 
@@ -537,7 +549,7 @@ No issues.
 | **Performance** | **B+** | StateCache, sort key batching, vertex cache opt. Minus for sqrtf and erase(begin()) |
 | **C++ Practices** | **A-** | High C++11 standard. Explicit constructors, noexcept moves, deleted copy. Minus for atoi, strtol overflow |
 | **Input Validation** | **B-** | DataPath traversal excellent. SceneLoader and CLI args insufficient |
-| **Testing** | **C** | 0.9% coverage. Plan is good but not yet implemented |
+| **Testing** | **B-** | Priority 1 implemented: 87 cases / 605 assertions in 16 suites. Priority 2-3 (NullRenderer, lifecycle) pending |
 | **Documentation** | **B** | CLAUDE.md is comprehensive. Thread-safety and API lifetime contracts undocumented |
 
 **Overall: B+ / A-** — production-grade codebase with 4 critical and 6 high issues to fix.
@@ -546,9 +558,10 @@ implementing the testing plan — ready for release.
 
 ### Recommended Fix Order
 
-1. **P0 fixes** (4 issues, ~1 hour): blitToScreen, BindlessTex caps, viewport restore, cleanup mismatch
-2. **P1 fixes** (6 issues, ~4 hours): glGetError macro, division guards, sqrtf opt, uniform loc validation, feature failure logging, error handling unification
-3. **Testing plan Priority 1** (~8 hours): 8 test files, ~80 TEST_CASEs covering math, parsing, data structures
-4. **P2 fixes** (10 issues, ~6 hours): input validation, methodology, performance, architecture
-5. **Testing plan Priority 2-3** (~12 hours): NullRenderer + lifecycle + integration tests
-6. **P3 fixes** (7 issues, ~2 hours): code quality improvements
+1. ~~**Testing plan Priority 1**: 9 test files, 87 TEST_CASEs~~ **DONE**
+2. **P0 fixes** (4 issues, ~1 hour): blitToScreen, BindlessTex caps, viewport restore, cleanup mismatch
+3. **P1 fixes** (6 issues, ~4 hours): glGetError macro, division guards, sqrtf opt, uniform loc validation, feature failure logging, error handling unification
+4. ~~**P2 #20**: ENGINE <-> DEMO circular dependency~~ **FIXED**
+5. **P2 fixes** (9 remaining + new #28 GLES3 gap)
+6. **Testing plan Priority 2-3** (~12 hours): NullRenderer + lifecycle + integration tests
+7. **P3 fixes** (7 issues, ~2 hours): code quality improvements
