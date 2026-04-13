@@ -11,7 +11,13 @@
 
 static const char* tmpPath() {
     static char buf[256];
+#ifdef _WIN32
+    const char* tmp = getenv("TEMP");
+    if (!tmp) tmp = ".";
+    snprintf(buf, sizeof(buf), "%s\\gpubench_test_preset_%d.ini", tmp, static_cast<int>(getpid()));
+#else
     snprintf(buf, sizeof(buf), "/tmp/gpubench_test_preset_%d.ini", static_cast<int>(getpid()));
+#endif
     return buf;
 }
 

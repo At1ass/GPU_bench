@@ -209,6 +209,58 @@ cp /usr/x86_64-w64-mingw32/bin/SDL2.dll .
 cp /usr/x86_64-w64-mingw32/bin/libwinpthread-1.dll .
 ```
 
+---
+
+## Android
+
+### Prerequisites
+
+1. Install Android SDK command-line tools:
+```bash
+# Arch Linux
+yay -S android-sdk-cmdline-tools-latest
+
+# Or download from https://developer.android.com/studio#command-tools
+```
+
+2. Install required SDK components:
+```bash
+sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+```
+
+NDK and CMake are downloaded automatically by Gradle on first build.
+
+3. Create `android/local.properties`:
+```bash
+echo "sdk.dir=/opt/android-sdk" > android/local.properties
+```
+
+### Build APK
+
+```bash
+./scripts/build.sh android
+# Or manually:
+cd android && ./gradlew assembleDebug
+```
+
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+### Install on device
+
+```bash
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Two launcher icons appear: "GPU Benchmark" and "GPU Demo".
+
+### Architecture
+
+The APK contains two shared libraries (`libgpu_benchmark.so` and `libgpu_demo.so`) loaded by separate `SDLActivity` subclasses. SDL2 is built from source. Assets (shaders, models, scenes) are packed into the APK and accessed via `SDL_RWFromFile()`.
+
+Supported ABIs: `arm64-v8a`, `armeabi-v7a`. Minimum SDK: 21 (Android 5.0). GLES 3.0 required.
+
+---
+
 ### Test under Wine
 
 ```bash

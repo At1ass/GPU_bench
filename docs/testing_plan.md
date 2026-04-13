@@ -2,7 +2,11 @@
 
 ## Current State
 
-Project has 27,000 lines of C++ code and 251 lines of tests (0.9% coverage). Existing 18 tests cover only `computeStats` and `compositeScores` — statistical functions. Everything else (math, parsing, resource lifecycle, render pipeline) is untested. New developers cannot verify changes without running on real GPU.
+**Priority 1: COMPLETE.** 87 TEST_CASEs in 16 suites, 605 assertions. Covers math, OBJ parsing,
+mesh generation, preset I/O, draw list, camera spline, shader features, path utilities,
+logger helpers, and score formulas.
+
+Priority 2-3 (NullRenderer + lifecycle + integration) pending.
 
 Goal: build testing from most critical to least, so each stage delivers immediate value.
 

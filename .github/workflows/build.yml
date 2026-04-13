@@ -127,7 +127,9 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Unit tests
-        run: build\Release\gpubench_tests.exe --no-color
+        run: |
+          copy "$env:SDL2DIR\lib\x64\SDL2.dll" build\Release\
+          build\Release\gpubench_tests.exe --no-color -s
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
