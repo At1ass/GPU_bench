@@ -33,4 +33,4 @@ X(TextureGather,     TextureGatherTest,     "TextureGather",     "tex_gather",  
 X(ImageLoadStore,    ImageLoadStoreTest,    "ImageLoadStore",    "image_ls",           Compute,  "Image load/store vs SSBO (GL4.2+)",              "GB/s",     image_ls,           Cap_ImageLoadStore | Cap_Compute)
 X(ComputePrefix,     ComputePrefixTest,     "ComputePrefix",     "compute_prefix",     Compute,  "Parallel prefix sum (scan) (GL4.3+)",            "GB/s",     compute_prefix,     Cap_Compute)
 X(PersistentMap,     PersistentMapTest,     "PersistentMap",     "persistent_map",     Overhead, "Persistent buffer mapping throughput (GL4.4+)",  "GB/s",     persistent_map,     Cap_BufferStorage)
-X(BindlessTex,       BindlessTexTest,       "BindlessTex",       "bindless_tex",       Overhead, "Bindless texture throughput (ARB ext)",           "ops/s",    bindless_tex,       Cap_BindlessTexture)
+X(BindlessTex,       BindlessTexTest,       "BindlessTex",       "bindless_tex",       Overhead, "Bindless texture throughput (ARB ext)",           "ops/s",    bindless_tex,       Cap_BindlessTexture | Cap_GL4)

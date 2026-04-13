@@ -15,7 +15,8 @@ const char* FBOFillrateTest::description() const {
            "Uses existing createRenderTarget/bindRenderTarget.";
 }
 
-void FBOFillrateTest::setupGL3(Renderer& r, GL3Features&, int, int) {
+void FBOFillrateTest::setupGL3(Renderer& r, GL3Features&, int vw, int vh) {
+    vw_ = vw; vh_ = vh;
     rt_size_ = clampTexSize(params_.rt_size, r.getCaps().max_texture_size);
     quad_ = r.createMesh(MeshGen::quad());
     rt_ = r.createRenderTarget(rt_size_, rt_size_);
@@ -43,6 +44,7 @@ void FBOFillrateTest::renderGL3(Renderer& r, GL3Features&) {
     }
 
     r.bindRenderTarget(RenderTargetHandle(0));
+    r.setViewport(0, 0, vw_, vh_);
     r.setDepthTest(true);
 }
 

@@ -1085,8 +1085,9 @@ void GL2Renderer::blitToScreen(RenderTargetHandle rt,
             };
             qd.indices = {0, 1, 2, 0, 2, 3};
             blit_quad_ = createMesh(qd);
-            blit_quad_ready_ = true;
+            blit_quad_ready_ = (blit_quad_ != INVALID_MESH);
         }
+        if (!blit_quad_ready_) return;
         setViewport(dst_x, dst_y, dst_w, dst_h);
         setDepthTest(false);
         setBlending(false);

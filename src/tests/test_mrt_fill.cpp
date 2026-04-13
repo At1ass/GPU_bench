@@ -68,7 +68,8 @@ const char* MRTFillTest::description() const {
            "Key metric for deferred rendering (G-buffer) performance.";
 }
 
-void MRTFillTest::setupGL3(Renderer& r, GL3Features& gl3, int, int) {
+void MRTFillTest::setupGL3(Renderer& r, GL3Features& gl3, int vw, int vh) {
+    vw_ = vw; vh_ = vh;
     rt_size_ = clampTexSize(params_.rt_size, r.getCaps().max_texture_size);
     quad_ = r.createMesh(MeshGen::quad());
 
@@ -105,6 +106,7 @@ void MRTFillTest::renderGL3(Renderer& r, GL3Features&) {
     }
 
     r.bindRenderTarget(RenderTargetHandle(0));
+    r.setViewport(0, 0, vw_, vh_);
     r.setDepthTest(true);
 }
 

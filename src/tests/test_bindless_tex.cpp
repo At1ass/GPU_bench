@@ -62,8 +62,10 @@ void BindlessTexTest::setupGL4(Renderer& r, GL4Features& gl4, int vw, int vh) {
         textures_.push_back(tex);
 
         uint64_t handle = gl4.getBindlessHandle(tex);
-        gl4.makeTextureResident(handle);
-        handles_.push_back(handle);
+        if (handle) {
+            gl4.makeTextureResident(handle);
+            handles_.push_back(handle);
+        }
     }
     LOG_DBG("Test '%s': setup complete (%d textures, %d draws/frame)", name(), params_.tex_count, params_.draws_per_frame);
 }

@@ -302,6 +302,7 @@ protected:
 private:
     FBOFillrateParams params_;
     int rt_size_;
+    int vw_, vh_;
     MeshHandle quad_;
     RenderTargetHandle rt_;
 };
@@ -321,6 +322,7 @@ protected:
 private:
     MRTFillParams params_;
     int rt_size_;
+    int vw_, vh_;
     MeshHandle quad_;
     RenderTargetHandle rt_;
     ShaderHandle shader_;
