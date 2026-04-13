@@ -1,6 +1,7 @@
 #include <cstddef>
 #include "renderer/backend/gl2_renderer.h"
 #include "renderer/backend/gl/gl_extensions.h"
+#include "renderer/backend/gl/gl_error.h"
 #include "platform/logger.h"
 #include <cstdio>
 #include <cstring>
@@ -541,6 +542,7 @@ MeshHandle GL2Renderer::createMesh(const MeshData& data) {
     glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(data.vertices.size() * sizeof(Vertex)),
                  data.vertices.data(), GL_STATIC_DRAW);
+    CHECK_GL_ERROR("glBufferData(VBO)");
 
     // Determine if 16-bit indices are sufficient
     bool needs_32bit = false;
@@ -642,6 +644,7 @@ TextureHandle GL2Renderer::createTexture(int w, int h, int channels, const unsig
     else if (channels == 3) fmt = GL_RGB;
     else fmt = (caps_.gl_major >= 3) ? GL_RED : GL_LUMINANCE;
     glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(fmt), w, h, 0, fmt, GL_UNSIGNED_BYTE, pixels);
+    CHECK_GL_ERROR("glTexImage2D");
 
     if (caps_.has_generate_mipmap_func) {
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -990,11 +993,13 @@ RenderTargetHandle GL2Renderer::createRenderTarget(int w, int h) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA), w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    CHECK_GL_ERROR("createRenderTarget glTexImage2D");
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenRenderbuffers(1, &rt.depth_rb);
     glBindRenderbuffer(GL_RENDERBUFFER, rt.depth_rb);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    CHECK_GL_ERROR("createRenderTarget glRenderbufferStorage");
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
     glGenFramebuffers(1, &rt.fbo);
