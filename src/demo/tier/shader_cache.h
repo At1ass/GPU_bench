@@ -86,3 +86,6 @@ private:
     // GLSL version string from feature flags
     static const char* versionString(ShaderFeatureSet features);
 };
+
+// Get shader feature set for a demo tier (used by tests)
+ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles, bool gles3);

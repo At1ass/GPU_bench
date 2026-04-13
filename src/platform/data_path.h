@@ -12,3 +12,6 @@ std::string getDataPath(const char* relative_path);
 
 // Read entire text file into string. Returns empty on failure.
 std::string readTextFile(const char* path);
+
+// Check if path contains ".." traversal components.
+bool hasPathTraversal(const char* p);

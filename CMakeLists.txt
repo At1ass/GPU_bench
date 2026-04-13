@@ -448,10 +448,21 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h" AND NOT CMAKE_CROSSCOMP
         tests/test_bench_scoring.cpp
         tests/test_math.cpp
         tests/test_obj_loader.cpp
+        tests/test_mesh_gen.cpp
+        tests/test_preset_io.cpp
+        tests/test_draw_list.cpp
+        tests/test_camera.cpp
+        tests/test_shader_features.cpp
+        tests/test_platform.cpp
+        tests/test_score_formulas.cpp
+        # Demo sources needed for tests
+        src/demo/scene/demo_camera.cpp
+        src/demo/tier/shader_cache.cpp
+        src/demo/tier/shader_loader.cpp
         ${BENCH_LIB_SOURCES}
     )
     target_include_directories(gpubench_tests PRIVATE src extern/doctest)
-    target_link_libraries(gpubench_tests PRIVATE gpubench_core)
+    target_link_libraries(gpubench_tests PRIVATE gpubench_core gpubench_engine)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(gpubench_tests PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()

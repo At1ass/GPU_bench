@@ -11,7 +11,7 @@ static bool fileExists(const std::string& path) {
     return stat(path.c_str(), &st) == 0;
 }
 
-static bool hasPathTraversal(const char* p) {
+bool hasPathTraversal(const char* p) {
     if (!p) return true;
     for (const char* s = p; *s; ) {
         if (s[0] == '.' && s[1] == '.' && (s[2] == '/' || s[2] == '\\' || s[2] == '\0'))
