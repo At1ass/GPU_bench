@@ -479,23 +479,23 @@ No issues.
 
 ### CRITICAL (P0) — fix immediately
 
-| # | Issue | File | Type |
-|---|-------|------|------|
-| 1 | Dangling handle in `blitToScreen()` | gl2_renderer.cpp:~1079 | Memory safety |
-| 2 | BindlessTexTest missing Cap_GL4 | test_registry.def:36 | Type safety |
-| 3 | Viewport leak in FBOFillrate/MRTFill | test_fbo_fillrate.cpp, test_mrt_fill.cpp | State corruption |
-| 4 | BindlessTexTest cleanup size mismatch | test_bindless_tex.cpp:89-103 | Memory safety |
+| # | Issue | File | Type | Status |
+|---|-------|------|------|--------|
+| 1 | Dangling handle in `blitToScreen()` | gl2_renderer.cpp:~1079 | Memory safety | **FIXED** |
+| 2 | BindlessTexTest missing Cap_GL4 | test_registry.def:36 | Type safety | **FIXED** |
+| 3 | Viewport leak in FBOFillrate/MRTFill | test_fbo_fillrate.cpp, test_mrt_fill.cpp | State corruption | **FIXED** |
+| 4 | BindlessTexTest cleanup size mismatch | test_bindless_tex.cpp:89-103 | Memory safety | **FIXED** |
 
 ### HIGH (P1) — significant impact
 
-| # | Issue | File | Type |
-|---|-------|------|------|
-| 5 | No `glGetError()` in entire renderer | renderer/*.cpp | Khronos violation |
-| 6 | Division-by-zero in 5+ tests | test_shader_alu.cpp et al. | UB |
-| 7 | `sqrtf()` in hot path DrawList | geometry_pass.cpp:33 | Performance |
-| 8 | Uniform location not validated | test_image_load_store.cpp:78 | UB |
-| 9 | Silent feature failure -> invalid scores | bench.cpp (GL3/GL4/Compute tests) | Correctness |
-| 10 | Inconsistent error handling in renderer | gl2_renderer.cpp | API contract |
+| # | Issue | File | Type | Status |
+|---|-------|------|------|--------|
+| 5 | No `glGetError()` in entire renderer | renderer/*.cpp | Khronos violation | **FIXED** (debug-only CHECK_GL_ERROR macro) |
+| 6 | Division-by-zero in 5+ tests | test_shader_alu.cpp et al. | UB | Already guarded (avg_ms <= 0 check) |
+| 7 | `sqrtf()` in hot path DrawList | geometry_pass.cpp:33 | Performance | **FIXED** (squared distance) |
+| 8 | Uniform location not validated | test_image_load_store.cpp:78 | UB | **FIXED** |
+| 9 | Silent feature failure -> invalid scores | bench.cpp (GL3/GL4/Compute tests) | Correctness | **FIXED** (setup_ok_ flag) |
+| 10 | Inconsistent error handling in renderer | gl2_renderer.cpp | API contract | **FIXED** (LOG_WRN + fallback) |
 
 ### MEDIUM (P2) — fix before release
 
@@ -542,19 +542,18 @@ GL3Features interface support for GLES 3.0+ devices.
 
 | Criterion | Grade | Notes |
 |-----------|-------|-------|
-| **Architecture** | **A** | Clean hierarchy, LLVM-style dispatch, sokol-inspired passes, proper layering |
-| **Type Safety** | **A-** | Handle\<Tag\>, FeatureTag, static_assert. Minus for BindlessTex cap mismatch and tier_int |
-| **Memory Safety** | **B+** | RAII everywhere, move-only GL resources. Minus for blitToScreen dangling handle and BindlessTex cleanup |
-| **OpenGL Practices** | **B** | Excellent state pairing and VAO usage. Minus for absent glGetError and bounds checking |
-| **Performance** | **B+** | StateCache, sort key batching, vertex cache opt. Minus for sqrtf and erase(begin()) |
-| **C++ Practices** | **A-** | High C++11 standard. Explicit constructors, noexcept moves, deleted copy. Minus for atoi, strtol overflow |
-| **Input Validation** | **B-** | DataPath traversal excellent. SceneLoader and CLI args insufficient |
-| **Testing** | **B-** | Priority 1 implemented: 87 cases / 605 assertions in 16 suites. Priority 2-3 (NullRenderer, lifecycle) pending |
-| **Documentation** | **B** | CLAUDE.md is comprehensive. Thread-safety and API lifetime contracts undocumented |
+| **Architecture** | **A+** | Clean hierarchy, LLVM-style dispatch, sokol-inspired passes, proper layering. Cycle broken. Per-platform files. |
+| **Type Safety** | **A** | Handle\<Tag\>, FeatureTag, static_assert. BindlessTex cap mismatch fixed. |
+| **Memory Safety** | **A-** | RAII everywhere, move-only GL resources. blitToScreen and BindlessTex cleanup fixed. |
+| **OpenGL Practices** | **B+** | State pairing, VAO, CHECK_GL_ERROR macro. Bounds checking still incomplete (P2). |
+| **Performance** | **A-** | StateCache, sort key batching, vertex cache opt, sqrtf removed. erase(begin()) remains (P2). |
+| **C++ Practices** | **A-** | High C++11 standard. Explicit constructors, noexcept moves. Minor P3 issues remain. |
+| **Input Validation** | **B-** | DataPath traversal excellent. SceneLoader and CLI args still insufficient (P2). |
+| **Testing** | **B-** | Priority 1: 87 cases / 605 assertions / 16 suites. Priority 2-3 pending. |
+| **Documentation** | **B** | CLAUDE.md comprehensive. Audit report tracks all issues. |
 
-**Overall: B+ / A-** — production-grade codebase with 4 critical and 6 high issues to fix.
-Architectural decisions are on par with professional render engines. After fixing P0/P1 and
-implementing the testing plan — ready for release.
+**Overall: A-** — P0 and P1 issues resolved. Architecture refactored (per-platform files,
+cycle broken, demo/renderer reorganized). 87 unit tests. Remaining: P2/P3 and GLES3 gap.
 
 ### Recommended Fix Order
 
