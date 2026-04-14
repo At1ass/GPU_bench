@@ -8,6 +8,7 @@
 //
 // Engine topological sort ensures ScenePass runs before PostProcessPass automatically.
 
+#define SDL_MAIN_HANDLED
 #include "core/app_config.h"
 #include "renderer/context/render_context.h"
 #include "renderer/renderer_factory.h"

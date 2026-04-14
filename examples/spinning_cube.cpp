@@ -5,6 +5,7 @@
 // Demonstrates the full engine pipeline:
 //   RenderPassBase → buildPipeline() → PipelinePolicy → RenderPipeline::execute()
 
+#define SDL_MAIN_HANDLED
 #include "core/app_config.h"
 #include "renderer/context/render_context.h"
 #include "renderer/renderer_factory.h"
