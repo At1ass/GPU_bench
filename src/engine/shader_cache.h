@@ -1,5 +1,6 @@
 #pragma once
-#include "demo/tier/shader_feature.h"
+#include "engine/shader_feature_set.h"
+#include "engine/shader_feature_define.h"
 #include "engine/shader_program.h"
 #include "renderer/renderer.h"
 #include <string>
@@ -26,7 +27,7 @@ public:
     ShaderCache(ShaderCache&&) = delete;
     ShaderCache& operator=(ShaderCache&&) = delete;
 
-    void init(Renderer* r);
+    void init(Renderer* r, const FeatureDefine* defines = nullptr, int define_count = 0);
     void destroy();
 
     // Get or compile a vertex+fragment shader variant.
@@ -36,6 +37,10 @@ public:
                        ShaderFeatureSet vert_features,
                        ShaderFeatureSet frag_features);
 
+    // Get or compile a GL4 vertex+fragment shader from gl4/ directory.
+    // No preamble injection — GL4 shaders contain their own #version 430.
+    ShaderProgram* getGL4(const char* base_name);
+
     // Get or compile a compute shader variant.
     ShaderProgram* getCompute(const char* base_name,
                               ShaderFeatureSet features);
@@ -43,6 +48,14 @@ public:
     // Get or compile a tessellation shader (4 stages: vert+tcs+tes+frag).
     ShaderProgram* getTess(const char* base_name,
                            ShaderFeatureSet features);
+
+    // Compile inline vertex+fragment source with uber preamble injection.
+    // Same preamble as get() (version, feature defines, compat macros).
+    // Source should NOT contain #version — preamble provides it.
+    // The key is used for caching; pass a unique name per shader variant.
+    ShaderProgram* compileInline(const char* key_name,
+                                 const char* vs_source, const char* fs_source,
+                                 ShaderFeatureSet features);
 
     int compiledCount() const { return compiles_; }
     int cacheHitCount() const { return hits_; }
@@ -73,6 +86,8 @@ private:
     };
 
     std::unordered_map<ProgramKey, std::unique_ptr<ShaderProgram>, ProgramKeyHash> cache_;
+    const FeatureDefine* defines_;
+    int define_count_;
     int compiles_;
     int hits_;
 
@@ -83,9 +98,9 @@ private:
     std::string loadSource(const char* base_name, const char* extension,
                            ShaderFeatureSet features, bool is_fragment) const;
 
+    // Prepend preamble to raw source (strips existing #version if present)
+    std::string prepareSource(const char* raw, ShaderFeatureSet features, bool is_fragment) const;
+
     // GLSL version string from feature flags
     static const char* versionString(ShaderFeatureSet features);
 };
-
-// Get shader feature set for a demo tier (used by tests)
-ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles, bool gles3);

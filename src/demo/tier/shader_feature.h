@@ -1,24 +1,17 @@
 #pragma once
 #include "engine/resource_id.h"
-#include <cstdint>
+#include "engine/shader_feature_set.h"
+#include "engine/shader_feature_define.h"
+#include "demo/tier/demo_tier.h"
 
-// Shader feature flags — bitfield encoding of active features.
-// Used as variant key for ShaderCache.
-// Each bit enables one preprocessor #define in the shader.
+// Demo-specific shader feature flags — combinable with engine version flags.
+// Each bit enables one preprocessor #define in uber shaders via ShaderCache.
+// Bit positions 0-4, 20-21 are reserved for engine GLSL version flags.
 
 enum ShaderFeature : uint32_t {
     SF_NONE           = 0,
 
-    // GLSL version (mutually exclusive — exactly one must be set)
-    SF_GLSL_120       = 1u << 0,   // GLSL 1.20 compatibility profile
-    SF_GLSL_150       = 1u << 1,   // GLSL 1.50 core profile
-    SF_GLSL_140       = 1u << 2,   // GLSL 1.40 (GL 3.1, supports gl_InstanceID)
-    SF_GLSL_330       = 1u << 3,   // GLSL 3.30
-    SF_GLSL_430       = 1u << 4,   // GLSL 4.30
-    SF_GLES_100       = 1u << 20,  // GLES 2.0 (#version 100)
-    SF_GLES_300       = 1u << 21,  // GLES 3.0+ (#version 300 es)
-
-    // Rendering features (combinable)
+    // Rendering features (demo-specific, combinable)
     SF_SHADOWS        = 1u << 5,   // Shadow mapping (T2+)
     SF_SHADOW_PCF3    = 1u << 6,   // PCF 3x3 kernel (T2)
     SF_SHADOW_PCF5    = 1u << 7,   // PCF 5x5 kernel (T3)
@@ -36,13 +29,25 @@ enum ShaderFeature : uint32_t {
     SF_FILM_GRAIN     = 1u << 19,  // Luminance-aware film grain (T2+)
 };
 
-using ShaderFeatureSet = uint32_t;
+// Demo feature→define mapping table (passed to ShaderCache::init).
+static const FeatureDefine kDemoFeatures[] = {
+    { SF_SHADOWS,        "HAS_SHADOWS"        },
+    { SF_SHADOW_PCF3,    "HAS_SHADOW_PCF3"    },
+    { SF_SHADOW_PCF5,    "HAS_SHADOW_PCF5"    },
+    { SF_SHADOW_PCSS,    "HAS_SHADOW_PCSS"    },
+    { SF_NORMAL_MAP,     "HAS_NORMAL_MAP"     },
+    { SF_POINT_LIGHTS,   "HAS_POINT_LIGHTS"   },
+    { SF_PBR,            "HAS_PBR"            },
+    { SF_SSS,            "HAS_SSS"            },
+    { SF_WATER,          "HAS_WATER"          },
+    { SF_VIGNETTE,       "HAS_VIGNETTE"       },
+    { SF_INSTANCING,     "HAS_INSTANCING"     },
+    { SF_PUDDLE_EXCLUDE, "HAS_PUDDLE_EXCLUDE" },
+    { SF_DOMAIN_WARP,    "HAS_DOMAIN_WARP"    },
+    { SF_PHYSICAL_SKY,   "HAS_PHYSICAL_SKY"   },
+    { SF_FILM_GRAIN,     "HAS_FILM_GRAIN"     },
+};
+static const int kDemoFeatureCount = static_cast<int>(sizeof(kDemoFeatures) / sizeof(kDemoFeatures[0]));
 
-// Version flag mask (exactly one must be set)
-static const ShaderFeatureSet SF_VERSION_MASK =
-    SF_GLSL_120 | SF_GLSL_150 | SF_GLSL_140 | SF_GLSL_330 | SF_GLSL_430 |
-    SF_GLES_100 | SF_GLES_300;
-
-// Convert tier + renderer profile to shader feature set.
-// Encapsulates all tier→feature mapping in one place.
+// Convert tier + renderer profile to shader feature set (demo-specific).
 ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles = false, bool gles3 = false);

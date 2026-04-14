@@ -1,14 +1,16 @@
-#include "demo/tier/shader_cache.h"
-#include "demo/tier/shader_loader.h"
+#include "engine/shader_cache.h"
+#include "engine/shader_loader.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 #include <cstring>
 
-ShaderCache::ShaderCache() : renderer_(nullptr), compiles_(0), hits_(0) {}
+ShaderCache::ShaderCache() : renderer_(nullptr), defines_(nullptr), define_count_(0), compiles_(0), hits_(0) {}
 ShaderCache::~ShaderCache() { destroy(); }
 
-void ShaderCache::init(Renderer* r) {
+void ShaderCache::init(Renderer* r, const FeatureDefine* defines, int define_count) {
     renderer_ = r;
+    defines_ = defines;
+    define_count_ = define_count;
     compiles_ = 0;
     hits_ = 0;
 }
@@ -41,24 +43,18 @@ std::string ShaderCache::buildPreamble(ShaderFeatureSet features, bool is_fragme
     // 1. Version directive
     preamble += versionString(features);
 
-    // 2. Feature #defines
+    // 2. Version-derived compat defines (engine-level)
     if (uses_legacy_syntax)  preamble += "#define GLSL_120\n";
     if (is_gles)             preamble += "#define GLES\n";
-    if (features & SF_SHADOWS)        preamble += "#define HAS_SHADOWS\n";
-    if (features & SF_SHADOW_PCF3)    preamble += "#define HAS_SHADOW_PCF3\n";
-    if (features & SF_SHADOW_PCF5)    preamble += "#define HAS_SHADOW_PCF5\n";
-    if (features & SF_SHADOW_PCSS)    preamble += "#define HAS_SHADOW_PCSS\n";
-    if (features & SF_NORMAL_MAP)     preamble += "#define HAS_NORMAL_MAP\n";
-    if (features & SF_POINT_LIGHTS)   preamble += "#define HAS_POINT_LIGHTS\n";
-    if (features & SF_PBR)            preamble += "#define HAS_PBR\n";
-    if (features & SF_SSS)            preamble += "#define HAS_SSS\n";
-    if (features & SF_WATER)          preamble += "#define HAS_WATER\n";
-    if (features & SF_VIGNETTE)       preamble += "#define HAS_VIGNETTE\n";
-    if (features & SF_INSTANCING)     preamble += "#define HAS_INSTANCING\n";
-    if (features & SF_PUDDLE_EXCLUDE) preamble += "#define HAS_PUDDLE_EXCLUDE\n";
-    if (features & SF_DOMAIN_WARP)    preamble += "#define HAS_DOMAIN_WARP\n";
-    if (features & SF_PHYSICAL_SKY)   preamble += "#define HAS_PHYSICAL_SKY\n";
-    if (features & SF_FILM_GRAIN)     preamble += "#define HAS_FILM_GRAIN\n";
+
+    // 3. Application feature #defines (data-driven from table passed at init)
+    for (int i = 0; i < define_count_; i++) {
+        if (features & defines_[i].mask) {
+            preamble += "#define ";
+            preamble += defines_[i].define;
+            preamble += '\n';
+        }
+    }
 
     // 3. GLES precision qualifiers (required by spec, must come after #version).
     //    Use highp for both VS and FS to avoid precision mismatch on shared uniforms.
@@ -155,6 +151,78 @@ ShaderProgram* ShaderCache::get(const char* base_name,
     return raw_ptr;
 }
 
+std::string ShaderCache::prepareSource(const char* raw, ShaderFeatureSet features, bool is_fragment) const {
+    std::string src(raw);
+    if (src.compare(0, 8, "#version") == 0) {
+        size_t nl = src.find('\n');
+        if (nl != std::string::npos)
+            src = src.substr(nl + 1);
+    }
+    return buildPreamble(features, is_fragment) + src;
+}
+
+ShaderProgram* ShaderCache::compileInline(const char* key_name,
+                                           const char* vs_source, const char* fs_source,
+                                           ShaderFeatureSet features) {
+    if (!renderer_) return nullptr;
+
+    ProgramKey key;
+    key.base_name = std::string(key_name) + ".inline";
+    key.vert_features = features;
+    key.frag_features = features;
+
+    auto it = cache_.find(key);
+    if (it != cache_.end()) {
+        hits_++;
+        return it->second.get();
+    }
+
+    std::string vs = prepareSource(vs_source, features, false);
+    std::string fs = prepareSource(fs_source, features, true);
+
+    std::unique_ptr<ShaderProgram> prog(new ShaderProgram());
+    if (!prog->create(renderer_, vs.c_str(), fs.c_str())) {
+        LOG_ERR("ShaderCache: failed to compile inline '%s' (features=0x%08X)",
+                key_name, features);
+        return nullptr;
+    }
+
+    compiles_++;
+    ShaderProgram* raw_ptr = prog.get();
+    cache_[key] = std::move(prog);
+    return raw_ptr;
+}
+
+ShaderProgram* ShaderCache::getGL4(const char* base_name) {
+    if (!renderer_) return nullptr;
+
+    ProgramKey key;
+    key.base_name = std::string(base_name) + ".gl4";
+    key.vert_features = 0;
+    key.frag_features = 0;
+
+    auto it = cache_.find(key);
+    if (it != cache_.end()) {
+        hits_++;
+        return it->second.get();
+    }
+
+    std::string vs = ShaderLoader::load((std::string("gl4/") + base_name + ".vert").c_str());
+    std::string fs = ShaderLoader::load((std::string("gl4/") + base_name + ".frag").c_str());
+    if (vs.empty() || fs.empty()) return nullptr;
+
+    std::unique_ptr<ShaderProgram> prog(new ShaderProgram());
+    if (!prog->create(renderer_, vs.c_str(), fs.c_str())) {
+        LOG_ERR("ShaderCache: failed to compile GL4 '%s'", base_name);
+        return nullptr;
+    }
+
+    compiles_++;
+    ShaderProgram* raw_ptr = prog.get();
+    cache_[key] = std::move(prog);
+    return raw_ptr;
+}
+
 ShaderProgram* ShaderCache::getCompute(const char* base_name,
                                        ShaderFeatureSet features) {
     if (!renderer_) return nullptr;
@@ -228,59 +296,4 @@ ShaderProgram* ShaderCache::getTess(const char* base_name,
     return raw_ptr;
 }
 
-// Tier-to-features mapping
-ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles, bool gles3) {
-    ShaderFeatureSet f = SF_NONE;
-
-    // GLES path: limited tier support
-    if (is_gles) {
-        if (gles3) {
-            // GLES 3.0+: Tier 1-2 (#version 300 es, in/out syntax)
-            switch (tier) {
-            case DemoTier::Basic:
-                f |= SF_GLES_300 | SF_VIGNETTE;
-                break;
-            case DemoTier::Enhanced:
-                f |= SF_GLES_300;
-                f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
-                f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
-                break;
-            default: // Quality/Ultra: cap at Enhanced
-                f |= SF_GLES_300;
-                f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
-                f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
-                break;
-            }
-        } else {
-            // GLES 2.0: Tier 1 only (#version 100, attribute/varying syntax)
-            f |= SF_GLES_100 | SF_VIGNETTE;
-        }
-        return f;
-    }
-
-    // Desktop GL path (unchanged)
-    switch (tier) {
-    case DemoTier::Basic:
-        f |= core_profile ? SF_GLSL_150 : SF_GLSL_120;
-        f |= SF_VIGNETTE;
-        break;
-    case DemoTier::Enhanced:
-        f |= core_profile ? SF_GLSL_150 : SF_GLSL_140;
-        f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
-        f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
-        break;
-    case DemoTier::Quality:
-        f |= SF_GLSL_330;
-        f |= SF_SHADOWS | SF_SHADOW_PCF5 | SF_NORMAL_MAP | SF_POINT_LIGHTS | SF_INSTANCING;
-        f |= SF_DOMAIN_WARP | SF_PHYSICAL_SKY | SF_FILM_GRAIN;
-        break;
-    case DemoTier::Ultra:
-        f |= SF_GLSL_430;
-        f |= SF_SHADOWS | SF_SHADOW_PCSS | SF_NORMAL_MAP | SF_POINT_LIGHTS;
-        f |= SF_PBR | SF_SSS | SF_WATER | SF_INSTANCING | SF_PUDDLE_EXCLUDE;
-        f |= SF_DOMAIN_WARP | SF_PHYSICAL_SKY | SF_FILM_GRAIN;
-        break;
-    }
-
-    return f;
-}
+// featuresForTier() moved to demo/tier/demo_tier_config.cpp (demo-specific)

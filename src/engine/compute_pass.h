@@ -5,24 +5,23 @@
 
 // Template for compute dispatch passes: input textures/SSBOs -> compute shader -> output.
 // Automatically handles: feature check, shader bind, dispatch, barrier.
-// Author implements: setup(), bind(), workgroups().
+// Author implements: onBind(), onWorkgroups().
+//
+// Application-specific resource setup (shaders, textures, RTs) is handled by
+// application-level adapter classes, not by engine virtual methods.
 //
 // Covers: GTAO, bloom compute, SSR, DoF, auto-exposure, compute particles (~7 passes).
 //
 // Example:
 //   class GTAOPass : public ComputePassBase {
-//       void setup(const TierResourceView& res) override {
-//           setShader(res.t4.gtao.shader);
-//       }
-//       void bind(PassContext& ctx, UniformBlock& ub,
-//                 const TierResourceView& res, const FrameData& fd,
-//                 const DemoTierConfig& cfg) override {
-//           ctx.bindRTTexture(TexSlot::Primary, res.t4.hdr.scene_rt);
-//           ctx.bindImage(0, res.t4.gtao.tex, false, true);
+//       void onBind(PassContext& ctx, UniformBlock& ub,
+//                   const FrameData& fd) override {
+//           ctx.bindRTTexture(TexSlot::Primary, scene_rt_);
+//           ctx.bindImage(0, gtao_tex_, false, true);
 //           ub.set(U::ScreenSize, (float)fd.viewport_w, (float)fd.viewport_h);
 //       }
-//       void workgroups(const FrameData& fd, const DemoTierConfig& cfg,
-//                       int& gx, int& gy, int& gz) override {
+//       void onWorkgroups(const FrameData& fd,
+//                         int& gx, int& gy, int& gz) override {
 //           gx = (fd.viewport_w + 15) / 16;
 //           gy = (fd.viewport_h + 15) / 16;
 //           gz = 1;
@@ -32,18 +31,13 @@
 
 class ComputePassBase : public RenderPassBase {
 public:
-    virtual void setup(const TierResourceView& res) = 0;
-
     // Bind input/output resources and set uniforms
-    virtual void bind(PassContext& ctx, UniformBlock& ub,
-                      const TierResourceView& res,
-                      const FrameData& fd,
-                      const DemoTierConfig& cfg) = 0;
+    virtual void onBind(PassContext& ctx, UniformBlock& ub,
+                        const FrameData& fd) = 0;
 
     // Calculate dispatch workgroup count
-    virtual void workgroups(const FrameData& fd,
-                            const DemoTierConfig& cfg,
-                            int& gx, int& gy, int& gz) = 0;
+    virtual void onWorkgroups(const FrameData& fd,
+                              int& gx, int& gy, int& gz) = 0;
 
     // Override for barrier optimization (default: all barriers).
     // GTAO: Barrier_Image (image store -> texture read)
@@ -52,10 +46,7 @@ public:
 
     QueueType queueType() const override { return QueueType::Compute; }
 
-    void execute(PassContext& ctx, FrameData& fd,
-                 const TierResourceView& res,
-                 const DemoTierConfig& cfg,
-                 const SceneData& scene) override;
+    void execute(PassContext& ctx, FrameData& fd, const SceneData& scene) override;
 
 protected:
     void setShader(ShaderProgram* shader) { shader_ = shader; }

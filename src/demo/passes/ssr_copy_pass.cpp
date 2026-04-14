@@ -5,17 +5,21 @@
 #include "renderer/features.h"
 #include "platform/logger.h"
 
-bool SSRCopyPass::isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides& dbg) const {
+void SSRCopyPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                       const DemoDebugOverrides& dbg) {
     (void)dbg;
-    return cfg.enable_ssr;
+    res_ = &res;
+    cfg_ = &cfg;
 }
 
-void SSRCopyPass::execute(PassContext& ctx, FrameData& fd,
-                          const TierResourceView& res,
-                          const DemoTierConfig& cfg,
-                          const SceneData& scene) {
+bool SSRCopyPass::isEnabled() const {
+    return cfg_ && cfg_->enable_ssr;
+}
+
+void SSRCopyPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg; (void)scene;
+    const TierResourceView& res = *res_;
+    (void)scene;
 
     GL4Features* g4 = r->features<GL4Features>();
     if (!g4) return;

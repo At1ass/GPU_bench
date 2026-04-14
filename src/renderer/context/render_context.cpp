@@ -6,6 +6,15 @@
 RenderContext::RenderContext() : window_(nullptr), headless_(false) {}
 RenderContext::~RenderContext() {}
 
+void RenderContext::getDrawableSize(int* w, int* h) const {
+    if (window_) {
+        SDL_GL_GetDrawableSize(window_, w, h);
+    } else {
+        if (w) *w = 0;
+        if (h) *h = 0;
+    }
+}
+
 bool RenderContext::initSDL(const AppConfig& cfg) {
     headless_ = cfg.headless;
 

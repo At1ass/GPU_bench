@@ -4,20 +4,26 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 #include <cmath>
 
-void FurPass::init(const TierResourceView& res) {
-    ub_.init(res.core.fur_shader);
+void FurPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                   const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ShaderProgram* s = res.shader(ShaderBank::Fur);
+    ub_.init(s);
 }
 
-void FurPass::execute(PassContext& ctx, FrameData& fd,
-                      const TierResourceView& res,
-                      const DemoTierConfig& cfg,
-                      const SceneData& scene) {
+void FurPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    if (!res.core.fur_shader || scene.model_mesh == MeshHandle() || res.core.fur_tex == INVALID_TEXTURE) return;
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
+    ShaderProgram* fur_shader = res.shader(ShaderBank::Fur);
+    if (!fur_shader || scene.model_mesh == MeshHandle() || res.core.fur_tex == INVALID_TEXTURE) return;
 
     ub_.use();
     ub_.set(U::Proj, fd.proj);
@@ -54,7 +60,7 @@ void FurPass::execute(PassContext& ctx, FrameData& fd,
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(res.core.fur_shader, fd, cfg.point_light_count);
+    setPointLightUniforms(ub_, fd, cfg.point_light_count);
 
     // Fur strand texture: unit 0
     r->bindTextureUnit(0, res.core.fur_tex);

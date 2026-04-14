@@ -687,8 +687,8 @@ bool DemoScene::setup(Renderer* r, DemoTier tier, int viewport_w, int viewport_h
     scene_data_.model_transform = model_transform_;
 
     // Create render passes and build pipeline via topological sort.
-    createPasses(passes_, res_, config_);
-    buildPipeline(pipeline_, passes_, config_, debug_, res_, viewport_w_, viewport_h_);
+    createPasses(passes_, res_, config_, debug_);
+    demoBuildPipeline(pipeline_, passes_, config_, debug_, res_, viewport_w_, viewport_h_);
 
     initialized_ = true;
     int total_obj = static_cast<int>(opaque_objects_.size());
@@ -732,7 +732,7 @@ FrameData DemoScene::buildFrameData(float t, float time, int w, int h,
     fd.cam_pos = camera_.getPosition(t);
     Vec3 cam_target = camera_.getTarget(t);
     fd.aspect = static_cast<float>(w) / static_cast<float>(h > 0 ? h : 1);
-    fd.proj = Mat4::perspective(kDemoFovDeg, fd.aspect, kDemoNear, kDemoFar);
+    fd.proj = Mat4::perspective(kDefaultFovDeg, fd.aspect, kDefaultNear, kDefaultFar);
     fd.view = Mat4::lookAt(fd.cam_pos, cam_target, Vec3(0.0f, 1.0f, 0.0f));
     fd.sun_dir = SUN_DIR_RAW.normalized();
     fd.frustum = extractFrustum(fd.proj * fd.view);
@@ -744,24 +744,24 @@ FrameData DemoScene::buildFrameData(float t, float time, int w, int h,
     fd.dest_rt = dest_rt;
 
     // Tier capability flags
-    fd.has_shadows = config_.enable_shadows && res_.shadow.shader != nullptr
+    fd.has_shadows = config_.enable_shadows && res_.shader(ShaderBank::ShadowDepth) != nullptr
                      && res_.shadow.rt != INVALID_RENDER_TARGET;
     fd.has_bloom = config_.enable_bloom
-                   && res_.bloom.extract_shader != nullptr
-                   && res_.bloom.scene_rt != INVALID_RENDER_TARGET;
+                   && res_.shader(ShaderBank::BloomExtract) != nullptr
+                   && res_.scene_rt != INVALID_RENDER_TARGET;
     fd.has_ssao = config_.enable_ssao
-                  && res_.ssao.shader != nullptr
+                  && res_.shader(ShaderBank::Ssao) != nullptr
                   && res_.ssao.rt != INVALID_RENDER_TARGET;
     fd.has_pbr = config_.enable_pbr;
-    fd.has_tessellation = config_.enable_tessellation && res_.t4.tess_shader != nullptr;
+    fd.has_tessellation = config_.enable_tessellation && res_.shader(ShaderBank::TessT4) != nullptr;
     fd.has_compute_particles = config_.enable_compute_particles
-                               && res_.t4.compute_particle_shader != nullptr
+                               && res_.shader(ShaderBank::ParticlesT4) != nullptr
                                && res_.t4.particle_ssbo != INVALID_BUFFER;
     fd.has_volumetric_fog = config_.enable_volumetric_fog
-                            && res_.t4.hdr.volumetric_fog_shader != nullptr
+                            && res_.shader(ShaderBank::VolumetricFogT4) != nullptr
                             && res_.t4.hdr.fog_rt != INVALID_RENDER_TARGET;
     fd.has_hdr = config_.enable_hdr
-                 && res_.t4.hdr.tone_map_shader != nullptr
+                 && res_.shader(ShaderBank::ToneMapT4) != nullptr
                  && res_.t4.hdr.scene_rt != INVALID_RENDER_TARGET;
 
     // Log active passes once per tier
@@ -790,9 +790,9 @@ void DemoScene::renderFrame(Renderer* r, float t, float time, int viewport_w, in
     dest_rt_ = dest_rt;
 
     FrameData fd = buildFrameData(t, time, viewport_w, viewport_h, dest_rt);
-    PassContext ctx(r);
+    PassContext ctx(r, res_.core.fullscreen_quad);
     ctx.beginFrame();
-    pipeline_.execute(ctx, fd, res_, config_, scene_data_);
+    pipeline_.execute(ctx, fd, scene_data_);
     last_frame_stats_ = ctx.stats();
     last_renderer_stats_ = r->rendererStats();
 

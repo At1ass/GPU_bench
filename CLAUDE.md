@@ -51,13 +51,14 @@ src/
       gl/                        # GL loader, funcs, extensions, debug, timer
     context/                     # SDL window + GL/GLES context
   engine/                        # Pass framework (FullscreenPass, GeometryPass, ComputePassBase)
+                                 # ShaderCache, ShaderLoader, MeshPool (engine-generic)
                                  # DrawList, StateCache, RenderState, UniformBlock, TextureSlots
                                  # frustum.h (frustum culling, bounds), shader_program.h
   bench/                         # BenchRunner, StressRunner, presets, results, UI
   tests/                         # 30 benchmark test implementations + X-macro registry
   demo/                          # Demo entry point, runner, UI, export
     scene/                       # DemoScene, DemoCamera, DemoResources, SceneLoader, materials
-    tier/                        # ShaderCache, ShaderLoader, feature flags, tier config
+    tier/                        # ShaderBank, shader_registry.def, demo feature flags, tier config
     pipeline/                    # PipelineBuilder, PassFactory, pass_registry.def
     passes/                      # 24 render pass implementations
   geometry/                      # Vec3, Mat4, MeshData, MeshGen, ObjLoader
@@ -119,7 +120,7 @@ Special passes (SceneToFBOPass, TessellatedModelPass) with sub-pass wiring handl
 
 ### Demo Mode
 
-4-tier visual benchmark (Basic->Ultra). Scene loaded from `data/scenes/sanctuary.scene`. Camera follows Catmull-Rom spline orbit. Shaders load from `data/shaders/` via `ShaderLoader` (supports `#pragma include`).
+4-tier visual benchmark (Basic->Ultra). Scene loaded from `data/scenes/sanctuary.scene`. Camera follows Catmull-Rom spline orbit. Shaders declared in `shader_registry.def`, compiled via `ShaderBank` (wraps `ShaderCache` + `ShaderLoader`). Uber shaders from `data/shaders/uber/`, GL4/compute/tess from `data/shaders/gl4/`.
 
 ### Resource Handles
 

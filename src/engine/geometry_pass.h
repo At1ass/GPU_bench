@@ -10,21 +10,20 @@
 // Template for "geometry draw" passes: camera + objects -> shader -> RT.
 // Automatically handles: RT binding, state, object iteration, frustum culling,
 //                        per-object transform + material uniforms.
-// Author implements: setup(), sceneSetup().
+// Author implements: onSceneSetup().
 // Optionally overrides: objectFilter(), perObject(), objectList().
+//
+// Application-specific resource setup (shaders, textures, RTs) is handled by
+// application-level adapter classes, not by engine virtual methods.
 //
 // Covers: opaque, shadow, water, torch, particle (~5 passes).
 
 class GeometryPass : public RenderPassBase {
 public:
-    virtual void setup(const TierResourceView& res) = 0;
-
     // Called once before object iteration.
     // Set camera uniforms, light params, textures here.
-    virtual void sceneSetup(UniformBlock& ub, PassContext& ctx,
-                            const FrameData& fd,
-                            const TierResourceView& res,
-                            const DemoTierConfig& cfg) = 0;
+    virtual void onSceneSetup(UniformBlock& ub, PassContext& ctx,
+                              const FrameData& fd) = 0;
 
     // Return false to skip object. Default: frustum culling.
     virtual bool objectFilter(const SceneObject& obj,
@@ -64,10 +63,7 @@ public:
     virtual uint8_t shaderIdFor(const SceneObject& obj) const { (void)obj; return 0; }
     virtual uint8_t materialIdFor(const SceneObject& obj) const { (void)obj; return 0; }
 
-    void execute(PassContext& ctx, FrameData& fd,
-                 const TierResourceView& res,
-                 const DemoTierConfig& cfg,
-                 const SceneData& scene) override;
+    void execute(PassContext& ctx, FrameData& fd, const SceneData& scene) override;
 
 protected:
     void setShader(ShaderProgram* shader) { shader_ = shader; }

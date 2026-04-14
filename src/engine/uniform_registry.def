@@ -155,3 +155,33 @@ U(DofStrength,        "u_dof_strength",       F)
 
 // Puddles
 U(PuddleCount,       "u_puddle_count",       I)
+U(PuddlePos0,        "u_puddle_pos[0]",      V3)
+U(PuddleRadius0,     "u_puddle_radius[0]",   F)
+
+// Point lights (array, max 3)
+U(PointLight0,        "u_point_lights[0]",    V3)
+U(PointLight1,        "u_point_lights[1]",    V3)
+U(PointLight2,        "u_point_lights[2]",    V3)
+U(PointColor0,        "u_point_colors[0]",    V3)
+U(PointColor1,        "u_point_colors[1]",    V3)
+U(PointColor2,        "u_point_colors[2]",    V3)
+
+// Torch positions
+U(TorchPos0,          "u_torch_positions[0]", V3)
+U(TorchPos1,          "u_torch_positions[1]", V3)
+U(TorchPosCompute0,   "u_torch_pos_0",        V3)
+U(TorchPosCompute1,   "u_torch_pos_1",        V3)
+
+// Grass exclusion zones (array, max 8)
+U(ExclusionCount,     "u_exclusion_count",    I)
+U(Exclusion0,         "u_exclusion[0]",       V4)
+U(Exclusion1,         "u_exclusion[1]",       V4)
+U(Exclusion2,         "u_exclusion[2]",       V4)
+U(Exclusion3,         "u_exclusion[3]",       V4)
+U(Exclusion4,         "u_exclusion[4]",       V4)
+U(Exclusion5,         "u_exclusion[5]",       V4)
+U(Exclusion6,         "u_exclusion[6]",       V4)
+U(Exclusion7,         "u_exclusion[7]",       V4)
+
+// SSR
+U(HasMirror,          "u_has_mirror",         I)

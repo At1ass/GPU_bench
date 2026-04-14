@@ -1,10 +1,14 @@
 #pragma once
 #include "engine/render_pass.h"
-#include "demo/scene/demo_scene.h"
+#include "demo/pipeline/demo_pass_meta.h"
+
+struct DemoTierConfig;
+struct DemoDebugOverrides;
+struct TierResourceView;
 
 // Renders the full scene (sky, opaque, grass, fur, particles) into the bloom scene FBO.
 // Sub-passes are invoked via stored pointers set by setSubPasses().
-class SceneToFBOPass : public RenderPassBase {
+class SceneToFBOPass : public RenderPassBase, public DemoPassMeta {
 public:
     SceneToFBOPass()
         : sky_pass_(nullptr), opaque_pass_(nullptr)
@@ -12,6 +16,9 @@ public:
         , particle_pass_(nullptr), torch_pass_(nullptr) {}
 
     const char* name() const override { return "scene_to_fbo"; }
+
+    void init(const TierResourceView& res, const DemoTierConfig& cfg,
+              const DemoDebugOverrides& dbg);
 
     void setSubPasses(RenderPassBase* sky, RenderPassBase* opaque,
                       RenderPassBase* grass, RenderPassBase* fur,
@@ -24,8 +31,7 @@ public:
         torch_pass_ = torch;
     }
 
-    void execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                 const DemoTierConfig& cfg, const SceneData& scene) override;
+    void execute(PassContext& ctx, FrameData& fd, const SceneData& scene) override;
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -36,15 +42,15 @@ public:
         return d;
     }
     int resourceDeclCount() const override { return 3; }
-    DemoTier minTier() const override { return DemoTier::Enhanced; }
-    bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides&) const override {
-        return cfg.enable_bloom && !cfg.enable_hdr;
-    }
+    int minTier() const override { return 2; }
+    bool isEnabled() const override;
     int executionOrder() const override { return 70; }
     QueueType queueType() const override { return QueueType::Graphics; }
     PassRole passRole() const override { return PassRole::SceneContainer; }
 
 private:
+    const TierResourceView* res_ = nullptr;
+    const DemoTierConfig* cfg_ = nullptr;
     RenderPassBase* sky_pass_;
     RenderPassBase* opaque_pass_;
     RenderPassBase* grass_pass_;

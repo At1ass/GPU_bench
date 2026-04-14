@@ -4,24 +4,30 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "renderer/features.h"
 #include "renderer/backend/gl/gl_funcs.h"
 #include "platform/logger.h"
 
-void ComputeParticlesDrawPass::init(const TierResourceView& res) {
-    ub_.init(res.t4.particle_render_shader);
+void ComputeParticlesDrawPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                                    const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ub_.init(res.shader(ShaderBank::ParticleRenderT4));
 }
 
-void ComputeParticlesDrawPass::execute(PassContext& ctx, FrameData& fd,
-                                       const TierResourceView& res,
-                                       const DemoTierConfig& cfg,
-                                       const SceneData& scene) {
+bool ComputeParticlesDrawPass::isEnabled() const {
+    return cfg_ && cfg_->enable_compute_particles;
+}
+
+void ComputeParticlesDrawPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg;
+    const TierResourceView& res = *res_;
     (void)scene;
 
     ComputeFeatures* cf = r->features<ComputeFeatures>();
-    if (!cf || !res.t4.particle_render_shader) return;
+    if (!cf || !res.shader(ShaderBank::ParticleRenderT4)) return;
 
     ub_.use();
     cf->bindSSBO(res.t4.particle_ssbo, 0);

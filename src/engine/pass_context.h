@@ -28,7 +28,7 @@ enum BarrierFlags : unsigned int {
 
 class PassContext {
 public:
-    explicit PassContext(Renderer* r);
+    explicit PassContext(Renderer* r, MeshHandle fsquad = MeshHandle());
 
     PassContext(const PassContext&) = delete;
     PassContext& operator=(const PassContext&) = delete;
@@ -62,6 +62,11 @@ public:
         r_->drawMesh(h);
     }
 
+    // Draw fullscreen effect. Automatically uses best method for GL level:
+    // GL 2.1: VBO quad (4 verts, 6 indices)
+    // GL 3.0+: fullscreen triangle via gl_VertexID (0 bytes vertex data, no diagonal seam)
+    void drawFullscreen();
+
     // --- Accessors ---
     Renderer* renderer() { return r_; }
     GL3Features* gl3();
@@ -72,6 +77,7 @@ public:
 
 private:
     Renderer* r_ = nullptr;           // non-owning: managed by caller
+    MeshHandle fsquad_;                // non-owning: fullscreen quad for GL2 fallback
     GL3Features* gl3_ = nullptr;      // non-owning: cached from r_->features<>()
     GL4Features* gl4_ = nullptr;      // non-owning: cached from r_->features<>()
     ComputeFeatures* compute_ = nullptr; // non-owning: cached from r_->features<>()

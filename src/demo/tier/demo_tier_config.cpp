@@ -1,4 +1,5 @@
 #include "demo/scene/demo_scene.h"
+#include "demo/tier/shader_feature.h"
 #include "renderer/features.h"
 
 // ============================================================
@@ -246,4 +247,53 @@ int maxSupportedTier(const Renderer& r) {
     if (r.supportsRenderTargets())
         return 2;
     return 1;
+}
+
+// Tier-to-features mapping (demo-specific)
+ShaderFeatureSet featuresForTier(DemoTier tier, bool core_profile, bool is_gles, bool gles3) {
+    ShaderFeatureSet f = SF_NONE;
+
+    if (is_gles) {
+        if (gles3) {
+            switch (tier) {
+            case DemoTier::Basic:
+                f |= SF_GLES_300 | SF_VIGNETTE;
+                break;
+            case DemoTier::Enhanced:
+            default:
+                f |= SF_GLES_300;
+                f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
+                f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
+                break;
+            }
+        } else {
+            f |= SF_GLES_100 | SF_VIGNETTE;
+        }
+        return f;
+    }
+
+    switch (tier) {
+    case DemoTier::Basic:
+        f |= core_profile ? SF_GLSL_150 : SF_GLSL_120;
+        f |= SF_VIGNETTE;
+        break;
+    case DemoTier::Enhanced:
+        f |= core_profile ? SF_GLSL_150 : SF_GLSL_140;
+        f |= SF_SHADOWS | SF_SHADOW_PCF3 | SF_INSTANCING;
+        f |= SF_DOMAIN_WARP | SF_FILM_GRAIN;
+        break;
+    case DemoTier::Quality:
+        f |= SF_GLSL_330;
+        f |= SF_SHADOWS | SF_SHADOW_PCF5 | SF_NORMAL_MAP | SF_POINT_LIGHTS | SF_INSTANCING;
+        f |= SF_DOMAIN_WARP | SF_PHYSICAL_SKY | SF_FILM_GRAIN;
+        break;
+    case DemoTier::Ultra:
+        f |= SF_GLSL_430;
+        f |= SF_SHADOWS | SF_SHADOW_PCSS | SF_NORMAL_MAP | SF_POINT_LIGHTS;
+        f |= SF_PBR | SF_SSS | SF_WATER | SF_INSTANCING | SF_PUDDLE_EXCLUDE;
+        f |= SF_DOMAIN_WARP | SF_PHYSICAL_SKY | SF_FILM_GRAIN;
+        break;
+    }
+
+    return f;
 }

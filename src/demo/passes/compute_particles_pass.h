@@ -1,20 +1,22 @@
 #pragma once
 #include "engine/compute_pass.h"
-#include "demo/scene/demo_scene.h"
+#include "demo/pipeline/demo_pass_meta.h"
 
-class ComputeParticlesPass : public ComputePassBase {
+struct DemoTierConfig;
+struct DemoDebugOverrides;
+struct TierResourceView;
+
+class ComputeParticlesPass : public ComputePassBase, public DemoPassMeta {
 public:
     const char* name() const override { return "compute_particles"; }
-    void init(const TierResourceView& res);
+    void init(const TierResourceView& res, const DemoTierConfig& cfg,
+              const DemoDebugOverrides& dbg);
 
     // ComputePassBase interface
-    void setup(const TierResourceView& res) override;
-    void bind(PassContext& ctx, UniformBlock& ub,
-              const TierResourceView& res,
-              const FrameData& fd,
-              const DemoTierConfig& cfg) override;
-    void workgroups(const FrameData& fd, const DemoTierConfig& cfg,
-                    int& gx, int& gy, int& gz) override;
+    void onBind(PassContext& ctx, UniformBlock& ub,
+                const FrameData& fd) override;
+    void onWorkgroups(const FrameData& fd,
+                      int& gx, int& gy, int& gz) override;
     unsigned int barrierFlags() const override { return Barrier_SSBO; }
 
     const ResourceDecl* resourceDecls() const override {
@@ -24,13 +26,13 @@ public:
         return d;
     }
     int resourceDeclCount() const override { return 1; }
-    DemoTier minTier() const override { return DemoTier::Ultra; }
-    bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides&) const override {
-        return cfg.enable_compute_particles;
-    }
+    int minTier() const override { return 4; }
+    bool isEnabled() const override;
     int executionOrder() const override { return 5; }
 
 private:
+    const TierResourceView* res_ = nullptr;
+    const DemoTierConfig* cfg_ = nullptr;
     ShaderProgram* particle_shader_ = nullptr;
     int particle_count_ = 0;
 };

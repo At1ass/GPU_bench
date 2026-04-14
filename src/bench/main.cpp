@@ -283,7 +283,7 @@ struct BenchApp {
 
         ctx = createRenderContext(cfg);
         if (!ctx || !ctx->init(cfg)) { LOG_ERR("Render context init failed"); return false; }
-        SDL_GL_GetDrawableSize(ctx->window(), &window_w, &window_h);
+        ctx->getDrawableSize(&window_w, &window_h);
 
         renderer = createRenderer(cfg.backend);
         if (!renderer || !renderer->init(window_w, window_h)) { LOG_ERR("Renderer init failed"); return false; }
@@ -352,7 +352,7 @@ struct BenchApp {
         while (ctx->pollEvent(&e)) {
             if (e.type == SDL_QUIT) running = false;
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
-                SDL_GL_GetDrawableSize(ctx->window(), &window_w, &window_h);
+                ctx->getDrawableSize(&window_w, &window_h);
                 if (selected_resolution == RES_NATIVE) { render_w = window_w; render_h = window_h; }
             }
 #ifdef __ANDROID__

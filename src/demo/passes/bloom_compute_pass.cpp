@@ -7,20 +7,25 @@
 #include "renderer/features.h"
 #include "platform/logger.h"
 
-void BloomComputePass::init(const TierResourceView& res) {
-    ub_down_.init(res.t4.bloom.down_compute);
-    ub_up_.init(res.t4.bloom.up_compute);
+void BloomComputePass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                            const DemoDebugOverrides& dbg) {
+    res_ = &res;
+    cfg_ = &cfg;
+    dbg_ = &dbg;
+    ub_down_.init(res.shader(ShaderBank::BloomDownT4));
+    ub_up_.init(res.shader(ShaderBank::BloomUpT4));
 }
 
-void BloomComputePass::execute(PassContext& ctx, FrameData& fd,
-                               const TierResourceView& res,
-                               const DemoTierConfig& cfg,
-                               const SceneData& scene) {
+bool BloomComputePass::isEnabled() const {
+    return cfg_ && dbg_ && cfg_->enable_compute_bloom && !dbg_->skip_compute_bloom;
+}
+
+void BloomComputePass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg;
+    const TierResourceView& res = *res_;
     (void)scene;
 
-    if (!res.t4.bloom.down_compute || !res.t4.bloom.up_compute) return;
+    if (!res.shader(ShaderBank::BloomDownT4) || !res.shader(ShaderBank::BloomUpT4)) return;
 
     GL4Features* g4 = r->features<GL4Features>();
     ComputeFeatures* cf = r->features<ComputeFeatures>();

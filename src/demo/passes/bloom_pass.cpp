@@ -4,18 +4,26 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 
-void BloomPass::init(const TierResourceView& res) {
-    if (res.bloom.extract_shader)
-        ub_bloom_extract_.init(res.bloom.extract_shader);
-    if (res.bloom.blur_shader)
-        ub_bloom_blur_.init(res.bloom.blur_shader);
+void BloomPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                     const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    if (res.shader(ShaderBank::BloomExtract))
+        ub_bloom_extract_.init(res.shader(ShaderBank::BloomExtract));
+    if (res.shader(ShaderBank::BloomBlur))
+        ub_bloom_blur_.init(res.shader(ShaderBank::BloomBlur));
 }
 
-void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                        const DemoTierConfig& cfg, const SceneData& scene) {
+bool BloomPass::isEnabled() const {
+    return cfg_ && cfg_->enable_bloom && !cfg_->enable_compute_bloom;
+}
+
+void BloomPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg;
+    const TierResourceView& res = *res_;
     (void)scene;
 
     int bw = fd.viewport_w / 2;
@@ -32,11 +40,11 @@ void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView&
     r->setViewport(0, 0, bw, bh);
     ub_bloom_extract_.use();
     RenderTargetHandle bloom_source = (res.t4.hdr.scene_rt != INVALID_RENDER_TARGET)
-                                       ? res.t4.hdr.scene_rt : res.bloom.scene_rt;
+                                       ? res.t4.hdr.scene_rt : res.scene_rt;
     r->bindRenderTargetTexture(bloom_source, 0);
     ub_bloom_extract_.set(U::SceneTex, 0);
     ub_bloom_extract_.set(U::Threshold, 0.8f);
-    ctx.drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawFullscreen();
 
     // Horizontal blur -> blur_rt
     r->bindRenderTarget(res.bloom.blur_rt);
@@ -46,13 +54,13 @@ void BloomPass::execute(PassContext& ctx, FrameData& fd, const TierResourceView&
     ub_bloom_blur_.set(U::Horizontal, 1.0f);
     ub_bloom_blur_.set(U::TexelSize, 1.0f / static_cast<float>(bw),
                                       1.0f / static_cast<float>(bh));
-    ctx.drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawFullscreen();
 
     // Vertical blur -> bright_rt (ping-pong back)
     r->bindRenderTarget(res.bloom.bright_rt);
     r->bindRenderTargetTexture(res.bloom.blur_rt, 0);
     ub_bloom_blur_.set(U::Horizontal, 0.0f);
-    ctx.drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawFullscreen();
 
     r->bindRenderTarget(INVALID_RENDER_TARGET);
     r->setCullFace(true);

@@ -3,9 +3,9 @@
 #include "demo/scene/demo_camera.h"
 #include "demo/demo_debug.h"
 #include "engine/frame_data.h"
-#include "demo/pipeline/demo_pipeline.h"
+#include "engine/render_pipeline.h"
 #include "demo/pipeline/pass_factory.h"
-#include "demo/pipeline/pipeline_builder.h"
+#include "demo/pipeline/demo_pipeline_policy.h"
 #include "engine/resource_id.h"
 #include "engine/scene_data.h"
 #include "demo/tier/tier_resource_view.h"
@@ -160,7 +160,7 @@ private:
 
     // Render passes (owned, accessed only through pipeline)
     std::vector<std::unique_ptr<RenderPassBase>> passes_;
-    DemoPipeline pipeline_;
+    RenderPipeline pipeline_;
 
     int viewport_w_, viewport_h_;
     bool initialized_;

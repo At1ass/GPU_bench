@@ -1,19 +1,19 @@
 #pragma once
 #include "engine/fullscreen_pass.h"
-#include "demo/scene/demo_scene.h"
 #include "demo/demo_debug.h"
+#include "demo/pipeline/demo_pass_meta.h"
 
-class VolumetricFogPass : public FullscreenPass {
+struct DemoTierConfig;
+struct TierResourceView;
+
+class VolumetricFogPass : public FullscreenPass, public DemoPassMeta {
 public:
     const char* name() const override { return "volumetric_fog"; }
-    void init(const TierResourceView& res);
+    void init(const TierResourceView& res, const DemoTierConfig& cfg,
+              const DemoDebugOverrides& dbg);
 
     // FullscreenPass interface
-    void setup(const TierResourceView& res) override;
-    void inputs(PassContext& ctx, const TierResourceView& res,
-                const FrameData& fd) override;
-    void uniforms(UniformBlock& ub, const FrameData& fd,
-                  const DemoTierConfig& cfg) override;
+    void onExecute(PassContext& ctx, FrameData& fd, const SceneData& scene) override;
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -23,12 +23,12 @@ public:
         return d;
     }
     int resourceDeclCount() const override { return 2; }
-    DemoTier minTier() const override { return DemoTier::Ultra; }
-    bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides& dbg) const override {
-        return cfg.enable_volumetric_fog && !dbg.skip_vol_fog;
-    }
+    int minTier() const override { return 4; }
+    bool isEnabled() const override;
     int executionOrder() const override { return 100; }
 
 private:
     const TierResourceView* res_ = nullptr;
+    const DemoTierConfig* cfg_ = nullptr;
+    const DemoDebugOverrides* dbg_ = nullptr;
 };

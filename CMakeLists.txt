@@ -257,10 +257,25 @@ set(ENGINE_SOURCES
     src/engine/geometry_pass.cpp
     src/engine/compute_pass.cpp
     src/engine/draw_list.cpp
+    src/engine/shader_loader.cpp
+    src/engine/shader_cache.cpp
+    src/engine/pipeline_policy.cpp
+    src/engine/pipeline_builder.cpp
 )
 add_library(gpubench_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(gpubench_engine PUBLIC src extern)
 target_link_libraries(gpubench_engine PUBLIC gpubench_core)
+
+# --- Standalone engine demo (proves engine is self-contained) ---
+if(NOT ANDROID)
+    add_executable(spinning_cube examples/spinning_cube.cpp)
+    target_include_directories(spinning_cube PRIVATE src extern)
+    target_link_libraries(spinning_cube PRIVATE gpubench_engine)
+
+    add_executable(postprocess_demo examples/postprocess_demo.cpp)
+    target_include_directories(postprocess_demo PRIVATE src extern)
+    target_link_libraries(postprocess_demo PRIVATE gpubench_engine)
+endif()
 
 # --- Benchmark executable ---
 # Bench library sources (shared between gpu_benchmark and unit tests)
@@ -331,13 +346,12 @@ set(DEMO_SOURCES
     src/demo/scene/scene_loader.cpp
     src/demo/scene/materials.cpp
     # Tier (shader config + compilation)
-    src/demo/tier/shader_loader.cpp
-    src/demo/tier/shader_cache.cpp
+    src/demo/tier/shader_bank.cpp
     src/demo/tier/demo_tier_config.cpp
     src/demo/tier/tier_config_validate.cpp
     # Pipeline
     src/demo/pipeline/pass_factory.cpp
-    src/demo/pipeline/pipeline_builder.cpp
+    src/demo/pipeline/demo_pipeline_policy.cpp
     src/demo/passes/sky_pass.cpp
     src/demo/passes/shadow_pass.cpp
     src/demo/passes/particle_pass.cpp
@@ -457,8 +471,8 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/extern/doctest/doctest.h" AND NOT CMAKE_CROSSCOMP
         tests/test_score_formulas.cpp
         # Demo sources needed for tests
         src/demo/scene/demo_camera.cpp
-        src/demo/tier/shader_cache.cpp
-        src/demo/tier/shader_loader.cpp
+        src/demo/tier/shader_bank.cpp
+        src/demo/tier/demo_tier_config.cpp
         ${BENCH_LIB_SOURCES}
     )
     target_include_directories(gpubench_tests PRIVATE src extern/doctest)

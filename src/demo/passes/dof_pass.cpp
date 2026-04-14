@@ -1,21 +1,27 @@
 #include "demo/passes/dof_pass.h"
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
+#include "demo/scene/demo_scene.h"
 #include "demo/demo_utils.h"
 
-void DoFPass::init(const TierResourceView& res) {
-    ub().init(res.t4.dof.shader);
-    setShader(res.t4.dof.shader);
+void DoFPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                   const DemoDebugOverrides& dbg) {
+    res_ = &res;
+    cfg_ = &cfg;
+    dbg_ = &dbg;
+    ub().init(res.shader(ShaderBank::DofT4));
+    setShader(res.shader(ShaderBank::DofT4));
 }
 
-void DoFPass::setup(const TierResourceView& res) {
-    (void)res;
+bool DoFPass::isEnabled() const {
+    return cfg_ && dbg_ && cfg_->enable_dof && !dbg_->skip_dof;
 }
 
-void DoFPass::bind(PassContext& ctx, UniformBlock& ub,
-                   const TierResourceView& res,
-                   const FrameData& fd,
-                   const DemoTierConfig& cfg) {
+void DoFPass::onBind(PassContext& ctx, UniformBlock& ub,
+                     const FrameData& fd) {
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
+
     ctx.bindRTTexture(0, res.t4.hdr.scene_rt);
     ub.set(U::SceneTex, 0);
     ctx.bindTexture(1, res.t4.hdr.depth_tex);
@@ -25,17 +31,16 @@ void DoFPass::bind(PassContext& ctx, UniformBlock& ub,
 
     ub.set(U::ScreenSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
-    ub.set(U::Near, kDemoNear);
-    ub.set(U::Far, kDemoFar);
+    ub.set(U::Near, kDefaultNear);
+    ub.set(U::Far, kDefaultFar);
     ub.set(U::FocalDistance, cfg.dof_focal_distance);
     ub.set(U::FocalRange, 5.0f);
     ub.set(U::MaxBlur, 5.0f);
     ub.set(U::DofStrength, cfg.dof_strength);
 }
 
-void DoFPass::workgroups(const FrameData& fd, const DemoTierConfig& cfg,
-                         int& gx, int& gy, int& gz) {
-    (void)cfg;
+void DoFPass::onWorkgroups(const FrameData& fd,
+                           int& gx, int& gy, int& gz) {
     gx = (fd.viewport_w + 15) / 16;
     gy = (fd.viewport_h + 15) / 16;
     gz = 1;

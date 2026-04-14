@@ -4,15 +4,13 @@
 #include <cmath>
 
 void GeometryPass::execute(PassContext& ctx, FrameData& fd,
-                           const TierResourceView& res,
-                           const DemoTierConfig& cfg,
                            const SceneData& scene) {
     if (!pipeline_managed_rt_)
         ctx.beginRT(output_rt_, out_w_, out_h_, has_clear_ ? clear_ : nullptr);
     ctx.applyState(state_);
 
     ub_.use();
-    sceneSetup(ub_, ctx, fd, res, cfg);
+    onSceneSetup(ub_, ctx, fd);
 
     const std::vector<SceneObject>* objects = objectList(scene);
     if (!objects) {
@@ -32,7 +30,7 @@ void GeometryPass::execute(PassContext& ctx, FrameData& fd,
             float dz = obj.bounds_center.z - fd.cam_pos.z;
             // Squared distance preserves sort order (sqrt is monotonic)
             float dist_sq = dx * dx + dy * dy + dz * dz;
-            float depth = dist_sq / (kDemoFar * kDemoFar);
+            float depth = dist_sq / (kDefaultFar * kDefaultFar);
             if (depth > 1.0f) depth = 1.0f;
             dl.push(obj, shaderIdFor(obj), materialIdFor(obj), depth);
         }

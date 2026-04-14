@@ -55,6 +55,10 @@ public:
     virtual void beginTransformFeedback(BufferHandle tf_buf) = 0;
     virtual void endTransformFeedback() = 0;
 
+    // Fullscreen triangle via gl_VertexID (GL 3.0+, no VBO needed).
+    // Uses a pre-created empty VAO for core profile compatibility.
+    virtual void drawFullscreenTriangle() = 0;
+
 protected:
     bool has_vao_ = false;
     bool has_instancing_ = false;

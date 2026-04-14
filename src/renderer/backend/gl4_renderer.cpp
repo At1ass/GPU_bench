@@ -247,6 +247,10 @@ void GL4Renderer::destroySSBO(BufferHandle h) {
     free_ssbo_slots_.push_back(h);
 }
 
+void GL4Renderer::destroyBuffer(BufferHandle h) {
+    destroySSBO(h);
+}
+
 void GL4Renderer::bindSSBO(BufferHandle h, int binding) {
     if (h == INVALID_BUFFER || h.id >= ssbos_.size() || !ssbos_[h.id].valid) return;
 #ifdef CB_NEED_GL_LOAD

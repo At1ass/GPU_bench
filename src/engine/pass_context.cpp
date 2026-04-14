@@ -1,9 +1,18 @@
 #include "engine/pass_context.h"
 
-PassContext::PassContext(Renderer* r)
-    : r_(r), gl3_(nullptr), gl4_(nullptr), compute_(nullptr),
+PassContext::PassContext(Renderer* r, MeshHandle fsquad)
+    : r_(r), fsquad_(fsquad), gl3_(nullptr), gl4_(nullptr), compute_(nullptr),
       features_cached_(false), current_rt_() {
     stats_.reset();
+}
+
+void PassContext::drawFullscreen() {
+    cacheFeatures();
+    if (gl3_) {
+        gl3_->drawFullscreenTriangle();
+    } else {
+        r_->drawMesh(fsquad_);
+    }
 }
 
 void PassContext::beginFrame() {

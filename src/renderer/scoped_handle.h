@@ -27,6 +27,9 @@ template<> struct HandleTraits<ShaderHandle> {
 template<> struct HandleTraits<RenderTargetHandle> {
     static void destroy(Renderer* r, RenderTargetHandle h) { r->destroyRenderTarget(h); }
 };
+template<> struct HandleTraits<BufferHandle> {
+    static void destroy(Renderer* r, BufferHandle h) { r->destroyBuffer(h); }
+};
 
 template<typename H>
 class ScopedHandle {
@@ -94,3 +97,4 @@ using ScopedMesh          = ScopedHandle<MeshHandle>;
 using ScopedTexture       = ScopedHandle<TextureHandle>;
 using ScopedShader        = ScopedHandle<ShaderHandle>;
 using ScopedRenderTarget  = ScopedHandle<RenderTargetHandle>;
+using ScopedBuffer        = ScopedHandle<BufferHandle>;

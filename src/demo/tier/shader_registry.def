@@ -1,0 +1,58 @@
+// Shader registry — single source of truth for all demo shader declarations.
+//
+// Format: SHADER(Id, base_name, type, min_tier, upgrade)
+//   Id:        C++ enum value and lookup key (ShaderBank::Id)
+//   base_name: file name stem without extension
+//              Uber  → data/shaders/uber/{base_name}.vert + .frag
+//              GL4   → data/shaders/gl4/{base_name}.vert + .frag
+//              Compute → data/shaders/gl4/{base_name}.comp
+//              Tess  → data/shaders/gl4/{base_name}.vert + .tcs + .tes + .frag
+//   type:      Uber / GL4 / Compute / Tess
+//   min_tier:  Basic / Enhanced / Quality / Ultra
+//   upgrade:   Id of the T4 GL4 shader that replaces this one at Ultra tier, or NONE
+//
+// Uber shaders are compiled per-tier via ShaderCache::get() with featuresForTier().
+// GL4/Compute/Tess shaders are compiled once (T4 only, GLSL 430).
+// Upgrade chains: ShaderBank::get(Island, Ultra) auto-returns IslandT4 if compiled.
+//
+// Adding a new shader: add one line here + create the GLSL file(s).
+
+// --- T1+ uber shaders (vert+frag, per-tier feature variants) ---
+SHADER(Sky,              "sky",               Uber,    Basic,    NONE)
+SHADER(Island,           "island",            Uber,    Basic,    IslandT4)
+SHADER(Fur,              "fur",               Uber,    Basic,    FurT4)
+SHADER(Particle,         "particle",          Uber,    Basic,    NONE)
+
+// --- T2+ uber shaders ---
+SHADER(ShadowDepth,      "shadow_depth",      Uber,    Enhanced, NONE)
+SHADER(BloomExtract,     "bloom_extract",     Uber,    Enhanced, NONE)
+SHADER(BloomBlur,        "bloom_blur",        Uber,    Enhanced, NONE)
+SHADER(BloomComposite,   "bloom_composite",   Uber,    Enhanced, NONE)
+SHADER(Grass,            "grass",             Uber,    Enhanced, GrassT4)
+SHADER(Ssao,             "ssao",              Uber,    Enhanced, NONE)
+SHADER(SsaoBlur,         "ssao_blur",         Uber,    Enhanced, NONE)
+
+// --- T3+ uber shaders ---
+SHADER(Torch,            "torch",             Uber,    Quality,  NONE)
+
+// --- T4 GL4 vert+frag (PBR/HDR variants, no per-tier permutations) ---
+SHADER(IslandT4,         "island_t4",         GL4,     Ultra,    NONE)
+SHADER(FurT4,            "fur_t4",            GL4,     Ultra,    NONE)
+SHADER(GrassT4,          "grass_t4",          GL4,     Ultra,    NONE)
+SHADER(ParticleRenderT4, "particle_render_t4", GL4,    Ultra,    NONE)
+SHADER(VolumetricFogT4,  "volumetric_fog_t4", GL4,     Ultra,    NONE)
+SHADER(ToneMapT4,        "tone_map_t4",       GL4,     Ultra,    NONE)
+
+// --- T4 tessellation ---
+SHADER(TessT4,           "tess_t4",           Tess,    Ultra,    NONE)
+
+// --- T4 compute ---
+SHADER(ParticlesT4,      "particles_t4",      Compute, Ultra,    NONE)
+SHADER(GtaoT4,           "gtao_t4",           Compute, Ultra,    NONE)
+SHADER(GtaoBlurT4,       "gtao_blur_t4",      Compute, Ultra,    NONE)
+SHADER(BloomDownT4,      "bloom_downsample_t4", Compute, Ultra,  NONE)
+SHADER(BloomUpT4,        "bloom_upsample_t4", Compute, Ultra,    NONE)
+SHADER(HistogramT4,      "histogram_t4",      Compute, Ultra,    NONE)
+SHADER(ExposureT4,       "exposure_t4",       Compute, Ultra,    NONE)
+SHADER(SsrT4,            "ssr_t4",            Compute, Ultra,    NONE)
+SHADER(DofT4,            "dof_t4",            Compute, Ultra,    NONE)

@@ -8,20 +8,27 @@
 #include "platform/logger.h"
 #include <cmath>
 
-void GTAOPass::init(const TierResourceView& res) {
-    ub_gtao_.init(res.t4.gtao.shader);
-    ub_blur_.init(res.t4.gtao.blur_shader);
+void GTAOPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                    const DemoDebugOverrides& dbg) {
+    res_ = &res;
+    cfg_ = &cfg;
+    dbg_ = &dbg;
+    ub_gtao_.init(res.shader(ShaderBank::GtaoT4));
+    ub_blur_.init(res.shader(ShaderBank::GtaoBlurT4));
 }
 
-void GTAOPass::execute(PassContext& ctx, FrameData& fd,
-                       const TierResourceView& res,
-                       const DemoTierConfig& cfg,
-                       const SceneData& scene) {
+bool GTAOPass::isEnabled() const {
+    return cfg_ && dbg_ && cfg_->enable_gtao && !dbg_->skip_gtao;
+}
+
+void GTAOPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
     (void)scene;
 
     // --- GTAO compute pass ---
-    if (!res.t4.gtao.shader || res.t4.gtao.tex == INVALID_TEXTURE) return;
+    if (!res.shader(ShaderBank::GtaoT4) || res.t4.gtao.tex == INVALID_TEXTURE) return;
 
     GL4Features* g4 = r->features<GL4Features>();
     ComputeFeatures* cf = r->features<ComputeFeatures>();
@@ -34,12 +41,12 @@ void GTAOPass::execute(PassContext& ctx, FrameData& fd,
 
     g4->bindImageTexture(res.t4.gtao.tex, 0, false, true); // write-only
 
-    float fov_rad = kDemoFovDeg * CB_PI / 180.0f;
+    float fov_rad = kDefaultFovDeg * CB_PI / 180.0f;
     float aspect = static_cast<float>(fd.viewport_w) / static_cast<float>(fd.viewport_h > 0 ? fd.viewport_h : 1);
     ub_gtao_.set(U::ScreenSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
-    ub_gtao_.set(U::Near, kDemoNear);
-    ub_gtao_.set(U::Far, kDemoFar);
+    ub_gtao_.set(U::Near, kDefaultNear);
+    ub_gtao_.set(U::Far, kDefaultFar);
     ub_gtao_.set(U::Aspect, aspect);
     ub_gtao_.set(U::TanHalfFov, tanf(fov_rad * 0.5f));
     ub_gtao_.set(U::AoRadius, cfg.ssao_radius);
@@ -51,7 +58,7 @@ void GTAOPass::execute(PassContext& ctx, FrameData& fd,
     g4->imageMemoryBarrier();
 
     // --- GTAO bilateral blur pass ---
-    if (!res.t4.gtao.blur_shader || res.t4.gtao.blur_tex == INVALID_TEXTURE) return;
+    if (!res.shader(ShaderBank::GtaoBlurT4) || res.t4.gtao.blur_tex == INVALID_TEXTURE) return;
 
     ub_blur_.use();
 
@@ -62,8 +69,8 @@ void GTAOPass::execute(PassContext& ctx, FrameData& fd,
     ub_blur_.set(U::DepthTex, 0);
     ub_blur_.set(U::ScreenSize,
         static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
-    ub_blur_.set(U::Near, kDemoNear);
-    ub_blur_.set(U::Far, kDemoFar);
+    ub_blur_.set(U::Near, kDefaultNear);
+    ub_blur_.set(U::Far, kDefaultFar);
 
     gx = (fd.viewport_w + 15) / 16;
     gy = (fd.viewport_h + 15) / 16;

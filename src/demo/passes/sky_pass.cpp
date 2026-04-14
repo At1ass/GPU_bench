@@ -4,21 +4,22 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "platform/logger.h"
 
-void SkyPass::init(const TierResourceView& res) {
-    ub_.init(res.core.sky_shader);
+void SkyPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                   const DemoDebugOverrides& dbg) {
+    (void)cfg; (void)dbg;
+    res_ = &res;
+    ub_.init(res.shader(ShaderBank::Sky));
 }
 
-void SkyPass::execute(PassContext& ctx, FrameData& fd,
-                      const TierResourceView& res,
-                      const DemoTierConfig& cfg,
-                      const SceneData& scene) {
+void SkyPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg;
+    const TierResourceView& res = *res_;
     (void)scene;
 
-    if (!res.core.sky_shader || res.core.sky_mesh == MeshHandle()) return;
+    if (!res.shader(ShaderBank::Sky) || res.core.sky_mesh == MeshHandle()) return;
 
     r->setDepthTest(false);
     r->setCullFace(false);

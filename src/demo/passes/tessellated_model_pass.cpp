@@ -4,18 +4,26 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 
-void TessellatedModelPass::init(const TierResourceView& res) {
-    ub_.init(res.t4.tess_shader);
+void TessellatedModelPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                                const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ub_.init(res.shader(ShaderBank::TessT4));
 }
 
-void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd,
-                                   const TierResourceView& res,
-                                   const DemoTierConfig& cfg,
-                                   const SceneData& scene) {
+bool TessellatedModelPass::isEnabled() const {
+    return cfg_ && cfg_->enable_tessellation;
+}
+
+void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
     GL4Features* g4 = r->features<GL4Features>();
     if (!g4 || scene.model_mesh == MeshHandle()) return;
 
@@ -57,7 +65,7 @@ void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd,
         ub_.set(U::HasShadow, 0.0f);
     }
 
-    setPointLightUniforms(res.t4.tess_shader, fd, cfg.point_light_count);
+    setPointLightUniforms(ub_, fd, cfg.point_light_count);
     ub_.set(U::HasNormalMap, 0.0f);
 
     g4->setPatchVertices(3);
@@ -67,7 +75,7 @@ void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd,
 
     // Still draw fur on top of tessellated model
     if (fur_pass_)
-        fur_pass_->execute(ctx, fd, res, cfg, scene);
+        fur_pass_->execute(ctx, fd, scene);
 
     // Render all tessellated scene objects (stones, terrain, etc.)
     // Re-activate tess shader after fur pass changed it
@@ -103,7 +111,7 @@ void TessellatedModelPass::execute(PassContext& ctx, FrameData& fd,
             } else {
                 ub_.set(U::HasShadow, 0.0f);
             }
-            setPointLightUniforms(res.t4.tess_shader, fd, cfg.point_light_count);
+            setPointLightUniforms(ub_, fd, cfg.point_light_count);
 
             g4->setPatchVertices(3);
             r->setDepthTest(true);

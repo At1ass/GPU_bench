@@ -182,7 +182,7 @@ struct DemoApp {
             return false;
         }
 
-        SDL_GL_GetDrawableSize(ctx->window(), &window_w, &window_h);
+        ctx->getDrawableSize(&window_w, &window_h);
         LOG_DBG("DemoApp: drawable size %dx%d", window_w, window_h);
 
         renderer = createRenderer(cfg.backend);
@@ -211,7 +211,7 @@ struct DemoApp {
         while (ctx->pollEvent(&e)) {
             if (e.type == SDL_QUIT) running = false;
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED)
-                SDL_GL_GetDrawableSize(ctx->window(), &window_w, &window_h);
+                ctx->getDrawableSize(&window_w, &window_h);
 #ifdef __ANDROID__
             if (e.type == SDL_APP_WILLENTERBACKGROUND) paused = true;
             if (e.type == SDL_APP_DIDENTERFOREGROUND) paused = false;

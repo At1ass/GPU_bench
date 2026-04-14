@@ -167,6 +167,10 @@ public:
     // Copy current FBO color attachment to a bound texture. Default: no-op.
     virtual void copyFramebufferToTexture(TextureHandle tex, int w, int h) { (void)tex; (void)w; (void)h; }
 
+    // Buffer destruction. Overridden by backends with compute support.
+    // Allows ScopedHandle<BufferHandle> to work uniformly with other handle types.
+    virtual void destroyBuffer(BufferHandle h) { (void)h; }
+
     // Float texture (RGBA16F) for compute shader output. Default: unsupported.
     virtual TextureHandle createFloatTexture(int w, int h) { (void)w; (void)h; return INVALID_TEXTURE; }
 

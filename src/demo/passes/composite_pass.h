@@ -1,19 +1,20 @@
 #pragma once
 #include "engine/fullscreen_pass.h"
-#include "demo/scene/demo_scene.h"
+#include "demo/pipeline/demo_pass_meta.h"
+
+struct DemoTierConfig;
+struct DemoDebugOverrides;
+struct TierResourceView;
 
 // T2/T3 final composite: scene + bloom + SSAO + vignette + color grading.
-class CompositePass : public FullscreenPass {
+class CompositePass : public FullscreenPass, public DemoPassMeta {
 public:
     const char* name() const override { return "composite"; }
-    void init(const TierResourceView& res);
+    void init(const TierResourceView& res, const DemoTierConfig& cfg,
+              const DemoDebugOverrides& dbg);
 
     // FullscreenPass interface
-    void setup(const TierResourceView& res) override;
-    void inputs(PassContext& ctx, const TierResourceView& res,
-                const FrameData& fd) override;
-    void uniforms(UniformBlock& ub, const FrameData& fd,
-                  const DemoTierConfig& cfg) override;
+    void onExecute(PassContext& ctx, FrameData& fd, const SceneData& scene) override;
 
     const ResourceDecl* resourceDecls() const override {
         static const ResourceDecl d[] = {
@@ -24,13 +25,12 @@ public:
         return d;
     }
     int resourceDeclCount() const override { return 3; }
-    DemoTier minTier() const override { return DemoTier::Enhanced; }
-    bool isEnabled(const DemoTierConfig& cfg, const DemoDebugOverrides&) const override {
-        return cfg.enable_bloom && !cfg.enable_hdr;
-    }
+    int minTier() const override { return 2; }
+    bool isEnabled() const override;
     int executionOrder() const override { return 200; }
     PassRole passRole() const override { return PassRole::FinalComposite; }
 
 private:
     const TierResourceView* res_ = nullptr;
+    const DemoTierConfig* cfg_ = nullptr;
 };

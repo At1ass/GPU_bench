@@ -4,16 +4,26 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "renderer/features.h"
 
-void HDRCompositePass::init(const TierResourceView& res) {
-    if (res.t4.hdr.tone_map_shader)
-        ub_tone_map_.init(res.t4.hdr.tone_map_shader);
+void HDRCompositePass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                            const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    if (res.shader(ShaderBank::ToneMapT4))
+        ub_tone_map_.init(res.shader(ShaderBank::ToneMapT4));
 }
 
-void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResourceView& res,
-                               const DemoTierConfig& cfg, const SceneData& scene) {
+bool HDRCompositePass::isEnabled() const {
+    return cfg_ && cfg_->enable_hdr;
+}
+
+void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
     (void)scene;
 
     r->setViewport(0, 0, fd.viewport_w, fd.viewport_h);
@@ -91,7 +101,7 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     ub_tone_map_.set(U::Exposure, exposure * 1.167f);
 
     // Lens flare: compute sun screen position
-    // sun_dir → view space → clip space → screen UV
+    // sun_dir -> view space -> clip space -> screen UV
     float sun_vis = 0.0f;
     float sun_sx = 0.5f, sun_sy = 0.5f;
     if (fd.sun_dir.y > -0.05f) { // sun above horizon
@@ -119,7 +129,7 @@ void HDRCompositePass::execute(PassContext& ctx, FrameData& fd, const TierResour
     ub_tone_map_.set(U::ChromaticStrength, cfg.chromatic_strength);
     ub_tone_map_.set(U::GrainStrength, cfg.grain_strength);
 
-    ctx.drawMesh(res.bloom.fullscreen_quad);
+    ctx.drawFullscreen();
 
     r->setDepthTest(true);
     r->setCullFace(true);

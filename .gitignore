@@ -10,3 +10,4 @@ gpu_benchmark
 .vscode/
 CMakeCache.txt
 CMakeFiles/
+compile_commands.json

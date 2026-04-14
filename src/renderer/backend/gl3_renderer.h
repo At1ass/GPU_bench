@@ -43,6 +43,7 @@ public:
                                                const char* const* varyings, int varying_count) override;
     void         beginTransformFeedback(BufferHandle tf_buf) override;
     void         endTransformFeedback() override;
+    void         drawFullscreenTriangle() override;
 
 protected:
     void* queryFeature(int id) override;
@@ -57,4 +58,5 @@ private:
     std::vector<GLBuffer> tf_buffers_;
     std::vector<BufferHandle> free_tf_slots_;
     bool tf_active_ = false;
+    GLuint empty_vao_ = 0;  // for attributeless fullscreen triangle
 };

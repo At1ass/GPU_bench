@@ -90,6 +90,11 @@ bool GL3Renderer::init(int w, int h) {
     ubos_.push_back(invalid_buf);
     tf_buffers_.push_back(invalid_buf);
 
+    // Create empty VAO for attributeless fullscreen triangle (gl_VertexID)
+    if (has_vao_) {
+        glGenVertexArrays(1, &empty_vao_);
+    }
+
     if (!has_vao_) {
         LOG_WRN("GL3Renderer: VAO not available, falling back to GL2 behavior");
     }
@@ -135,6 +140,12 @@ void GL3Renderer::shutdown() {
     }
     tf_buffers_.clear();
     free_tf_slots_.clear();
+
+    // Clean up empty VAO for fullscreen triangle
+    if (empty_vao_) {
+        glDeleteVertexArrays(1, &empty_vao_);
+        empty_vao_ = 0;
+    }
 
     // Clean up VAOs before GL2Renderer::shutdown deletes VBOs/IBOs
     for (size_t i = 1; i < meshes_.size(); i++) {
@@ -776,5 +787,13 @@ TextureHandle GL3Renderer::getDepthTexture(RenderTargetHandle rt) {
         textures_.push_back(std::move(gt));
     }
     return th;
+}
+
+void GL3Renderer::drawFullscreenTriangle() {
+    if (!empty_vao_) return;
+    glBindVertexArray(empty_vao_);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    renderer_stats_.draw_calls++;
 }
 #endif // CB_GLES_NATIVE

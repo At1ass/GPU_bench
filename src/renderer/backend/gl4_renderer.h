@@ -16,6 +16,7 @@ public:
 
     BufferHandle createSSBO(int size_bytes, SSBOUsage usage = SSBOUsage::GpuReadWrite) override;
     void         destroySSBO(BufferHandle h) override;
+    void         destroyBuffer(BufferHandle h) override; // unified buffer destruction
     void         bindSSBO(BufferHandle h, int binding) override;
     void         updateSSBO(BufferHandle h, const void* data, int size_bytes) override;
     void         readSSBO(BufferHandle h, void* data, int offset, int size_bytes) override;

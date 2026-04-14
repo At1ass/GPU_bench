@@ -21,6 +21,9 @@ public:
     SDL_Window* window() const { return window_; }
     bool        isHeadless() const { return headless_; }
 
+    // Drawable size in pixels (may differ from window size on HiDPI)
+    void getDrawableSize(int* w, int* h) const;
+
     // Events — pumps SDL events, feeds ImGui, returns true while events remain.
     // Fills *e with the current event. Caller handles SDL_QUIT etc.
     bool pollEvent(SDL_Event* e);

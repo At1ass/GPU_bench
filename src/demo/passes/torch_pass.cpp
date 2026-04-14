@@ -4,15 +4,25 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "platform/logger.h"
 
-void TorchPass::init(const TierResourceView& res) {
-    if (res.core.torch_shader)
-        ub_.init(res.core.torch_shader);
+void TorchPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                     const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ShaderProgram* s = res.shader(ShaderBank::Torch);
+    if (s)
+        ub_.init(s);
+}
+
+bool TorchPass::isEnabled() const {
+    return cfg_ && cfg_->point_light_count >= 3;
 }
 
 // Torch positions: on top of column stumps C, D (standalone ruins, no arch above).
-// Stump mesh: cylinder(16, 1.2, 0.30) — height 1.2, centered → top at +0.6 from base.
+// Stump mesh: cylinder(16, 1.2, 0.30) — height 1.2, centered -> top at +0.6 from base.
 // Stump C: (-3.0, terrain, -0.5), Stump D: (3.0, terrain, -0.5)
 static void getTorchPositions(float out[2][3]) {
     static const float stump_x[2] = { -3.0f, 3.0f };
@@ -28,13 +38,12 @@ static void getTorchPositions(float out[2][3]) {
     }
 }
 
-void TorchPass::execute(PassContext& ctx, FrameData& fd,
-                        const TierResourceView& res,
-                        const DemoTierConfig& cfg,
-                        const SceneData& scene) {
+void TorchPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
+    const TierResourceView& res = *res_;
     (void)scene;
-    if (!res.core.torch_shader || res.core.torch_mesh == MeshHandle()) return;
+    ShaderProgram* torch = res.shader(ShaderBank::Torch);
+    if (!torch || res.core.torch_mesh == MeshHandle()) return;
 
     ub_.use();
     ub_.set(U::Proj, fd.proj);
@@ -44,8 +53,8 @@ void TorchPass::execute(PassContext& ctx, FrameData& fd,
 
     float tp[2][3];
     getTorchPositions(tp);
-    res.core.torch_shader->set3f("u_torch_positions[0]", tp[0][0], tp[0][1], tp[0][2]);
-    res.core.torch_shader->set3f("u_torch_positions[1]", tp[1][0], tp[1][1], tp[1][2]);
+    ub_.set(U::TorchPos0, tp[0][0], tp[0][1], tp[0][2]);
+    ub_.set(U::TorchPos1, tp[1][0], tp[1][1], tp[1][2]);
 
     r->setDepthTest(true);
     r->setDepthMask(false);

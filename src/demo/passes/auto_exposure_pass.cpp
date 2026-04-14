@@ -7,20 +7,25 @@
 #include "renderer/features.h"
 #include "platform/logger.h"
 
-void AutoExposurePass::init(const TierResourceView& res) {
-    ub_histogram_.init(res.t4.exposure.histogram_shader);
-    ub_exposure_.init(res.t4.exposure.exposure_shader);
+void AutoExposurePass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                            const DemoDebugOverrides& dbg) {
+    res_ = &res;
+    cfg_ = &cfg;
+    dbg_ = &dbg;
+    ub_histogram_.init(res.shader(ShaderBank::HistogramT4));
+    ub_exposure_.init(res.shader(ShaderBank::ExposureT4));
 }
 
-void AutoExposurePass::execute(PassContext& ctx, FrameData& fd,
-                               const TierResourceView& res,
-                               const DemoTierConfig& cfg,
-                               const SceneData& scene) {
+bool AutoExposurePass::isEnabled() const {
+    return cfg_ && dbg_ && cfg_->enable_auto_exposure && !dbg_->skip_auto_exposure;
+}
+
+void AutoExposurePass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg;
+    const TierResourceView& res = *res_;
     (void)scene;
 
-    if (!res.t4.exposure.histogram_shader || !res.t4.exposure.exposure_shader) return;
+    if (!res.shader(ShaderBank::HistogramT4) || !res.shader(ShaderBank::ExposureT4)) return;
     if (res.t4.exposure.histogram_ssbo == INVALID_BUFFER || res.t4.exposure.exposure_ssbo == INVALID_BUFFER) return;
 
     ComputeFeatures* cf = r->features<ComputeFeatures>();

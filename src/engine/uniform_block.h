@@ -52,6 +52,9 @@ public:
     void set(U::Id id, float x, float y, float z) {
         int l = loc(id); if (l >= 0 && shader_) shader_->set3f_raw(l, x, y, z);
     }
+    void set(U::Id id, float x, float y, float z, float w) {
+        int l = loc(id); if (l >= 0 && shader_) shader_->set4f_raw(l, x, y, z, w);
+    }
     void set(U::Id id, const Vec3& v) {
         set(id, v.x, v.y, v.z);
     }

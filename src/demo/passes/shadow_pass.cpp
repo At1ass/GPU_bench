@@ -2,27 +2,28 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 
-void ShadowPass::init(const TierResourceView& res) {
-    ub().init(res.shadow.shader);
-    setShader(res.shadow.shader);
+void ShadowPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                      const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    cfg_ = &cfg;
+    ShaderProgram* s = res.shader(ShaderBank::ShadowDepth);
+    ub().init(s);
+    setShader(s);
     setOutputRT(res.shadow.rt, res.shadow.map_size, res.shadow.map_size);
     setState(RenderState::shadow());
     setClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
-void ShadowPass::setup(const TierResourceView& res) {
-    (void)res;
+void ShadowPass::onSceneSetup(UniformBlock& ub, PassContext& ctx,
+                               const FrameData& fd) {
+    (void)ctx;
+    ub.set(U::LightVP, fd.light_vp);
 }
 
-void ShadowPass::sceneSetup(UniformBlock& ub, PassContext& ctx,
-                            const FrameData& fd,
-                            const TierResourceView& res,
-                            const DemoTierConfig& cfg) {
-    (void)ctx;
-    (void)res;
-    (void)cfg;
-    ub.set(U::LightVP, fd.light_vp);
+bool ShadowPass::isEnabled() const {
+    return cfg_ && cfg_->enable_shadows;
 }
 
 bool ShadowPass::objectFilter(const SceneObject& obj,

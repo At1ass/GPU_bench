@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/frustum.h"
-#include "engine/shader_program.h"
+#include "engine/uniform_block.h"
 #include <cmath>
 
 // Demo-specific scene helpers. Engine-level math (frustum, bounds, view inverse)
@@ -37,13 +37,13 @@ inline float sampleTerrainHeight(float x, float z) {
     return h - 1.0f;
 }
 
-// Set point light uniforms (array uniforms, string-based)
-inline void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd, int point_light_count) {
+// Set point light uniforms via enum-based UniformBlock
+inline void setPointLightUniforms(UniformBlock& ub, const FrameData& fd, int point_light_count) {
     if (point_light_count <= 0) {
-        shader->set1i("u_point_light_count", 0);
+        ub.set(U::PointLightCount, 0);
         return;
     }
-    shader->set1i("u_point_light_count", point_light_count);
+    ub.set(U::PointLightCount, point_light_count);
     static const float centers[][2] = { {-3.5f, -2.0f}, {0.0f, -2.5f}, {-3.2f, 1.0f} };
     static const float orbit_r[] = { 1.5f, 2.2f, 1.8f };
     static const float heights[] = { 0.6f, 1.2f, 0.4f };
@@ -51,16 +51,15 @@ inline void setPointLightUniforms(ShaderProgram* shader, const FrameData& fd, in
     static const float colors[][3] = {
         { 1.5f, 1.0f, 0.4f }, { 0.4f, 1.0f, 1.5f }, { 1.0f, 1.5f, 0.4f }
     };
+    static const U::Id light_ids[] = { U::PointLight0, U::PointLight1, U::PointLight2 };
+    static const U::Id color_ids[] = { U::PointColor0, U::PointColor1, U::PointColor2 };
     for (int i = 0; i < point_light_count && i < 3; i++) {
         float angle = fd.time * speeds[i] + static_cast<float>(i) * 2.094f;
         float px = centers[i][0] + cosf(angle) * orbit_r[i];
         float py = heights[i];
         float pz = centers[i][1] + sinf(angle) * orbit_r[i];
-        char name[32];
-        snprintf(name, sizeof(name), "u_point_lights[%d]", i);
-        shader->set3f(name, px, py, pz);
-        snprintf(name, sizeof(name), "u_point_colors[%d]", i);
-        shader->set3f(name, colors[i][0], colors[i][1], colors[i][2]);
+        ub.set(light_ids[i], px, py, pz);
+        ub.set(color_ids[i], colors[i][0], colors[i][1], colors[i][2]);
     }
 }
 

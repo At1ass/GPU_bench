@@ -1,5 +1,5 @@
 #include <doctest.h>
-#include "demo/tier/shader_cache.h"
+#include "engine/shader_cache.h"
 #include "demo/tier/shader_feature.h"
 #include "engine/resource_id.h"
 

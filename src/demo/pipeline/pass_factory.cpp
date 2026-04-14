@@ -1,5 +1,6 @@
 #include "demo/pipeline/pass_factory.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "demo/passes/all_passes.h"
 // Special passes (need sub-pass wiring, not in registry)
 #include "demo/passes/scene_to_fbo_pass.h"
@@ -9,9 +10,11 @@
 // Helper: create, init, push to vector.
 template<typename T>
 static void make(std::vector<std::unique_ptr<RenderPassBase>>& out,
-                 const TierResourceView& res) {
+                 const TierResourceView& res,
+                 const DemoTierConfig& cfg,
+                 const DemoDebugOverrides& dbg) {
     out.push_back(std::unique_ptr<RenderPassBase>(new T()));
-    static_cast<T*>(out.back().get())->init(res);
+    static_cast<T*>(out.back().get())->init(res, cfg, dbg);
 }
 
 static RenderPassBase* findByName(const std::vector<std::unique_ptr<RenderPassBase>>& passes,
@@ -23,13 +26,13 @@ static RenderPassBase* findByName(const std::vector<std::unique_ptr<RenderPassBa
 
 void createPasses(std::vector<std::unique_ptr<RenderPassBase>>& out,
                   const TierResourceView& res,
-                  const DemoTierConfig& cfg) {
+                  const DemoTierConfig& cfg,
+                  const DemoDebugOverrides& dbg) {
     out.clear();
     out.reserve(24);
-    (void)cfg;
 
     // --- All standard passes from registry ---
-    #define PASS(Class) make<Class>(out, res);
+    #define PASS(Class) make<Class>(out, res, cfg, dbg);
     #include "demo/pipeline/pass_registry.def"
     #undef PASS
 
@@ -37,6 +40,7 @@ void createPasses(std::vector<std::unique_ptr<RenderPassBase>>& out,
     {
         out.push_back(std::unique_ptr<RenderPassBase>(new SceneToFBOPass()));
         SceneToFBOPass* fbo = static_cast<SceneToFBOPass*>(out.back().get());
+        fbo->init(res, cfg, dbg);
         fbo->setSubPasses(
             findByName(out, "sky"),
             findByName(out, "opaque"),
@@ -48,7 +52,7 @@ void createPasses(std::vector<std::unique_ptr<RenderPassBase>>& out,
     {
         out.push_back(std::unique_ptr<RenderPassBase>(new TessellatedModelPass()));
         TessellatedModelPass* tess = static_cast<TessellatedModelPass*>(out.back().get());
-        tess->init(res);
+        tess->init(res, cfg, dbg);
         tess->setFurPass(findByName(out, "fur"));
     }
 }

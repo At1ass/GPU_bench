@@ -4,21 +4,27 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "platform/logger.h"
 
-void ParticlePass::init(const TierResourceView& res) {
-    ub_.init(res.core.particle_shader);
+void ParticlePass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                        const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ub_.init(res.shader(ShaderBank::Particle));
 }
 
-void ParticlePass::execute(PassContext& ctx, FrameData& fd,
-                           const TierResourceView& res,
-                           const DemoTierConfig& cfg,
-                           const SceneData& scene) {
+bool ParticlePass::isEnabled() const {
+    return !cfg_ || !cfg_->enable_compute_particles;
+}
+
+void ParticlePass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
-    (void)cfg;
+    const TierResourceView& res = *res_;
     (void)scene;
 
-    if (!res.core.particle_shader || res.core.particle_mesh == MeshHandle()) return;
+    if (!res.shader(ShaderBank::Particle) || res.core.particle_mesh == MeshHandle()) return;
 
     ub_.use();
     ub_.set(U::Proj, fd.proj);

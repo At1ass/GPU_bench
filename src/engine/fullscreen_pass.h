@@ -3,46 +3,20 @@
 #include "engine/pass_context.h"
 #include "engine/uniform_block.h"
 
-// Template for "fullscreen quad" passes: input textures -> shader -> output RT.
-// Automatically handles: RT binding, viewport, fullscreen state, draw quad.
-// Author implements: setup(), inputs(), optionally uniforms().
+// Engine-level fullscreen pass template.
+// Handles: RT binding, viewport, fullscreen state, draw quad/triangle.
+// Subclasses implement onExecute() with their rendering logic.
 //
-// Covers: bloom extract, bloom blur, SSAO, SSAO blur, composite,
-//         HDR composite, volumetric fog (~7 passes).
-//
-// Example:
-//   class BloomExtract : public FullscreenPass {
-//       void setup(const TierResourceView& res) override {
-//           setShader(res.bloom.extract_shader);
-//           setQuad(res.bloom.fullscreen_quad);
-//           setOutputRT(res.bloom.bright_rt, bw, bh);
-//       }
-//       void inputs(PassContext& ctx, const TierResourceView& res,
-//                   const FrameData& fd) override {
-//           ctx.bindRTTexture(TexSlot::Primary, bloom_source_rt);
-//       }
-//       void uniforms(UniformBlock& ub, const FrameData& fd,
-//                     const DemoTierConfig& cfg) override {
-//           ub.set(U::Threshold, 0.8f);
-//       }
-//   };
+// For application-specific typed passes (with resource views, configs),
+// use an application-level adapter (e.g., DemoFullscreenPass in demo/).
 
 class FullscreenPass : public RenderPassBase {
 public:
-    // Author implements:
-    virtual void setup(const TierResourceView& res) = 0;
-    virtual void inputs(PassContext& ctx,
-                        const TierResourceView& res,
-                        const FrameData& fd) = 0;
-    virtual void uniforms(UniformBlock& ub,
-                          const FrameData& fd,
-                          const DemoTierConfig& cfg) {}
+    // Subclass implements rendering logic
+    virtual void onExecute(PassContext& ctx, FrameData& fd, const SceneData& scene) = 0;
 
-    // RenderPassBase::execute — final implementation
-    void execute(PassContext& ctx, FrameData& fd,
-                 const TierResourceView& res,
-                 const DemoTierConfig& cfg,
-                 const SceneData& scene) override;
+    // RenderPassBase::execute — framework implementation
+    void execute(PassContext& ctx, FrameData& fd, const SceneData& scene) override;
 
 protected:
     void setShader(ShaderProgram* shader) { shader_ = shader; }
@@ -53,8 +27,6 @@ protected:
     void setOutputScreen(int w, int h) {
         out_w_ = w; out_h_ = h; to_screen_ = true;
     }
-    // Skip RT binding in execute() — for passes where pipeline manages RT
-    // (e.g., FinalComposite passes where pipeline does addPassToDest)
     void setPipelineManagedRT() { pipeline_managed_rt_ = true; }
     void setClearColor(float r, float g, float b, float a) {
         has_clear_ = true;

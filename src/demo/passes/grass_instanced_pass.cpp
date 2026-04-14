@@ -4,22 +4,32 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "renderer/features.h"
 #include "platform/logger.h"
 #include <cmath>
 
-void GrassInstancedPass::init(const TierResourceView& res) {
-    ub_.init(res.grass.shader);
+void GrassInstancedPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                              const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ShaderProgram* s = res.shader(ShaderBank::Grass);
+    ub_.init(s);
 }
 
-void GrassInstancedPass::execute(PassContext& ctx, FrameData& fd,
-                                 const TierResourceView& res,
-                                 const DemoTierConfig& cfg,
-                                 const SceneData& scene) {
+bool GrassInstancedPass::isEnabled() const {
+    return cfg_ && cfg_->instanced_grass_count > 0;
+}
+
+void GrassInstancedPass::execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
     Renderer* r = ctx.renderer();
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
     (void)scene;
 
-    if (!res.grass.shader || res.grass.blade_mesh == MeshHandle()) return;
+    ShaderProgram* grass_shader = res.shader(ShaderBank::Grass);
+    if (!grass_shader || res.grass.blade_mesh == MeshHandle()) return;
     if (cfg.instanced_grass_count <= 0) return;
 
     GL3Features* g3 = r->features<GL3Features>();
@@ -66,20 +76,22 @@ void GrassInstancedPass::execute(PassContext& ctx, FrameData& fd,
             { -3.2f,   1.0f,  0.8f },  // fallen column
             {  3.8f,   2.5f,  0.6f },  // mossy block
         };
+        static const U::Id excl_ids[] = {
+            U::Exclusion0, U::Exclusion1, U::Exclusion2, U::Exclusion3,
+            U::Exclusion4, U::Exclusion5, U::Exclusion6, U::Exclusion7
+        };
         int count = 8;
-        res.grass.shader->set1i("u_exclusion_count", count);
+        ub_.set(U::ExclusionCount, count);
         for (int i = 0; i < count; i++) {
-            char buf[64];
-            snprintf(buf, sizeof(buf), "u_exclusion[%d]", i);
-            res.grass.shader->set4f(buf, zones[i].x, 0.0f, zones[i].z, zones[i].r);
+            ub_.set(excl_ids[i], zones[i].x, 0.0f, zones[i].z, zones[i].r);
         }
     }
 
-    // Puddle exclusion zones (T4 Ultra) -- array uniforms, keep string-based
+    // Puddle exclusion zones (T4 Ultra)
     if (cfg.enable_ssr) {
         ub_.set(U::PuddleCount, 1);
-        res.grass.shader->set3f("u_puddle_pos[0]", 0.0f, 0.0f, -3.5f);
-        res.grass.shader->set1f("u_puddle_radius[0]", 3.0f);
+        ub_.set(U::PuddlePos0, 0.0f, 0.0f, -3.5f);
+        ub_.set(U::PuddleRadius0, 3.0f);
     } else {
         ub_.set(U::PuddleCount, 0);
     }
@@ -95,7 +107,7 @@ void GrassInstancedPass::execute(PassContext& ctx, FrameData& fd,
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(res.grass.shader, fd, cfg.point_light_count);
+    setPointLightUniforms(ub_, fd, cfg.point_light_count);
 
     r->setDepthTest(true);
     r->setDepthMask(true);

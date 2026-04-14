@@ -1,14 +1,5 @@
 #pragma once
 
-// Demo tier levels matching GL capability.
-// Shared across pass system, scene, and pipeline.
-enum class DemoTier {
-    Basic    = 1,  // GL 2.1: forward Blinn-Phong, basic fog
-    Enhanced = 2,  // GL 3.0+: shadow map, SSAO, bloom
-    Quality  = 3,  // GL 3.3+: PCF, point lights, particles, DoF
-    Ultra    = 4   // GL 4.3+: PBR, compute particles, tessellation, vol fog
-};
-
 // Logical resource identifiers for inter-pass dependencies.
 // Passes declare which resources they read/write.
 // Builder uses these to determine execution order via topological sort.

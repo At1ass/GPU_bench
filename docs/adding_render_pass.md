@@ -83,9 +83,10 @@ public:
 #include "engine/texture_slots.h"
 
 void VignettePass::init(const TierResourceView& res) {
-    // Get shader and quad from shared resources
-    ub().init(res.core.vignette_shader);
-    setShader(res.core.vignette_shader);
+    // Get shader from ShaderBank (registered in shader_registry.def)
+    ShaderProgram* shader = res.shader(ShaderBank::Vignette);
+    ub().init(shader);
+    setShader(shader);
     setQuad(res.bloom.fullscreen_quad);
     // Let pipeline manage the output RT (most common pattern)
     setPipelineManagedRT();
@@ -147,107 +148,39 @@ void main() {
 }
 ```
 
-### 4. Register the shader in DemoResources
+### 4. Register the shader
 
-Passes receive their shaders through `TierResourceView` — a read-only snapshot
-of all compiled shaders and GPU resources for the current tier. You need to:
+All shaders are declared in a single X-macro registry. Adding a new shader
+requires **one line** in the registry file. No other files need modification
+for the shader itself.
 
-**a) Add a field to TierResourceView** (`src/demo/tier/tier_resource_view.h`):
-
-Add a pointer in the appropriate sub-struct (`Core` for always-present,
-`Shadow` for shadow-related, etc.):
+Add to `src/demo/tier/shader_registry.def`:
 
 ```cpp
-struct Core {
-    // ... existing fields ...
-    ShaderProgram* vignette_shader = nullptr;   // ← add
-};
+// Format: SHADER(Id, base_name, type, min_tier)
+// Types: Uber (vert+frag, per-tier variants), GL4 (vert+frag, T4 only),
+//        Compute (T4 only), Tess (T4 only)
+SHADER(Vignette, "vignette", Uber, Enhanced)
 ```
 
-**b) Add a shader field to DemoResources** (`src/demo/scene/demo_resources.h`):
+`ShaderBank` automatically compiles the shader for all tiers >= `min_tier`.
+Uber shaders load from `data/shaders/uber/`, GL4/Compute/Tess from `data/shaders/gl4/`.
 
-Shaders are stored in nested structs: `core_` for always-present, `shadow_` for
-shadow mapping, `bloom_` for bloom, `t4_` for Ultra-only, etc. Add a field:
-
-```cpp
-struct CoreRes {
-    // ... existing fields ...
-    ShaderProgram* vignette_cache = nullptr;   // ← add
-} core_;
-```
-
-**c) Compile the shader** (`src/demo/scene/demo_resources.cpp`):
-
-There are two patterns depending on shader type:
-
-**Vertex + Fragment shaders** — use `ShaderCache` in `compileTierShaders()`:
+Your pass accesses the shader via `res.shader(ShaderBank::Vignette)`:
 
 ```cpp
-bool DemoResources::compileTierShaders(Renderer* r, int tier) {
-    ShaderFeatureSet feat = featuresForTier(static_cast<DemoTier>(tier), ...);
-    // ...
-    if (tier >= 2) {
-        core_.vignette_cache = shader_cache_.get("vignette", feat, feat);
+void VignettePass::init(const TierResourceView& res) {
+    ShaderProgram* shader = res.shader(ShaderBank::Vignette);
+    if (shader) {
+        ub().init(shader);
+        setShader(shader);
     }
 }
 ```
 
-`shader_cache_.get("vignette", feat, feat)` loads `data/shaders/uber/vignette.vert`
-+ `.frag`, prepends tier-appropriate `#version` / `#define` preamble, processes
-`#pragma include`, compiles and caches.
-
-**Compute shaders** — load manually via `ShaderLoader` + `ComputeFeatures`:
-
-```cpp
-// In compileTierShaders() tier 4 section, or createT4Resources():
-ComputeFeatures* cf = r->features<ComputeFeatures>();
-if (cf && cf->hasCompute()) {
-    std::string cs = ShaderLoader::load("gl4/my_effect.comp");
-    ShaderHandle sh = cf->createComputeShader(cs.c_str());
-    if (sh != INVALID_SHADER) {
-        t4_.my_compute_shader.adopt(r, sh);
-    }
-}
-```
-
-Compute shaders live in `data/shaders/gl4/` (not `uber/`) and use `ShaderProgram::adopt()`
-instead of the cache — they are always tier 4 only.
-
-> **Note:** Post-process passes (SSAO, bloom) compile shaders in dedicated
-> `createSSAOResources()` / `createBloomResources()` methods called from `prepare()`,
-> not directly in `compileTierShaders()`. Follow the existing pattern for your pass type.
-
-**d) Wire into TierResourceView** (in `DemoResources::viewForTier()`):
-
-The wiring pattern depends on complexity:
-
-**Simple (single shader, null if tier too low):**
-```cpp
-// TorchPass pattern — shader is null on tiers below minimum
-view.core.vignette_shader = core_.vignette_cache;
-```
-
-**With fallback chain (per-tier variants):**
-```cpp
-// Island/Fur pattern — try tier-specific, fall back to tier 1
-if (core_.my_cache[idx])
-    view.core.my_shader = core_.my_cache[idx];
-else if (core_.my_cache[0])
-    view.core.my_shader = core_.my_cache[0];
-```
-
-**Post-process with validation (multiple resources):**
-```cpp
-// SSAO pattern — only wire if ALL required resources exist
-ShaderProgram* prog = my_.cache ? my_.cache : nullptr;
-if (idx >= 1 && prog && my_.rt) {
-    view.my_effect.shader = prog;
-    view.my_effect.rt = my_.rt.get();
-}
-```
-
-Your pass's `init()` should null-check the shader pointer — it will be nullptr
-if the tier is too low or shader compilation failed.
+`res.shader()` returns the tier-specific variant for Uber shaders (with
+automatic fallback to lower tiers), or `nullptr` if the tier is too low or
+compilation failed. No manual wiring in `TierResourceView` or `viewForTier()` needed.
 
 > **Naming convention:** Shader files use the pass name without suffix:
 > `sky` → `sky.vert` + `sky.frag`, `bloom_extract` → `bloom_extract.vert` + `bloom_extract.frag`.
@@ -442,9 +375,7 @@ When adding a new pass, verify:
 - [ ] Header in `src/demo/passes/` with class declaration
 - [ ] Implementation in `src/demo/passes/` with `init()` + template methods
 - [ ] GLSL shader(s) in `data/shaders/uber/`
-- [ ] Shader field added to `TierResourceView` struct
-- [ ] Shader compiled via `shader_cache_.get()` in `DemoResources::prepare()`
-- [ ] Shader wired into `TierResourceView` in `DemoResources::viewForTier()`
+- [ ] One line in `src/demo/tier/shader_registry.def`: `SHADER(MyShader, "name", Type, Tier)`
 - [ ] One line in `src/demo/pipeline/pass_registry.def`: `PASS(MyPassName)`
 - [ ] Include added to `src/demo/passes/all_passes.h`
 - [ ] Added to `DEMO_SOURCES` in `CMakeLists.txt`
@@ -467,6 +398,8 @@ When adding a new pass, verify:
 | `src/engine/uniform_id.h` | Uniform name registry |
 | `src/engine/uniform_block.h` | Type-safe uniform setter with caching |
 | `src/engine/resource_id.h` | ResourceId enum + ResourceDecl for dependencies |
+| `src/demo/tier/shader_registry.def` | X-macro shader registry — one line per shader |
+| `src/demo/tier/shader_bank.h` | Centralized shader compilation + O(1) lookup |
 | `src/demo/pipeline/pass_registry.def` | X-macro registry — one line per pass |
 | `src/demo/passes/all_passes.h` | Aggregated includes for all pass headers |
 | `src/demo/pipeline/pass_factory.cpp` | Pass creation (registry expansion + special wiring) |

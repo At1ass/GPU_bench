@@ -8,10 +8,7 @@
 #include <cstring>
 
 // Function pointer for inline commands (e.g., SSR texture copy)
-typedef void (*PipelineCommandFn)(PassContext&, FrameData&,
-                                   const TierResourceView&,
-                                   const DemoTierConfig&,
-                                   const SceneData&);
+typedef void (*PipelineCommandFn)(PassContext&, FrameData&, const SceneData&);
 
 // Pipeline node: pass or command with optional RT management and barriers.
 struct PipelineNode {
@@ -48,8 +45,11 @@ struct PipelineNode {
 
 // Render pipeline with per-node RT management, barriers, and commands.
 // Tier configuration = building the right sequence of nodes in setup().
-class DemoPipeline {
+class RenderPipeline {
 public:
+    // Add a fully-configured node (used by engine pipeline builder)
+    void addNode(const PipelineNode& node) { nodes_.push_back(node); }
+
     // Simple pass (no RT change)
     void addPass(RenderPassBase* pass, bool enabled = true) {
         PipelineNode n;
@@ -132,11 +132,9 @@ public:
     }
 
     void clear() { nodes_.clear(); }
+    int nodeCount() const { return static_cast<int>(nodes_.size()); }
 
-    void execute(PassContext& ctx, FrameData& fd,
-                 const TierResourceView& res,
-                 const DemoTierConfig& cfg,
-                 const SceneData& scene) {
+    void execute(PassContext& ctx, FrameData& fd, const SceneData& scene) {
         Renderer* r = ctx.renderer();
         for (size_t i = 0; i < nodes_.size(); i++) {
             const PipelineNode& n = nodes_[i];
@@ -151,6 +149,7 @@ public:
                 r->bindRenderTarget(n.bind_rt);
                 r->setViewport(0, 0, vp_w, vp_h);
                 if (n.clear_rt) {
+                    r->setDepthMask(true);  // ensure depth buffer is writable before clear
                     r->clear(n.clear_color[0], n.clear_color[1],
                              n.clear_color[2], n.clear_color[3]);
                     r->setDepthTest(true);
@@ -162,6 +161,7 @@ public:
                 if (n.viewport_w > 0 || n.viewport_h > 0)
                     r->setViewport(0, 0, vp_w, vp_h);
                 if (n.clear_rt) {
+                    r->setDepthMask(true);  // ensure depth buffer is writable before clear
                     r->clear(n.clear_color[0], n.clear_color[1],
                              n.clear_color[2], n.clear_color[3]);
                     r->setDepthTest(true);
@@ -171,9 +171,11 @@ public:
             case PipelineNode::RTAction::BindDest:
                 r->bindRenderTarget(fd.dest_rt);
                 r->setViewport(0, 0, vp_w, vp_h);
-                if (n.clear_rt)
+                if (n.clear_rt) {
+                    r->setDepthMask(true);  // ensure depth buffer is writable before clear
                     r->clear(n.clear_color[0], n.clear_color[1],
                              n.clear_color[2], n.clear_color[3]);
+                }
                 break;
             case PipelineNode::RTAction::None:
                 break;
@@ -185,13 +187,13 @@ public:
                         n.pass->name(), static_cast<int>(i + 1),
                         static_cast<int>(nodes_.size()), static_cast<int>(n.rt_action));
                 GLDebug::pushGroup(n.pass->name());
-                n.pass->execute(ctx, fd, res, cfg, scene);
+                n.pass->execute(ctx, fd, scene);
                 GLDebug::popGroup();
             } else if (n.command) {
                 LOG_TRC("Pipeline: execute command (node %d/%d)",
                         static_cast<int>(i + 1), static_cast<int>(nodes_.size()));
                 GLDebug::pushGroup("pipeline_command");
-                n.command(ctx, fd, res, cfg, scene);
+                n.command(ctx, fd, scene);
                 GLDebug::popGroup();
             }
 

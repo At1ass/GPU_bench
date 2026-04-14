@@ -2,25 +2,28 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "demo/demo_utils.h"
 #include <cmath>
 
-void OpaquePass::init(const TierResourceView& res) {
-    island_shader_ = res.core.island_shader;
-    ub().init(res.core.island_shader);
-    setShader(res.core.island_shader);
+void OpaquePass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                      const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ShaderProgram* s = res.shader(ShaderBank::Island);
+    island_shader_ = s;
+    ub().init(s);
+    setShader(s);
     setState(RenderState::opaque());
     setPipelineManagedRT();
 }
 
-void OpaquePass::setup(const TierResourceView& res) {
-    (void)res;
-}
+void OpaquePass::onSceneSetup(UniformBlock& ub, PassContext& ctx,
+                               const FrameData& fd) {
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
 
-void OpaquePass::sceneSetup(UniformBlock& ub, PassContext& ctx,
-                            const FrameData& fd,
-                            const TierResourceView& res,
-                            const DemoTierConfig& cfg) {
     ctx.renderer()->setBlending(false);
 
     ub.set(U::Proj, fd.proj);
@@ -86,7 +89,7 @@ void OpaquePass::sceneSetup(UniformBlock& ub, PassContext& ctx,
     }
 
     // Point lights (T3+)
-    setPointLightUniforms(island_shader_, fd, cfg.point_light_count);
+    setPointLightUniforms(ub, fd, cfg.point_light_count);
 }
 
 bool OpaquePass::objectFilter(const SceneObject& obj,

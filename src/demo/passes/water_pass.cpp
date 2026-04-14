@@ -2,25 +2,28 @@
 #include "engine/uniform_id.h"
 #include "demo/tier/tier_resource_view.h"
 #include "demo/scene/demo_scene.h"
+#include "demo/demo_debug.h"
 #include "demo/demo_utils.h"
 
-void WaterPass::init(const TierResourceView& res) {
-    island_shader_ = res.core.island_shader;
-    ub().init(res.core.island_shader);
-    setShader(res.core.island_shader);
+void WaterPass::init(const TierResourceView& res, const DemoTierConfig& cfg,
+                     const DemoDebugOverrides& dbg) {
+    (void)dbg;
+    res_ = &res;
+    cfg_ = &cfg;
+    ShaderProgram* s = res.shader(ShaderBank::Island);
+    island_shader_ = s;
+    ub().init(s);
+    setShader(s);
     // Water needs alpha blending for shore transparency, no depth write
     setState(RenderState::transparent());
     setPipelineManagedRT();
 }
 
-void WaterPass::setup(const TierResourceView& res) {
-    (void)res;
-}
+void WaterPass::onSceneSetup(UniformBlock& ub, PassContext& ctx,
+                              const FrameData& fd) {
+    const TierResourceView& res = *res_;
+    const DemoTierConfig& cfg = *cfg_;
 
-void WaterPass::sceneSetup(UniformBlock& ub, PassContext& ctx,
-                           const FrameData& fd,
-                           const TierResourceView& res,
-                           const DemoTierConfig& cfg) {
     // Set all standard uniforms (same as OpaquePass)
     ub.set(U::Proj, fd.proj);
     ub.set(U::View, fd.view);
@@ -63,8 +66,8 @@ void WaterPass::sceneSetup(UniformBlock& ub, PassContext& ctx,
         ub.set(U::HasReflection, 1.0f);
         ub.set(U::ScreenSize,
             static_cast<float>(fd.viewport_w), static_cast<float>(fd.viewport_h));
-        ub.set(U::Near, kDemoNear);
-        ub.set(U::Far, kDemoFar);
+        ub.set(U::Near, kDefaultNear);
+        ub.set(U::Far, kDefaultFar);
     } else {
         ub.set(U::HasReflection, 0.0f);
     }
